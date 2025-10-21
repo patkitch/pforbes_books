@@ -9,8 +9,6 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from collections import defaultdict
 from .models import AdminReports
-from .models import BillExtras
-from .forms import BillExtrasForm
 import csv as csvlib
 
 

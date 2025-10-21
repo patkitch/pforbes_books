@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_ledger',
     'books',
-    'accounting',
+    
 ]
 
 MIDDLEWARE = [
