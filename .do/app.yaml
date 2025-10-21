@@ -1,0 +1,29 @@
+name: pforbes-books
+services:
+  - name: web
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs   # smallest App Platform container
+    source_dir: /
+    build_command: "python manage.py collectstatic --noinput"
+    run_command: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+    envs:
+      - key: DJANGO_SETTINGS_MODULE
+        scope: RUN_AND_BUILD_TIME
+        value: config.settings
+      - key: DJANGO_DEBUG
+        scope: RUN_AND_BUILD_TIME
+        value: "True"   # just to get first deploy green; we’ll turn off later
+      - key: ALLOWED_HOSTS
+        scope: RUN_AND_BUILD_TIME
+        value: "*"
+      - key: PORT
+        scope: RUN_AND_BUILD_TIME
+        value: "8080"
+      - key: DISABLE_COLLECTSTATIC
+        scope: RUN_AND_BUILD_TIME
+        value: "1"      # skip static collection for first deploy
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: "replace-with-a-long-random-string"
