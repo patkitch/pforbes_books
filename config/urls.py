@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-
+from django.views.generic import RedirectView
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="/ledger/", permanent=False)),  # <— add this line
     path('admin/', admin.site.urls),
     path('ledger/', include(("django_ledger.urls","django_ledger"),namespace="django_ledger")),
     
