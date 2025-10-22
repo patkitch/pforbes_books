@@ -11,6 +11,7 @@ from django.core.management.utils import get_random_secret_key
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# Initialize environment variables
 env = environ.Env(
     DEBUG=(bool, False),
 )
@@ -26,6 +27,7 @@ DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_B
 SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
 DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 
 
@@ -42,6 +44,9 @@ INSTALLED_APPS = [
     'books',
     
 ]
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -79,17 +84,22 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-      "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "pforbes_books",
-        "USER": "pat",
-        "PASSWORD": "Ft3x21,,",  # "" if you didn’t set one
-        "HOST": "127.0.0.1",
-        "PORT": "5432",
-    }  
-}
+db_url = env("DATABASE_URL", default=None)
+if db_url:
+    DATABASES = {
+        "default": env.db_url("DATABASE_URL")
+    }
+else:
+    DATABASES = {
+            "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME", default="pforbes_books"),
+            "USER": env("DB_USER", default="pat"),
+            "PASSWORD": env("DB_PASSWORD", default=""), 
+            "HOST": env("DB_HOST", default="127.0.0.1"),
+            "PORT": env("DB_PORT", default="5432"),
+        }  
+    }
 
 
 # Password validation
@@ -125,8 +135,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 STATIC_URL = 'static/'
 if "runserver" in sys.argv:
