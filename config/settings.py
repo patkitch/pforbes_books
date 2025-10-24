@@ -25,10 +25,9 @@ DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_B
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
-DEBUG = env.bool("DEBUG", default=True)
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
-
+DEBUG = env.bool("DEBUG", default=False)
+ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app"]
+CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
 
 
 # Application definition
@@ -42,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_ledger',
     'books',
+    'helpers.apps.HelpersConfig',
     
 ]
 STATIC_URL = "/static/"
