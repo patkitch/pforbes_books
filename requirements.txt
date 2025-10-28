@@ -2,7 +2,7 @@
 colorama==0.4.6
 defusedxml==0.7.1
 Django==5.2.7
-django-ledger==0.8.2.2
+django-ledger @ git+https://github.com/arrobalytics/django-ledger.git@master
 django-treebeard==4.7.1
 Faker==37.11.0
 fonttools==4.60.1
@@ -24,5 +24,6 @@ tzdata==2025.2
 django-environ
 gunicorn
 whitenoise
+
 
 
