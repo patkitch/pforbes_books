@@ -1,27 +1,47 @@
-﻿# books/signals/inventory_signals.py
+﻿from decimal import Decimal
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django_ledger.models import ItemTransactionModel
+from django.db.models import Sum, DecimalField
+from django.db.models.functions import Coalesce
+
+from django_ledger.models import ItemTransactionModel, ItemModel
 
 
+def _recalc_item_totals(item_model: ItemModel):
+    """
+    Recalculate the totals for a single ItemModel based on all RECEIVED ItemTransactionModel rows
+    that are linked to a Bill.
+    """
+    agg = ItemTransactionModel.objects.filter(
+        item_model=item_model,
+        po_item_status=ItemTransactionModel.STATUS_RECEIVED,
+        bill_model__isnull=False,
+    ).aggregate(
+        total_qty=Coalesce(
+            Sum('quantity'),
+            0.0,
+            output_field=DecimalField(max_digits=20, decimal_places=3),
+        ),
+        total_cost=Coalesce(
+            Sum('total_amount'),
+            0.0,
+            output_field=DecimalField(max_digits=20, decimal_places=2),
+        ),
+    )
+
+    item_model.inventory_received = agg['total_qty'] or Decimal('0')
+    item_model.inventory_received_value = agg['total_cost'] or Decimal('0')
+
+    item_model.save(update_fields=['inventory_received', 'inventory_received_value'])
 @receiver(post_save, sender=ItemTransactionModel)
-def update_item_inventory_on_receipt(sender, instance, **kwargs):
+def sync_item_totals_on_save(sender, instance: ItemTransactionModel, **kwargs):
     """
-    Updates ItemModel inventory totals when a PO line is marked RECEIVED.
+    Whenever an ItemTransactionModel is saved, if it's RECEIVED and tied to a Bill, recalc that item's totals.
     """
-
-    po_status = getattr(instance, "po_item_status", None)
-    item_obj = getattr(instance, "item_model", None)
-    qty = getattr(instance, "po_quantity", None)
-    unit_cost = getattr(instance, "po_unit_cost", None)
-
-    # Only proceed for valid received items
-    if not item_obj or po_status != ItemTransactionModel.STATUS_RECEIVED:
-        return
-    if not qty or not unit_cost:
-        return
-
-    # Update item totals
-    item_obj.total_inventory_received = (item_obj.total_inventory_received or 0) + qty
-    item_obj.total_value_received = (item_obj.total_value_received or 0) + (qty * unit_cost)
-    item_obj.save(update_fields=["total_inventory_received", "total_value_received"])
+    if (
+        instance.po_item_status == ItemTransactionModel.STATUS_RECEIVED
+        and instance.bill_model_id is not None
+        and instance.item_model_id is not None
+    ):
+        _recalc_item_totals(instance.item_model)
