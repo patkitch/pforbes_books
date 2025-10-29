@@ -2,7 +2,7 @@
 colorama==0.4.6
 defusedxml==0.7.1
 Django==5.2.7
-django-ledger==0.8.2
+django-ledger==0.8.2.2
 django-treebeard==4.7.1
 Faker==37.11.0
 fonttools==4.60.1
