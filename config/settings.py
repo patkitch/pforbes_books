@@ -9,11 +9,13 @@ import sys
 from django.core.management.utils import get_random_secret_key
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Initialize environment variables
 env = environ.Env(
-    DEBUG=(bool, False),
+    DEBUG=(bool, True)
 )
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
@@ -25,8 +27,8 @@ DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_B
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
-DEBUG = env.bool("DEBUG", default=False)
-ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app"]
+DEBUG = env.bool("DEBUG", default=True)
+ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost","127.0.0.1", "0.0.0.0",]
 CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
 
 
@@ -40,8 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_ledger',
-    'books',
     'helpers.apps.HelpersConfig',
+    'books.apps.BooksConfig',  # not just 'books'
+ 
+  
     
 ]
 STATIC_URL = "/static/"
