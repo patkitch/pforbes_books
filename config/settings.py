@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django_ledger',
     'helpers.apps.HelpersConfig',
     'books.apps.BooksConfig',  # not just 'books'
+    'reports.apps.ReportsConfig',
  
   
     
