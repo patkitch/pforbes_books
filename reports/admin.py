@@ -1,225 +1,201 @@
-﻿from decimal import Decimal, InvalidOperation
-import csv
+﻿# books/admin.py  (or wherever your custom admin report views live)
 
 from django.contrib import admin
-from django.http import HttpResponse
-from django.template.response import TemplateResponse
 from django.urls import path
-from django.utils.translation import gettext_lazy as _
+from django.http import HttpResponse
+from django.db.models import (
+    Sum,
+    F,
+    DecimalField,
+    FloatField,
+    ExpressionWrapper,
+    Value,
+    OuterRef,
+    Subquery,
+    Q,
+)
+from django.db.models.functions import Coalesce
 
-from .models import InventoryReconciliationReport
-
-from django_ledger.models import EntityModel, ItemModel, ItemTransactionModel
+from django_ledger.models import ItemModel, ItemTransactionModel  # adjust import if needed
 
 
-@admin.register(InventoryReconciliationReport)
-class InventoryReconciliationAdmin(admin.ModelAdmin):
+def inventory_sync_view(request):
     """
-    Admin shell for the Inventory Reconciliation report.
+    CSV export that shows, per ItemModel:
+    - What ItemModel says we've received (inventory_received / inventory_received_value)
+    - What ItemTransactionModel history says is actually on hand
+    - The difference between those two
+    - Dollar impact of that difference
 
-    - Shows up under Reports in sidebar
-    - Renders a custom page instead of trying to query a DB table
-    - Offers a CSV download route
+    Goal: find items where invoices show 0 available even though you've already received stock.
     """
 
-    change_list_template = "admin/reports/inventory_reconciliation_changelist.html"
+    # --- 1. Build subqueries that aggregate ItemTransactionModel per item_model ---
 
-    #
-    # 1. Override changelist_view so Django DOES NOT try to query this as a real DB model.
-    #
-    def changelist_view(self, request, extra_context=None):
-        """
-        Instead of letting ModelAdmin build a ChangeList (which queries the DB
-        for this "model"), we manually render our custom template.
-        """
-        # Build any extra context we want on the page (like the download URL)
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "Inventory Reconciliation",
-            "opts": self.model._meta,
-            "has_view_permission": self.has_view_permission(request),
-            "download_url_name": "admin:inventory_reconciliation_download_csv",
-        }
+    # Qty received = sum of quantities on BILL lines (incoming inventory)
+    qty_received_tx_subq = (
+        ItemTransactionModel.objects
+        .filter(item_model=OuterRef('pk'), bill_model__isnull=False)
+        .values('item_model')
+        .annotate(total_qty=Coalesce(Sum('quantity'), 0.0))
+        .values('total_qty')
+    )
 
-        if extra_context:
-            context.update(extra_context)
+    # Qty sold = sum of quantities on INVOICE lines (outgoing / sold)
+    qty_sold_tx_subq = (
+        ItemTransactionModel.objects
+        .filter(item_model=OuterRef('pk'), invoice_model__isnull=False)
+        .values('item_model')
+        .annotate(total_qty=Coalesce(Sum('quantity'), 0.0))
+        .values('total_qty')
+    )
 
-        return TemplateResponse(
-            request,
-            self.change_list_template,
-            context,
+    # Cost received from bills (money you spent acquiring this inventory)
+    cost_received_tx_subq = (
+        ItemTransactionModel.objects
+        .filter(item_model=OuterRef('pk'), bill_model__isnull=False)
+        .values('item_model')
+        .annotate(total_cost=Coalesce(Sum('total_amount'), 0))
+        .values('total_cost')
+    )
+
+    # Revenue from invoices (optional context, not used in diff math, but useful to see)
+    revenue_invoiced_tx_subq = (
+        ItemTransactionModel.objects
+        .filter(item_model=OuterRef('pk'), invoice_model__isnull=False)
+        .values('item_model')
+        .annotate(total_rev=Coalesce(Sum('total_amount'), 0))
+        .values('total_rev')
+    )
+
+    # --- 2. Annotate ItemModel with those numbers ---
+
+    qs = (
+        ItemModel.objects
+        .annotate(
+            qty_received_tx=Coalesce(
+                Subquery(qty_received_tx_subq, output_field=FloatField()),
+                0.0
+            ),
+            qty_sold_tx=Coalesce(
+                Subquery(qty_sold_tx_subq, output_field=FloatField()),
+                0.0
+            ),
+            cost_received_tx=Coalesce(
+                Subquery(cost_received_tx_subq, output_field=DecimalField(max_digits=20, decimal_places=2)),
+                Value(0)
+            ),
+            revenue_invoiced_tx=Coalesce(
+                Subquery(revenue_invoiced_tx_subq, output_field=DecimalField(max_digits=20, decimal_places=2)),
+                Value(0)
+            ),
         )
+        .annotate(
+            qty_onhand_tx=ExpressionWrapper(
+                F('qty_received_tx') - F('qty_sold_tx'),
+                output_field=FloatField()
+            ),
 
+            # What the ItemModel itself is storing (your manual truth right now)
+            qty_itemmodel_recorded=Coalesce(
+                F('inventory_received'),
+                Value(0.0),
+                output_field=DecimalField(max_digits=20, decimal_places=3)
+            ),
+
+            # Compare transaction math vs ItemModel field:
+            qty_difference=ExpressionWrapper(
+                F('qty_onhand_tx') - F('qty_itemmodel_recorded'),
+                output_field=FloatField()
+            ),
+
+            # Dollar impact of that diff at your set default_amount per unit
+            dollar_impact=ExpressionWrapper(
+                (F('qty_onhand_tx') - F('qty_itemmodel_recorded')) * F('default_amount'),
+                output_field=DecimalField(max_digits=20, decimal_places=2)
+            ),
+        )
+        .values(
+            'uuid',
+            'item_number',
+            'name',
+            'default_amount',
+            'inventory_received',
+            'inventory_received_value',
+            'qty_received_tx',
+            'qty_sold_tx',
+            'qty_onhand_tx',
+            'qty_itemmodel_recorded',
+            'qty_difference',
+            'dollar_impact',
+        )
+        .order_by('item_number', 'name')
+    )
+
+    # --- 3. Build CSV response ---
+    import csv
+    resp = HttpResponse(content_type='text/csv')
+    resp['Content-Disposition'] = 'attachment; filename=inventory_sync_report.csv'
+
+    writer = csv.writer(resp)
+
+    writer.writerow([
+        'Item UUID',
+        'Item Number',
+        'Name',
+
+        'Default Unit Cost (default_amount)',
+
+        'ItemModel.inventory_received (qty lifetime)',
+        'ItemModel.inventory_received_value ($ lifetime)',
+
+        'Tx qty_received_from_bills',
+        'Tx qty_sold_on_invoices',
+        'Tx qty_onhand (received - sold)',
+
+        'Recorded qty in ItemModel (inventory_received)',
+        'Difference (TxOnHand - ItemModelReceived)',
+        'Dollar Impact of Difference',
+    ])
+
+    for row in qs:
+        writer.writerow([
+            row.get('uuid', ''),
+            row.get('item_number', ''),
+            row.get('name', ''),
+
+            row.get('default_amount', ''),
+
+            row.get('inventory_received', ''),
+            row.get('inventory_received_value', ''),
+
+            row.get('qty_received_tx', ''),
+            row.get('qty_sold_tx', ''),
+            row.get('qty_onhand_tx', ''),
+
+            row.get('qty_itemmodel_recorded', ''),
+            row.get('qty_difference', ''),
+            row.get('dollar_impact', ''),
+        ])
+
+    return resp
+
+
+# --- 4. Wire this into admin URLs ---
+# If you already have a custom AdminSite subclass with get_urls(), just
+# add this path(...) to that list. If you don't, here's a mixin you can apply.
+
+class InventoryAdminSiteMixin:
     def get_urls(self):
-        """
-        Add custom admin URLs under this 'model' in the admin.
-        """
         urls = super().get_urls()
         custom_urls = [
             path(
-                "download-csv/",
-                self.admin_site.admin_view(self.download_csv_view),
-                name="inventory_reconciliation_download_csv",
+                'django_ledger/adminreports/inventory-sync/',
+                self.admin_view(inventory_sync_view),
+                name='inventory-sync-report'
             ),
         ]
         return custom_urls + urls
 
-    def _get_authorized_entity(self, request):
-        """
-        Pick the entity the current user is allowed to work with.
-
-        For now:
-        - Take the first entity visible to this user.
-        """
-        qs = EntityModel.objects.for_user(user_model=request.user)
-        return qs.first()
-
-    def download_csv_view(self, request):
-        """
-        Build and return the reconciliation CSV.
-        """
-        entity = self._get_authorized_entity(request)
-        if entity is None:
-            resp = HttpResponse(
-                "No entity available for this user.",
-                content_type="text/plain",
-            )
-            resp["Content-Disposition"] = 'attachment; filename="inventory_reconciliation_ERROR.txt"'
-            return resp
-
-        # 1. Roll up transaction history per item
-        txn_rollup_qs = ItemTransactionModel.objects.inventory_count(
-            entity_model=entity
-        )
-
-        txn_rollup_map = {}
-        for row in txn_rollup_qs:
-            item_id = row.get("item_model_id")
-            if not item_id:
-                continue
-            txn_rollup_map[item_id] = {
-                "item_model__name": row.get("item_model__name"),
-                "uom_name": row.get("item_model__uom__name"),
-
-                "quantity_received": row.get("quantity_received") or Decimal("0"),
-                "cost_received": row.get("cost_received") or Decimal("0"),
-
-                "quantity_invoiced": row.get("quantity_invoiced") or Decimal("0"),
-                "revenue_invoiced": row.get("revenue_invoiced") or Decimal("0"),
-
-                "quantity_onhand": row.get("quantity_onhand") or Decimal("0"),
-
-                "cost_average": row.get("cost_average") or Decimal("0"),
-                "value_onhand": row.get("value_onhand") or Decimal("0"),
-            }
-
-        # 2. Pull the ItemModel "snapshot" for the same entity
-        item_qs = ItemModel.objects.for_entity(entity_model=entity).select_related("uom")
-
-        # 3. Build CSV response
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="inventory_reconciliation.csv"'
-
-        writer = csv.writer(response)
-
-        # Header row
-        writer.writerow([
-            "item_uuid",
-            "item_number",
-            "item_name",
-            "sku",
-            "uom",
-
-            "inventory_received_model",
-            "inventory_received_value_model",
-            "avg_cost_model",
-
-            "qty_received_txn",
-            "cost_received_txn",
-            "qty_sold_txn",
-            "revenue_sold_txn",
-
-            "qty_onhand_txn",
-            "avg_cost_txn",
-            "value_onhand_txn",
-
-            "delta_received_qty",
-            "delta_received_value",
-        ])
-
-        # Rows
-        for item in item_qs:
-            inv_recv_model = item.inventory_received or Decimal("0")
-            inv_recv_val_model = item.inventory_received_value or Decimal("0")
-
-            try:
-                if inv_recv_model and inv_recv_model != 0:
-                    avg_cost_model = inv_recv_val_model / inv_recv_model
-                else:
-                    avg_cost_model = Decimal("0")
-            except (InvalidOperation, ZeroDivisionError):
-                avg_cost_model = Decimal("0")
-
-            roll = txn_rollup_map.get(item.uuid)
-
-            if roll is None:
-                qty_received_txn = Decimal("0")
-                cost_received_txn = Decimal("0")
-                qty_sold_txn = Decimal("0")
-                revenue_sold_txn = Decimal("0")
-                qty_onhand_txn = Decimal("0")
-                avg_cost_txn = Decimal("0")
-                value_onhand_txn = Decimal("0")
-                uom_name = getattr(item.uom, "name", "")
-                item_name = item.name
-            else:
-                qty_received_txn = roll["quantity_received"] or Decimal("0")
-                cost_received_txn = roll["cost_received"] or Decimal("0")
-                qty_sold_txn = roll["quantity_invoiced"] or Decimal("0")
-                revenue_sold_txn = roll["revenue_invoiced"] or Decimal("0")
-                qty_onhand_txn = roll["quantity_onhand"] or Decimal("0")
-                avg_cost_txn = roll["cost_average"] or Decimal("0")
-                value_onhand_txn = roll["value_onhand"] or Decimal("0")
-                uom_name = roll["uom_name"] or getattr(item.uom, "name", "")
-                item_name = roll["item_model__name"] or item.name
-
-            delta_received_qty = qty_received_txn - (inv_recv_model or Decimal("0"))
-            delta_received_value = cost_received_txn - (inv_recv_val_model or Decimal("0"))
-
-            writer.writerow([
-                str(item.uuid),
-                item.item_number,
-                item_name,
-                item.sku or "",
-                uom_name or "",
-
-                str(inv_recv_model),
-                str(inv_recv_val_model),
-                str(round(avg_cost_model, 4)),
-
-                str(qty_received_txn),
-                str(cost_received_txn),
-                str(qty_sold_txn),
-                str(revenue_sold_txn),
-
-                str(qty_onhand_txn),
-                str(avg_cost_txn),
-                str(value_onhand_txn),
-
-                str(delta_received_qty),
-                str(delta_received_value),
-            ])
-
-        return response
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def has_view_permission(self, request, obj=None):
-        return True
+# If you already have something similar for 'inventory-valuation', keep that too.
+# Just make sure both paths are returned in get_urls().
