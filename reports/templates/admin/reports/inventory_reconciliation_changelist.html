@@ -1,64 +1,117 @@
 ﻿{% extends "admin/base_site.html" %}
-{% load i18n static %}
+{% load static %}
 
-{% block extrastyle %}
-{{ block.super }}
-<link rel="stylesheet" href="{% static 'admin/css/changelists.css' %}">
-{% endblock %}
-
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
-    › <span>Reports</span>
-    › <span>Inventory Reconciliation</span>
-</div>
-{% endblock %}
+{% block title %}Inventory Reconciliation{% endblock %}
 
 {% block content %}
-<div id="content-main" class="module">
+<div class="app-inventory-reconciliation">
     <h1>Inventory Reconciliation</h1>
 
-    <div class="object-tools">
-        <ul class="object-tools">
-            <li>
-                <a href="{% url download_url_name %}">
-                    Download CSV
-                </a>
-            </li>
-        </ul>
-    </div>
+    {% if no_entity_message %}
+        <p style="color: red; font-weight: bold;">{{ no_entity_message }}</p>
+    {% else %}
 
-    <p>
-        This report compares:
-    </p>
-    <ul>
-        <li>
-            <strong>ItemModel snapshot</strong>  
-            (inventory_received, inventory_received_value, avg cost saved on each Item)
-        </li>
-        <li>
-            <strong>Transaction history reality</strong>  
-            (qty received from Bills, qty sold on Invoices, on-hand, on-hand value)
-        </li>
-    </ul>
+        <p>
+            <a class="button" href="{% url download_url_name %}">
+                Download CSV
+            </a>
+        </p>
 
-    <p>
-        The CSV includes delta columns:
-        <code>delta_received_qty</code> and <code>delta_received_value</code>.
-        If those are not zero, that item was damaged by the recount
-        and needs to be fixed in Item Model.
-    </p>
+        <div style="max-width: 100%; overflow-x: auto;">
+            <table class="admin-inventory-report" style="border-collapse: collapse; min-width: 1200px;">
+                <thead>
+                    <tr>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Item #</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Name</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">SKU</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">UoM</th>
 
-    <p>
-        After you download and open the CSV in Excel:
-        <br>
-        - Sort by the delta columns<br>
-        - For each item with a non-zero delta,<br>
-        &nbsp;&nbsp;go to Admin → Django Ledger → Item models → pick that item<br>
-        &nbsp;&nbsp;and restore <strong>inventory_received</strong> and
-        <strong>inventory_received_value</strong> to what the CSV shows under
-        <em>qty_received_txn</em> and <em>cost_received_txn</em>.
-    </p>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Model Qty Recv</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Model $ Recv</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Model Avg Cost</th>
 
+                        <th style="border-bottom:1px solid #999; padding:4px;">Txn Qty Recv</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Txn Cost Recv</th>
+
+                        <th style="border-bottom:1px solid #999; padding:4px;">Qty Sold</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Revenue Sold</th>
+
+                        <th style="border-bottom:1px solid #999; padding:4px;">Qty On Hand</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Avg Cost (Txn)</th>
+                        <th style="border-bottom:1px solid #999; padding:4px;">Value On Hand</th>
+
+                        <th style="border-bottom:1px solid #999; padding:4px; color:#900;">Δ Qty Recv</th>
+                        <th style="border-bottom:1px solid #999; padding:4px; color:#900;">Δ $ Recv</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td style="border-bottom:1px solid #ddd; padding:4px;">{{ row.item_number }}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px;">{{ row.item_name }}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px;">{{ row.sku }}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px;">{{ row.uom }}</td>
+
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.inventory_received_model }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.inventory_received_value_model }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.avg_cost_model }}
+                            </td>
+
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.qty_received_txn }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.cost_received_txn }}
+                            </td>
+
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.qty_sold_txn }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.revenue_sold_txn }}
+                            </td>
+
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.qty_onhand_txn }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.avg_cost_txn }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;">
+                                {{ row.value_onhand_txn }}
+                            </td>
+
+                            {# highlight deltas if not zero #}
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;
+                                       {% if row.delta_received_qty != 0 %}color:#900; font-weight:bold;{% endif %}">
+                                {{ row.delta_received_qty }}
+                            </td>
+                            <td style="border-bottom:1px solid #ddd; padding:4px; text-align:right;
+                                       {% if row.delta_received_value != 0 %}color:#900; font-weight:bold;{% endif %}">
+                                {{ row.delta_received_value }}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="16" style="padding:12px; text-align:center; color:#666;">
+                                No items found for this entity.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p style="margin-top:1rem; color:#666; font-size:0.9rem;">
+            Δ columns (delta) = Transaction math minus ItemModel snapshot.<br>
+            If those numbers aren't zero, that's why invoicing says "0 available."
+        </p>
+
+    {% endif %}
 </div>
 {% endblock %}
