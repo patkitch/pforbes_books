@@ -1,0 +1,109 @@
+﻿{% extends 'django_ledger/layouts/content_layout_1.html' %}
+{% load i18n %}
+{% load static %}
+{% load django_ledger %}
+
+{% block view_content %}
+    <div class="container">
+        <div class="columns">
+            <div class="column">
+                <h1 class="title">Inventory Recount</h1>
+
+                <div class="table-container">
+                    <table class="table is-fullwidth is-narrow is-striped is-bordered">
+                        <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>UOM</th>
+
+                            <th>Qty Recorded</th>
+                            <th>Value Recorded</th>
+                            <th>Avg. Cost Recorded</th>
+
+                            <th>Qty Counted</th>
+                            <th>Value Counted</th>
+                            <th>Avg. Cost Counted</th>
+
+                            <th>Qty Diff</th>
+                            <th>Value Diff</th>
+                            <th>Avg. Cost Diff</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        {% for k in inventory_adjustment %}
+                            {# k.0 = (item_uuid, item_name, uom_name, ...) #}
+                            {# k.1 = dict of numbers for recorded/count/diff #}
+                            <tr>
+                                <td>{{ k.0.1 }}</td>
+                                <td>{{ k.0.2 }}</td>
+
+                                {# Recorded Inventory (what ItemModel currently says) #}
+                                <td class="has-background-primary-light">
+                                    {{ k.1.recorded }}
+                                </td>
+                                <td class="has-background-primary-light">
+                                    {% currency_symbol %}{{ k.1.recorded_value|currency_format }}
+                                </td>
+                                <td class="has-background-primary-light">
+                                    {% currency_symbol %}{{ k.1.recorded_avg_cost|currency_format }}
+                                </td>
+
+                                {# Counted / Calculated from actual transactions #}
+                                <td>{{ k.1.counted|floatformat:3 }}</td>
+                                <td>
+                                    {% currency_symbol %}{{ k.1.counted_value|currency_format }}
+                                </td>
+                                <td>
+                                    {% currency_symbol %}{{ k.1.counted_avg_cost|currency_format }}
+                                </td>
+
+                                {# Differences (what's off) #}
+                                <td>{{ k.1.count_diff|floatformat:3 }}</td>
+                                <td>
+                                    {% currency_symbol %}{{ k.1.value_diff|floatformat:2|currency_format }}
+                                </td>
+                                <td>
+                                    {% currency_symbol %}{{ k.1.avg_cost_diff|floatformat:2|currency_format }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {# Blue button: SAFE reload view #}
+                <a href="{% url 'safe-inventory-recount' entity_slug=view.kwargs.entity_slug %}"
+                   class="button is-primary">
+                    {% trans 'Recount Inventory' %}
+                </a>
+
+                {# Yellow button: was 'Update Inventory' (danger). Now disabled on purpose. #}
+                {% if allow_inventory_writeback %}
+                    <a href="{% url 'safe-inventory-recount' entity_slug=view.kwargs.entity_slug %}?confirm=1"
+                       class="button is-warning">
+                        {% trans 'Update Inventory' %}
+                    </a>
+                {% else %}
+                    <button class="button is-warning" disabled
+                            title="Disabled in this install to protect your ItemModel data">
+                        {% trans 'Update Inventory' %}
+                    </button>
+                {% endif %}
+
+                <p style="margin-top:1rem; max-width:50rem;">
+                    <strong>How to use this page:</strong><br>
+                    “Recorded” is what’s currently saved on each Item in Django Ledger
+                    (inventory_received, inventory_received_value, avg cost).<br>
+                    “Counted” is what the system recomputes from all Bills / POs / Invoices.<br>
+                    The Diff columns tell you which Items are out of sync.<br><br>
+
+                    We’ve disabled the automatic “Update Inventory” button because it mass-writes
+                    into your Item records and can destroy your history. Instead, use the CSV report
+                    in Admin → Reports → Inventory Reconciliation to repair only the items that are off.
+                </p>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
