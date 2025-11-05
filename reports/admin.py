@@ -7,7 +7,8 @@ from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
 
-from .models import InventoryReconciliationReport
+from .models import InventoryReconciliationReport,ITxSnapshotReport, ITxTxDetailReport
+from . import views_itx
 
 from django_ledger.models import EntityModel, ItemModel, ItemTransactionModel
 
@@ -276,3 +277,90 @@ class InventoryReconciliationAdmin(admin.ModelAdmin):
 
     def has_view_permission(self, request, obj=None):
         return True
+
+class _ReportAdminBase(admin.ModelAdmin):
+    # Hide add/change/delete buttons
+    def has_module_permission(self, request):
+        return True
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False
+
+    # We only use the "change list" page as a landing page with a Download button.
+    def changelist_view(self, request, extra_context=None):
+        # Redirect to page that includes entity slug in URL
+        from django.shortcuts import redirect
+        from django_ledger.models import EntityModel
+        # Pick the first accessible entity; if you already pass entity_slug elsewhere, adapt as needed.
+        entity = EntityModel.objects.for_user(user_model=request.user).first()
+        if not entity:
+            return super().changelist_view(request, extra_context=extra_context)
+        return redirect(self.entry_url(entity.slug))
+
+    def entry_url(self, entity_slug: str) -> str:
+        raise NotImplementedError  # implemented by subclasses
+
+# reports/admin.py  (only the parts shown below need updating)
+
+@admin.register(ITxSnapshotReport)
+class ITxSnapshotReportAdmin(_ReportAdminBase):
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "itx-snapshot/<slug:entity_slug>/",
+                self.admin_site.admin_view(views_itx.ITxSnapshotPage.as_view()),
+                name="adminreports-itx-snapshot",
+            ),
+            path(
+                "itx-snapshot/<slug:entity_slug>/download/",
+                self.admin_site.admin_view(views_itx.itx_tx_detail_csv),
+                name="adminreports-itx-snapshot-csv",
+            ),
+        ]
+        return custom + urls
+
+    def entry_url(self, slug):
+        from django.urls import reverse
+        # NOTE: include the admin namespace
+        return reverse(f"{self.admin_site.name}:adminreports-itx-snapshot",
+                       kwargs={"entity_slug": slug})
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+            "itxsnapshotreport/itx-snapshot/<slug:entity_slug>/",
+            self.admin_site.admin_view(views_itx.ITxSnapshotPage.as_view()),
+            name="adminreports-itx-snapshot",
+        ),
+            path(
+            "itxsnapshotreport/itx-snapshot/<slug:entity_slug>/csv/",
+            self.admin_site.admin_view(views_itx.itx_tx_detail_csv),
+            name="adminreports-itx-snapshot-csv",
+        ),
+    ]
+        return custom_urls + urls
+
+@admin.register(ITxTxDetailReport)
+class ITxTxDetailReportAdmin(_ReportAdminBase):
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "itx-tx-detail/<slug:entity_slug>/",
+                self.admin_site.admin_view(views_itx.ITxTxDetailPage.as_view()),
+                name="adminreports-itx-tx-detail",
+            ),
+            path(
+                "itx-tx-detail/<slug:entity_slug>/download/",
+                self.admin_site.admin_view(views_itx.itx_tx_detail_csv),
+                name="adminreports-itx-tx-detail-csv",
+            ),
+        ]
+        return custom + urls
+
+    def entry_url(self, slug):
+        from django.urls import reverse
+        # NOTE: include the admin namespace
+        return reverse(f"{self.admin_site.name}:adminreports-itx-tx-detail",
+                       kwargs={"entity_slug": slug})

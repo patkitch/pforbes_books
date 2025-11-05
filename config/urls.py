@@ -26,5 +26,6 @@ urlpatterns = [
     path("ledger/inventory-recount/<slug:entity_slug>/",
         SafeInventoryRecountView.as_view(),
         name="safe-inventory-recount"),
+    path("admin/reports/", include(("reports.urls_admin", "adminreports"), namespace="adminreports")),
     
 ]

@@ -13,3 +13,20 @@ class InventoryReconciliationReport(models.Model):
         managed = False  # no DB table
         verbose_name = _("Inventory Reconciliation")
         verbose_name_plural = _("Inventory Reconciliation")
+
+
+class _ReportBase(models.Model):
+    class Meta:
+        abstract = True
+        managed = False
+        app_label = "reports"
+
+class ITxSnapshotReport(_ReportBase):
+    class Meta(_ReportBase.Meta):
+        verbose_name = "ITx On-Hand Snapshot"
+        verbose_name_plural = "ITx On-Hand Snapshot"
+
+class ITxTxDetailReport(_ReportBase):
+    class Meta(_ReportBase.Meta):
+        verbose_name = "ITx Transaction Detail"
+        verbose_name_plural = "ITx Transaction Detail"

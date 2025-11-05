@@ -1,0 +1,23 @@
+﻿{% extends "admin/base_site.html" %}
+{% load i18n static %}
+{% block content %}
+  <div id="content-main" class="module">
+    <h1>{{ header_title|default:"ITx On-Hand Snapshot" }}</h1>
+    <div class="object-tools">
+      <ul class="object-tools">
+        <li>
+          <a href="{% url 'admin:adminreports-itx-snapshot-csv' entity_slug=view.kwargs.entity_slug %}">
+            {% trans "Download CSV" %}
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% if table %}
+      {{ table|safe }}
+    {% else %}
+      <p>{% trans "CSV contains the on-hand snapshot. Use the Download button above." %}</p>
+    {% endif %}
+  </div>
+{% endblock %}
+
+
