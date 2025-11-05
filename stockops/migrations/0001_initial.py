@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('django_ledger', '0028_adminreports'),
+        ('django_ledger', '0027_alter_accountmodel_role_alter_receiptmodel_amount_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
