@@ -10,9 +10,7 @@ from django_ledger.models.entity import EntityModel
 from .models import (
     Location,
     StockAllocation,
-    StockTransfer,
-    StatusOverlay,
-    PendingReceipt,
+    PendingReceipt
 )
 
 
@@ -102,27 +100,6 @@ class StockAllocationAdmin(admin.ModelAdmin):
         return self.unallocated_display(obj)
 
 
-@admin.register(StockTransfer)
-class StockTransferAdmin(admin.ModelAdmin):
-    list_display = ("item_display", "from_location", "to_location", "quantity", "created", "requested_by")
-    list_filter = ("from_location", "to_location")
-    search_fields = ("item__name", "item__sku", "note","location_name","location_slug",)
-    autocomplete_fields = ("item", "from_location", "to_location")
-    date_hierarchy = "created"
-
-    def item_display(self, obj):
-        return f"{obj.item.name} ({obj.item.item_number or obj.item.uuid})"
-
-
-@admin.register(StatusOverlay)
-class StatusOverlayAdmin(admin.ModelAdmin):
-    list_display = ("item_display", "location", "status", "effective", "note")
-    list_filter = ("status", "location")
-    search_fields = ("item__name", "item__sku","location_name" "note")
-    autocomplete_fields = ("item", "location")
-
-    def item_display(self, obj):
-        return f"{obj.item.name} ({obj.item.item_number or obj.item.uuid})"
 
 
 @admin.register(PendingReceipt)
