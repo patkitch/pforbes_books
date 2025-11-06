@@ -1,25 +1,33 @@
-﻿from decimal import Decimal
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.db import models, transaction
+﻿from django.db import models, transaction
 from django.utils.text import slugify
 from django.utils.timezone import now
+from decimal import Decimal
+from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
+from django.db.models import DecimalField
 
-# Read-only imports from Django-Ledger
-from django_ledger.models import EntityModel
-from django_ledger.models.items import ItemModel, ItemTransactionModel
-
+from django_ledger.models import ItemTransactionModel
+from django_ledger.models.entity import EntityModel
+from django_ledger.models.items import ItemModel
 
 User = get_user_model()
 
 
 class Location(models.Model):
-    """
-    Physical or logical storage: e.g., 'Studio', 'Images Gallery', 'Offsite Storage'.
-    """
-    name = models.CharField(max_length=120, unique=True)
+    # NEW: keep a clear link to the entity the location lives under
+    entity = models.ForeignKey(EntityModel, on_delete=models.PROTECT, related_name="locations")
+    # BACK TO TEXT: 'name' should be a label (Studio, Gallery, Offsite)
+    name = models.CharField(max_length=140)
     slug = models.SlugField(max_length=140, unique=True, blank=True)
+    entity = models.ForeignKey(
+    EntityModel,
+    on_delete=models.PROTECT,
+    related_name="locations",
+    null=True,   # <- add
+    blank=True,  # <- add (optional, just for admin form)
+)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -43,13 +51,8 @@ class ItemStatus(models.TextChoices):
 
 
 class StockAllocation(models.Model):
-    """
-    Our internal overlay: how much of an Item is currently allocated to a given Location.
-    Sum of allocations across locations must be <= on_hand computed from Django-Ledger.
-
-    This does NOT alter any Django-Ledger counts.
-    """
     item = models.ForeignKey(ItemModel, on_delete=models.PROTECT, related_name="stockops_allocations")
+    # REVERT: point to Location (int PK), not EntityModel (uuid)
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="stockops_allocations")
     quantity = models.DecimalField(max_digits=12, decimal_places=3, default=Decimal("0.000"))
     status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.AVAILABLE)
@@ -57,7 +60,6 @@ class StockAllocation(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [("item", "location")]
         verbose_name = "Stock Allocation"
         verbose_name_plural = "Stock Allocations"
 
@@ -65,21 +67,46 @@ class StockAllocation(models.Model):
         return f"{self.item.name} @ {self.location.name} = {self.quantity}"
 
     @staticmethod
-    def on_hand_qty(item: ItemModel) -> Decimal:
-        """
-        Pulls 'quantity_onhand' from Django-Ledger's ItemTransactionModel.inventory_count().
-        """
-        # Limit to the entity of the item
-        # ItemModel has entity_id
-        qs = ItemTransactionModel.objects.inventory_count(entity_model=item.entity_id)
-        by_id = {row.get("item_model_id"): row for row in qs}
-        row = by_id.get(item.uuid)
-        return (row.get("quantity_onhand") if row else Decimal("0")) or Decimal("0")
+    def on_hand_qty(item) -> Decimal:
+        # (Leaving your logic; we can refine later)
+        q = Decimal("0")
+        try:
+            qs = ItemModel.objects.inventory_count(entity_model=item.entity_id)
+            row = None
+            for r in qs:
+                k = r.get("item_model_id") or r.get("item_model__uuid") or r.get("item_model")
+                if k == item.uuid:
+                    row = r
+                    break
+            if row:
+                v = row.get("quantity_onhand") or row.get("qty_on_hand") or row.get("onhand")
+                if v is not None:
+                    q = Decimal(v)
+        except Exception:
+            pass
+
+        if q == 0:
+            agg = (
+                ItemTransactionModel.objects
+                .filter(
+                item_model=item,                    # FK to the same ItemModel instance
+                item_model__entity_id=item.entity_id
+        )
+            .aggregate(
+                net=Coalesce(
+                    Sum('quantity'),
+                    0.0,
+                    output_field=DecimalField(max_digits=20, decimal_places=3),
+            )
+        )
+    )   
+
+        return Decimal(agg['net'] or 0).quantize(Decimal('0.001'))
 
     @staticmethod
     def allocated_total(item: ItemModel) -> Decimal:
         agg = StockAllocation.objects.filter(item=item).aggregate(total=models.Sum("quantity"))
-        return (agg["total"] or Decimal("0")).quantize(Decimal("0.001"))
+        return (Decimal(agg["total"] or 0)).quantize(Decimal("0.001"))
 
     @staticmethod
     def unallocated_qty(item: ItemModel) -> Decimal:
@@ -90,8 +117,6 @@ class StockAllocation(models.Model):
         if self.quantity < 0:
             raise ValidationError("Quantity cannot be negative.")
 
-        # Ensure total allocations across locations <= on_hand
-        # Calculate as if this record were saved with new quantity
         current_total = (
             StockAllocation.objects.filter(item=self.item)
             .exclude(pk=self.pk)
@@ -107,10 +132,8 @@ class StockAllocation(models.Model):
 
 
 class StockTransfer(models.Model):
-    """
-    A user-initiated movement between locations. Saving a transfer updates our StockAllocation rows atomically.
-    """
     item = models.ForeignKey(ItemModel, on_delete=models.PROTECT, related_name="stockops_transfers")
+    # REVERT: Locations, not Entities
     from_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="transfer_from")
     to_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="transfer_to")
     quantity = models.DecimalField(max_digits=12, decimal_places=3)
@@ -128,8 +151,10 @@ class StockTransfer(models.Model):
             raise ValidationError("Transfer quantity must be > 0.")
         if self.from_location_id == self.to_location_id:
             raise ValidationError("From/To locations must be different.")
+        # BUGFIX: compare item's entity with the locations' entity
+        if self.item.entity_id != self.from_location.entity_id or self.item.entity_id != self.to_location.entity_id:
+            raise ValidationError("Item entity and Location entity must match.")
 
-        # Ensure there is enough allocated at from_location to move
         from_alloc, _ = StockAllocation.objects.get_or_create(item=self.item, location=self.from_location)
         if from_alloc.quantity < self.quantity:
             raise ValidationError(
@@ -138,9 +163,6 @@ class StockTransfer(models.Model):
             )
 
     def apply_transfer(self):
-        """
-        Mutates our allocations (not Django-Ledger) to reflect the move.
-        """
         with transaction.atomic():
             from_alloc, _ = StockAllocation.objects.select_for_update().get_or_create(
                 item=self.item, location=self.from_location
@@ -158,24 +180,16 @@ class StockTransfer(models.Model):
             from_alloc.quantity = (from_alloc.quantity - self.quantity).quantize(Decimal("0.001"))
             to_alloc.quantity = (to_alloc.quantity + self.quantity).quantize(Decimal("0.001"))
 
-            # Default statuses: keep as-is (do not force)
-            from_alloc.full_clean()
-            to_alloc.full_clean()
-            from_alloc.save()
-            to_alloc.save()
+            from_alloc.full_clean(); to_alloc.full_clean()
+            from_alloc.save(); to_alloc.save()
 
     def save(self, *args, **kwargs):
         creating = self.pk is None
         super().save(*args, **kwargs)
-        # Apply every time (idempotent for same values, but we assume quantity/from/to fixed once saved)
         self.apply_transfer()
 
 
 class StatusOverlay(models.Model):
-    """
-    Allows marking per-item, per-location status WITHOUT changing quantities.
-    Useful for flagging a specific piece as Damaged/Missing while still allocated.
-    """
     item = models.ForeignKey(ItemModel, on_delete=models.PROTECT, related_name="stockops_status_overlays")
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="stockops_status_overlays")
     status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.AVAILABLE)
@@ -192,10 +206,6 @@ class StatusOverlay(models.Model):
 
 
 class PendingReceipt(models.Model):
-    """
-    Lets you record expected inbound stock to a location (user-entered), without touching Django-Ledger.
-    You can use xref fields to note the PO/Bill number manually.
-    """
     item = models.ForeignKey(ItemModel, on_delete=models.PROTECT, related_name="stockops_pending_receipts")
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="stockops_pending_receipts")
     expected_qty = models.DecimalField(max_digits=12, decimal_places=3)
@@ -213,4 +223,3 @@ class PendingReceipt(models.Model):
         super().clean()
         if self.expected_qty <= 0:
             raise ValidationError("Expected quantity must be > 0.")
-

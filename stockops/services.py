@@ -1,13 +1,14 @@
 ﻿# stockops/services.py
 from decimal import Decimal
-from django_ledger.models.items import ItemTransactionModel
+from django_ledger.models.items import ItemModel
+from django_ledger.models.entity import EntityModel
 
 def get_txn_on_hand(entity_model, item_model) -> Decimal:
     """
     Returns on-hand strictly from ItemTransactionModel roll-up (ignores ItemModel snapshot).
     Uses django_ledger's inventory_count aggregation.
     """
-    qs = ItemTransactionModel.objects.inventory_count(entity_model=entity_model)
+    qs = ItemModel.objects.inventory_count(entity_model=entity_model)
 
     # Try DB-side filter first (qs may be a ValuesQueryset of dicts)
     try:
