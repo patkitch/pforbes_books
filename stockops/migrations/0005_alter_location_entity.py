@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('django_ledger', '0028_adminreports'),
+        
         ('stockops', '0004_location_entity_not_null'),
     ]
 
