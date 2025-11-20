@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'books.apps.BooksConfig',  # not just 'books'
     'reports.apps.ReportsConfig',
     'stockops.apps.StockopsConfig',
+    'automation_logs.apps.AutomationLogsConfig',
  
   
     
