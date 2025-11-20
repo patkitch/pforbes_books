@@ -35,27 +35,33 @@ class Command(BaseCommand):
             self.stdout.write(f"[{level.upper()}] {message}")
 
         try:
+            # High-level start message (INFO)
             log("info", "InventoryGuardian starting inventory snapshot...")
 
             # ------------------------------------
             # 2. Fetch items to inspect
             # ------------------------------------
             items_qs = get_inventory_items()
-            total_items_examined = 0
+            total_items_examined = items_qs.count()
             mismatches = 0
 
-            log("debug", f"Found {items_qs.count()} inventory items to examine.")
+            # One info line about volume
+            log("info", f"InventoryGuardian will examine {total_items_examined} inventory item(s).")
 
             for item in items_qs.iterator():
-                total_items_examined += 1
                 result = compare_item_totals(item)
 
                 if result['mismatch']:
                     mismatches += 1
 
+                    # Detailed warning only for mismatches
                     log(
                         "warning",
-                        f"Mismatch for item '{item.name}' (PK: {item.pk}).",
+                        (
+                            f"Mismatch for item '{item.name}' (PK: {item.pk}). "
+                            f"Stored qty/value: {result['stored_qty']} / {result['stored_value']} "
+                            f"Expected qty/value: {result['expected_qty']} / {result['expected_value']}"
+                        ),
                         extra={
                             "item_pk": str(item.pk),
                             "item_name": item.name,
@@ -65,15 +71,7 @@ class Command(BaseCommand):
                             "expected_value": str(result['expected_value']),
                         },
                     )
-                else:
-                    # You may choose to log fewer details for matches (or none)
-                    log(
-                        "debug",
-                        f"Item '{item.name}' OK. Qty: {result['stored_qty']}, Value: {result['stored_value']}",
-                        extra={
-                            "item_pk": str(item.pk),
-                        },
-                    )
+                # If it matches, we stay silent (no debug noise)
 
             # ------------------------------------
             # 3. Decide run status based on mismatches
@@ -108,4 +106,5 @@ class Command(BaseCommand):
             log("error", f"InventoryGuardian encountered an error: {str(e)}")
             # Re-raise so you see the stack trace in the console
             raise e
+
 
