@@ -1,0 +1,28 @@
+﻿{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}PForbes Admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="/admin/">PForbes Back Office</a>
+</h1>
+{% endblock %}
+
+{% block usertools %}
+    {{ block.super }}
+
+    <div style="margin-left: 20px; display:inline-block;">
+        <a href="/automation/"
+           style="
+               color: #f59e0b;
+               font-weight: 600;
+               text-decoration: none;
+               border: 1px solid #f59e0b;
+               padding: 4px 8px;
+               border-radius: 4px;
+           ">
+            ⚙️ Website Automation Dashboard
+        </a>
+    </div>
+{% endblock %}

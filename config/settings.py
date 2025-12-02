@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'reports.apps.ReportsConfig',
     'stockops.apps.StockopsConfig',
     'automation_logs.apps.AutomationLogsConfig',
+    "web_automation",
  
   
     

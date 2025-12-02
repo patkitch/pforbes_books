@@ -1,0 +1,45 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | SEO Product Lookup</title>
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>SEO Suggestions: Choose a Product</h1>
+    <div class="subtitle">
+        Enter a WooCommerce product ID to see SamSEO's focus keyphrase and meta description suggestions.
+    </div>
+
+    <div class="panel">
+        <form method="post">
+            {% csrf_token %}
+            <div class="value">
+                <div class="label">{{ form.product_id.label }}</div>
+                <div style="margin-top:0.35rem;">
+                    {{ form.product_id }}
+                </div>
+                {% if form.product_id.help_text %}
+                    <div class="note" style="margin-top:0.35rem;">
+                        {{ form.product_id.help_text }}
+                    </div>
+                {% endif %}
+                {% if form.product_id.errors %}
+                    <div class="errorlist">{{ form.product_id.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="button-row" style="margin-top:1rem;">
+                <button type="submit">View SEO Suggestions</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,46 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | Mira Blog Lookup</title>
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>Mira: New Art Blog Draft</h1>
+    <div class="subtitle">
+        Enter a WooCommerce product ID and Mira will draft a blog post and social caption
+        based on that artwork.
+    </div>
+
+    <div class="panel">
+        <form method="post">
+            {% csrf_token %}
+            <div class="value">
+                <div class="label">{{ form.product_id.label }}</div>
+                <div style="margin-top:0.35rem;">
+                    {{ form.product_id }}
+                </div>
+                {% if form.product_id.help_text %}
+                    <div class="note" style="margin-top:0.35rem;">
+                        {{ form.product_id.help_text }}
+                    </div>
+                {% endif %}
+                {% if form.product_id.errors %}
+                    <div class="errorlist">{{ form.product_id.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="button-row" style="margin-top:1rem;">
+                <button type="submit">Generate Blog Draft</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

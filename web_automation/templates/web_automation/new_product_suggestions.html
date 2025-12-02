@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | Suggestions for New Product</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+        .wrapper {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 3rem;
+        }
+        .nav {
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+        .nav a {
+            color: #f97316;
+            text-decoration: none;
+        }
+        .nav a:hover {
+            color: #fb923c;
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+        .panel {
+            background: #111827;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            margin-bottom: 1.5rem;
+        }
+        .panel h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+        .review-item {
+            margin-bottom: 0.6rem;
+        }
+        .label {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .value {
+            margin-top: 0.15rem;
+        }
+        .value pre {
+            white-space: pre-wrap;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .suggestion-group {
+            margin-bottom: 1.25rem;
+        }
+        .suggestion-group h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.4rem;
+        }
+        .suggestion-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .suggestion-list li {
+            background: #020617;
+            border-radius: 0.5rem;
+            border: 1px solid #1f2937;
+            padding: 0.5rem 0.6rem;
+            margin-bottom: 0.4rem;
+        }
+        .pill {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #1f2937;
+            color: #9ca3af;
+            margin-left: 0.35rem;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/new-product/">&larr; Back to New Product Intake</a>
+        &nbsp;|&nbsp;
+        <a href="/automation/">Website Automation Dashboard</a>
+    </div>
+
+    <h1>Suggestion Engine: New Product</h1>
+    <div class="subtitle">
+        Based on what you told the system, here are suggested titles, descriptions, and alt text.
+        In the next phase, you’ll be able to pick one and create a WooCommerce draft automatically.
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Intake Summary</h2>
+
+            <div class="review-item">
+                <div class="label">Artwork Title</div>
+                <div class="value">{{ intake.title }}</div>
+            </div>
+
+            {% if intake.medium %}
+            <div class="review-item">
+                <div class="label">Medium</div>
+                <div class="value">{{ intake.medium }}</div>
+            </div>
+            {% endif %}
+
+            {% if intake.subject %}
+            <div class="review-item">
+                <div class="label">Subject / Theme</div>
+                <div class="value">{{ intake.subject }}</div>
+            </div>
+            {% endif %}
+
+            {% if intake.story_notes %}
+            <div class="review-item">
+                <div class="label">Story Notes</div>
+                <div class="value"><pre>{{ intake.story_notes }}</pre></div>
+            </div>
+            {% endif %}
+
+            {% if intake.image_url %}
+            <div class="review-item">
+                <div class="label">Image URL</div>
+                <div class="value">
+                    <a href="{{ intake.image_url }}" target="_blank">{{ intake.image_url }}</a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if intake.media_id %}
+            <div class="review-item">
+                <div class="label">Media ID</div>
+                <div class="value">{{ intake.media_id }}</div>
+            </div>
+            {% endif %}
+
+            {% if intake.notes_for_agent %}
+            <div class="review-item">
+                <div class="label">Notes for Automation Agent</div>
+                <div class="value"><pre>{{ intake.notes_for_agent }}</pre></div>
+            </div>
+            {% endif %}
+
+            <div class="note">
+                These notes will guide Pauly (product creation), SamSEO (SEO), and Mira (content/design) later.
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Suggested Copy</h2>
+
+            <div class="suggestion-group">
+                <h3>Title Suggestions <span class="pill">product title</span></h3>
+                <ul class="suggestion-list">
+                    {% for t in suggestions.titles %}
+                        <li>{{ t }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="suggestion-group">
+                <h3>Short Description Suggestions <span class="pill">shop blurb</span></h3>
+                <ul class="suggestion-list">
+                    {% for s in suggestions.short_descriptions %}
+                        <li>{{ s }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="suggestion-group">
+                <h3>Long Description Suggestions <span class="pill">story section</span></h3>
+                <ul class="suggestion-list">
+                    {% for l in suggestions.long_descriptions %}
+                        <li>{{ l }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="suggestion-group">
+                <h3>Alt Text Suggestions <span class="pill">accessibility</span></h3>
+                <ul class="suggestion-list">
+                    {% for a in suggestions.alt_texts %}
+                        <li>{{ a }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="note">
+                Ready for the next step?
+                <br>
+                <a href="{% url 'web_automation:new_product_select' %}">Next: Choose Final Copy</a>, we’ll add a selection step so you can choose your favorite options and let the system create
+                a WooCommerce draft product automatically with your chosen copy.
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

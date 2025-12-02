@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation Dashboard</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+        .wrapper {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 3rem;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .panel {
+            background: #111827;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            margin-bottom: 1.5rem;
+        }
+        h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+        .link-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .link-list li {
+            margin-bottom: 0.5rem;
+        }
+        a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #bfdbfe;
+            text-decoration: underline;
+        }
+        .pill {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #1f2937;
+            color: #9ca3af;
+            margin-left: 0.35rem;
+        }
+        .section-note {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <h1>Website Automation Dashboard</h1>
+    <div class="subtitle">
+        Back-office tools for pforbesart.com — catalog automation, SEO assistance, and design/content helpers.
+    </div>
+
+    <div class="panel">
+        <h2>Catalog Automation</h2>
+        <div class="section-note">
+            Tools that help create and normalize WooCommerce products.
+        </div>
+        <ul class="link-list">
+            <li>
+                <a href="/automation/new-product/">Add New Product (Intake Form)</a>
+                <span class="pill">step 1</span>
+            </li>
+            <!-- later: more links here, like "View catalog status" -->
+        </ul>
+    </div>
+
+    <div class="panel">
+        <h2>SEO & Content</h2>
+        <div class="section-note">
+            SamSEO and Mira help with SEO suggestions, blog drafts, and social copy.
+        </div>
+   
+        
+    </a>
+
+        <ul class="link-list">
+            <li>
+            <a href="{% url 'web_automation:seo_product_lookup' %}">
+                SEO suggestions for products
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'web_automation:mira_product_lookup' %}">
+                Generate blog draft for a product
+            </a>
+        </li>
+        </ul>
+    </div>
+        <div class="footer-nav">
+        <a href="/admin/">&larr; Back to Django Admin</a>
+    </div>
+</div>
+</body>
+</html>
+
+

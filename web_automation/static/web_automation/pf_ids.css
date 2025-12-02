@@ -1,0 +1,406 @@
+﻿/* ===========================================
+   PF-IDS v1  (PForbes Internal Design System)
+   =========================================== */
+
+/* 1. CSS VARIABLES (TOKENS) */
+:root {
+    /* Color palette */
+    --bg-dark: #0f172a;
+    --bg-panel: #111827;
+    --border-light: #1f2937;
+
+    --text-main: #e5e7eb;
+    --text-muted: #9ca3af;
+
+    --accent-primary: #f97316;      /* Burnt orange */
+    --accent-primary-hover: #ea580c;
+    --accent-secondary: #93c5fd;    /* Soft blue */
+    --accent-secondary-soft: #bfdbfe;
+
+    --success: #10b981;
+    --warning: #fbbf24;
+    --danger: #ef4444;
+
+    /* Typography scale */
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-base: 16px;
+    --text-lg: 18px;
+    --text-xl: 24px;
+    --text-2xl: 32px;
+
+    /* Spacing scale */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+
+    /* Layout */
+    --content-max-width: 1100px;
+}
+
+
+/* 2. GLOBAL BASE STYLES */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: var(--text-base);
+    line-height: 1.55;
+}
+
+a {
+    color: var(--accent-secondary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+a:hover {
+    color: var(--accent-secondary-soft);
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4 {
+    font-family: "Playfair Display", "Times New Roman", serif;
+    margin-top: 0;
+    color: var(--text-main);
+}
+
+h1 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-md);
+}
+
+h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-sm);
+}
+
+h3 {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-sm);
+}
+
+p {
+    margin-top: 0;
+    margin-bottom: var(--space-sm);
+    color: var(--text-main);
+}
+
+
+/* 3. LAYOUT WRAPPER + NAV */
+
+.wrapper {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-md) var(--space-xl);
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    font-size: var(--text-sm);
+}
+
+.nav a {
+    color: var(--accent-secondary);
+}
+
+.subtitle {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+
+/* 4. PANELS / CARDS */
+
+.panel {
+    background: var(--bg-panel);
+    border-radius: 8px;
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+.panel h2 {
+    margin-top: 0;
+    margin-bottom: var(--space-sm);
+}
+
+.section-note {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+}
+
+.link-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.link-list li {
+    margin-bottom: var(--space-sm);
+}
+
+
+/* 5. FORM STRUCTURE */
+
+.form-section {
+    margin-bottom: var(--space-lg);
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+@media (min-width: 768px) {
+    .form-row.inline {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+}
+
+.form-field {
+    flex: 1;
+}
+
+.label, .form-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="url"],
+textarea,
+select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1e293b;
+    color: var(--text-main);
+    padding: var(--space-sm);
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    font-size: var(--text-base);
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 1px rgba(147,197,253,0.4);
+}
+
+.errorlist {
+    color: var(--danger);
+    font-size: var(--text-sm);
+    margin-top: var(--space-xs);
+}
+
+
+/* 6. BUTTONS */
+
+.button-row {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+}
+
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost {
+    font-family: inherit;
+    font-size: var(--text-sm);
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+.btn-primary,
+button[type="submit"] {
+    background: var(--accent-primary);
+    color: #fff;
+}
+
+.btn-primary:hover,
+button[type="submit"]:hover {
+    background: var(--accent-primary-hover);
+}
+
+.btn-secondary {
+    color: var(--accent-secondary);
+    background: transparent;
+    border: 1px solid var(--accent-secondary);
+}
+
+.btn-secondary:hover {
+    background: rgba(147,197,253,0.12);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+    background: #020617;
+}
+
+
+/* 7. GRID HELPERS (for suggestion layouts) */
+
+.grid-two-cols {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+}
+
+@media (min-width: 900px) {
+    .grid-two-cols {
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    }
+}
+
+
+/* 8. KEY-VALUE DISPLAY (like your "Intake Summary") */
+
+.value {
+    margin-bottom: var(--space-md);
+}
+
+.value .label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.value div {
+    font-size: var(--text-sm);
+}
+
+
+/* 9. SUGGESTION CARDS (Pauly / Mira / SamSEO) */
+
+.suggestion-group-title {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.suggestion-card {
+    background: #1e293b;
+    border-radius: 6px;
+    padding: var(--space-md);
+    margin-bottom: var(--space-sm);
+    border: 1px solid #1f2937;
+    cursor: pointer;
+}
+
+.suggestion-card:hover {
+    background: #020617;
+    border-color: var(--accent-secondary);
+}
+
+.suggestion-card input[type="radio"] {
+    margin-right: var(--space-sm);
+}
+
+
+/* 10. NOTES, CALL OUTS, STATUS */
+
+.note {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-top: var(--space-sm);
+}
+
+.status-bar {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.status-success {
+    border-left: 4px solid var(--success);
+    padding-left: var(--space-md);
+}
+
+.status-warning {
+    border-left: 4px solid var(--warning);
+    padding-left: var(--space-md);
+}
+
+.status-error {
+    border-left: 4px solid var(--danger);
+    padding-left: var(--space-md);
+}
+
+
+/* 11. FOOTER NAV (back to admin) */
+
+.footer-nav {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: flex-end;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.footer-nav a {
+    color: var(--accent-secondary);
+}
+
+.footer-nav a:hover {
+    color: var(--accent-secondary-soft);
+}
+
+
+/* 12. PRETTY BLOCKS FOR SOCIAL CAPTION / CODE */
+
+pre {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: var(--text-sm);
+    background: #020617;
+    color: var(--text-main);
+    padding: var(--space-md);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}

@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | Draft Product Created</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+        .wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 3rem;
+        }
+        .nav {
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+        .nav a {
+            color: #f97316;
+            text-decoration: none;
+        }
+        .nav a:hover {
+            color: #fb923c;
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .panel {
+            background: #111827;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            margin-bottom: 1.5rem;
+        }
+        .label {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .value {
+            margin-top: 0.15rem;
+            font-size: 0.95rem;
+        }
+        .value a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+        .value a:hover {
+            color: #bfdbfe;
+            text-decoration: underline;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>Draft Product Created</h1>
+    <div class="subtitle">
+        Pauly has created a new WooCommerce draft product using your chosen copy and standard matted print options.
+        Review it on your site, make any visual tweaks, and then publish when ready.
+    </div>
+
+    <div class="panel">
+        <div class="label">Product Title</div>
+        <div class="value">{{ product.name }}</div>
+
+        {% if permalink %}
+        <div class="value" style="margin-top:0.75rem;">
+            <span class="label">View on Site</span><br>
+            <a href="{{ permalink }}" target="_blank">{{ permalink }}</a>
+        </div>
+        {% endif %}
+
+        <div class="value" style="margin-top:0.75rem;">
+            <span class="label">Product ID</span><br>
+            {{ product.id }}
+        </div>
+
+        <div class="value" style="margin-top:0.75rem;">
+            <span class="label">Variations Created</span><br>
+            {{ variations|length }} (standard 11x14 and 8x10 matted prints)
+        </div>
+
+        <div class="note">
+            You can now add SEO (Yoast), adjust imagery if needed, and publish the product.
+            The run details are stored in Automation Logs under the Pauly agent.
+        </div>
+        {% if product.id %}
+        <div class="value" style="margin-top:0.75rem;">
+            <span class="label">SEO Suggestions</span><br>
+            <a href="{% url 'web_automation:seo_product_suggestions' product.id %}">
+                Generate focus keyphrase &amp; meta description with SamSEO
+            </a>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

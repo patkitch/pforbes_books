@@ -1,0 +1,83 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | Mira Blog Draft</title>
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>Mira Blog Draft</h1>
+    <div class="subtitle">
+        Copy what you like into WordPress as a blog post draft and tweak it in your voice.
+    </div>
+
+    <div class="panel">
+        <h2>Product</h2>
+
+        <div class="value" style="margin-top:0.4rem;">
+            <div class="label">Title</div>
+            <div>{{ product.name }}</div>
+        </div>
+
+        {% if product.permalink %}
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">View on Site</div>
+            <div>
+                <a href="{{ product.permalink }}" target="_blank">
+                    {{ product.permalink }}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <h2>Blog Draft</h2>
+
+        <div class="value">
+            <div class="label">Suggested Blog Title</div>
+            <div>{{ blog.blog_title }}</div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Intro Paragraph</div>
+            <div>{{ blog.intro }}</div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Body Paragraphs</div>
+            <div>
+                {% for p in blog.body_paragraphs %}
+                    <p>{{ p }}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Key Points</div>
+            <ul>
+                {% for item in blog.bullet_points %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Social Caption</h2>
+        <div class="value">
+            <div class="label">Copy/paste for social media</div>
+            <pre style="white-space: pre-wrap; font-family: inherit; background:#020617; padding:0.75rem; border-radius:0.5rem; border:1px solid #374151;">
+{{ blog.social_caption }}
+            </pre>
+        </div>
+    </div>
+</div>
+</body>
+</html>

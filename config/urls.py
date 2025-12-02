@@ -27,5 +27,6 @@ urlpatterns = [
         SafeInventoryRecountView.as_view(),
         name="safe-inventory-recount"),
     path("admin/reports/", include(("reports.urls_admin", "adminreports"), namespace="adminreports")),
+    path("automation/", include("web_automation.urls")),
     
 ]

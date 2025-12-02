@@ -1,0 +1,77 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | SEO Suggestions</title>
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>SEO Suggestions for Product</h1>
+    <div class="subtitle">
+        SamSEO has reviewed this WooCommerce product and generated a focus keyphrase and meta description
+        (trimmed to around 155 characters for Yoast).
+    </div>
+
+    <div class="panel">
+        <h2>Product</h2>
+
+        <div class="value" style="margin-top:0.4rem;">
+            <div class="label">Title</div>
+            <div>{{ product.name }}</div>
+        </div>
+
+        {% if product.permalink %}
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">View on Site</div>
+            <div>
+                <a href="{{ product.permalink }}" target="_blank">
+                    {{ product.permalink }}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <h2>SamSEO Suggestions</h2>
+
+        <div class="value">
+            <div class="label">Focus Keyphrase</div>
+            <div>{{ suggestions.focus_keyphrase }}</div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Meta Description (copy into Yoast)</div>
+            <div>{{ suggestions.meta_description }}</div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Heuristic</div>
+            <div>
+                {% if suggestions.seo_ok %}
+                    Length looks good for Yoast (between 100 and 155 characters).
+                {% else %}
+                    Length is outside the ideal range; consider tightening or expanding a bit.
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="value" style="margin-top:0.7rem;">
+            <div class="label">Notes</div>
+            <div>{{ suggestions.reasoning }}</div>
+        </div>
+
+        <div class="note">
+            Next step: open the product in WordPress, paste the focus keyphrase and meta description into Yoast,
+            and adjust if needed in your own voice.
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Automation | New Product Intake</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'web_automation/pf_ids.css' %}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+        .wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 3rem;
+        }
+        .nav {
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+        .nav a {
+            color: #f97316;
+            text-decoration: none;
+        }
+        .nav a:hover {
+            color: #fb923c;
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .panel {
+            background: #111827;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            margin-bottom: 1.5rem;
+        }
+        h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+        form .field {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+        input[type="text"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 0.5rem;
+            border: 1px solid #374151;
+            background: #020617;
+            color: #e5e7eb;
+            padding: 0.5rem 0.6rem;
+            font-size: 0.9rem;
+        }
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 1px #2563eb;
+        }
+        .help-text {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.2rem;
+        }
+        .button-row {
+            margin-top: 1rem;
+        }
+        button {
+            background: #2563eb;
+            color: #e5e7eb;
+            border: none;
+            border-radius: 999px;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+        .errorlist {
+            margin: 0;
+            margin-bottom: 0.25rem;
+            padding: 0;
+            list-style: none;
+            font-size: 0.8rem;
+            color: #fca5a5;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="nav">
+        <a href="/automation/">&larr; Back to Website Automation Dashboard</a>
+    </div>
+
+    <h1>New Product Intake</h1>
+    <div class="subtitle">
+        Step 1 — Tell the automation system about a new artwork for pforbesart.com.
+        Step 2 will show suggested titles, descriptions, and alt text.
+    </div>
+
+    <div class="panel">
+        <h2>Artwork & Product Details</h2>
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="field">
+                {{ form.title.label_tag }}
+                {{ form.title }}
+                {% if form.title.errors %}
+                    {{ form.title.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.medium.label_tag }}
+                {{ form.medium }}
+                <div class="help-text">e.g. Acrylic on canvas, mixed media, etc.</div>
+                {% if form.medium.errors %}
+                    {{ form.medium.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.subject.label_tag }}
+                {{ form.subject }}
+                <div class="help-text">A few words about what’s in the painting — prairie, lighthouse, dog, etc.</div>
+                {% if form.subject.errors %}
+                    {{ form.subject.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.story_notes.label_tag }}
+                {{ form.story_notes }}
+                <div class="help-text">This is for the automation agents — your story and emotional notes.</div>
+                {% if form.story_notes.errors %}
+                    {{ form.story_notes.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.image_url.label_tag }}
+                {{ form.image_url }}
+                <div class="help-text">Optional: Paste the WordPress image URL if already uploaded.</div>
+                {% if form.image_url.errors %}
+                    {{ form.image_url.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.media_id.label_tag }}
+                {{ form.media_id }}
+                <div class="help-text">Optional: WordPress media ID, if you know it.</div>
+                {% if form.media_id.errors %}
+                    {{ form.media_id.errors }}
+                {% endif %}
+            </div>
+
+            <div class="field">
+                {{ form.notes_for_agent.label_tag }}
+                {{ form.notes_for_agent }}
+                <div class="help-text">Any instructions: pricing hints, gallery context, collection info, etc.</div>
+                {% if form.notes_for_agent.errors %}
+                    {{ form.notes_for_agent.errors }}
+                {% endif %}
+            </div>
+
+            <div class="button-row">
+                <button type="submit">Next: View Suggestions</button>
+            </div>
+        </form>
+
+        <div class="note">
+            Nothing is created in WooCommerce yet. This step just collects info for the suggestion engine.
+        </div>
+    </div>
+</div>
+</body>
+</html>

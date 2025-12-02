@@ -24,3 +24,5 @@ tzdata==2025.2
 django-environ
 gunicorn
 whitenoise
+python-dotenv
+requests
