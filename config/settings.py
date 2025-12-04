@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'stockops.apps.StockopsConfig',
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
+    "lawn_imports",
  
   
     
