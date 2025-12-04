@@ -28,5 +28,6 @@ urlpatterns = [
         name="safe-inventory-recount"),
     path("admin/reports/", include(("reports.urls_admin", "adminreports"), namespace="adminreports")),
     path("automation/", include("web_automation.urls")),
+    path("forbes-lawn/", include("forbes_lawn_dashboard.urls")),
     
 ]

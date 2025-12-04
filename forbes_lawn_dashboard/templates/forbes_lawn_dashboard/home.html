@@ -1,0 +1,116 @@
+﻿{# templates/forbes_lawn_dashboard/home.html #}
+{% extends "base_forbes_lawn.html" %}
+
+{% block nav_home_active %}nav-item-active{% endblock %}
+
+{% block page_title %}
+Home Dashboard
+{% endblock %}
+
+{% block page_subtitle %}
+Overview of who owes you, cash collected, and upcoming obligations.
+{% endblock %}
+
+{% block content %}
+
+<!-- Top Metrics -->
+<section class="metrics-row">
+    <div class="metric-card">
+        <div class="metric-label">Open Invoices</div>
+        <div class="metric-value">
+            ${{ open_invoices_total|default:"0.00" }}
+        </div>
+        <div class="metric-footnote">Total outstanding customer balances</div>
+    </div>
+
+    <div class="metric-card metric-card-warning">
+        <div class="metric-label">Overdue</div>
+        <div class="metric-value">
+            ${{ overdue_invoices_total|default:"0.00" }}
+        </div>
+        <div class="metric-footnote">
+            {{ overdue_invoices_count }} invoice{{ overdue_invoices_count|pluralize }}
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Payments This Month</div>
+        <div class="metric-value">
+            ${{ payments_this_month_total|default:"0.00" }}
+        </div>
+        <div class="metric-footnote">Cash collected since the 1st</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Next Sales Tax Due</div>
+        <div class="metric-value">
+            {% if next_sales_tax_due_date %}
+                {{ next_sales_tax_due_date|date:"M j" }}
+            {% else %}
+                Not set
+            {% endif %}
+        </div>
+        <div class="metric-footnote">
+            Est. ${{ next_sales_tax_estimate|default:"0.00" }}
+        </div>
+    </div>
+</section>
+
+<!-- Quick Actions -->
+<section class="quick-actions">
+    <h2 class="section-title">Quick Actions</h2>
+    <div class="quick-actions-grid">
+        <!-- Replace '#' with your actual URLs as they come online -->
+        <a href="#" class="qa-button">New Customer</a>
+        <a href="#" class="qa-button">New Vendor</a>
+        <a href="#" class="qa-button qa-button-primary">New Invoice</a>
+        <a href="#" class="qa-button">Record Payment</a>
+        <a href="#" class="qa-button">New Expense</a>
+        <a href="#" class="qa-button">New Service Item</a>
+    </div>
+</section>
+
+<!-- Open Invoices Table -->
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="section-title">Open Invoices</h2>
+        <a href="#" class="panel-link">View all</a>
+    </div>
+    <div class="panel-body">
+        {% if open_invoices %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Customer</th>
+                        <th>Invoice Date</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th class="text-right">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in open_invoices %}
+                        <tr>
+                            <td>{{ inv.invoice_number }}</td>
+                            <td>{{ inv.customer.customer_name }}</td>
+                            <td>{{ inv.issue_date|date:"M j, Y" }}</td>
+                            <td>{{ inv.due_date|date:"M j, Y" }}</td>
+                            <td>{{ inv.status }}</td>
+                            <td class="text-right">
+                                ${{ inv.balance_due }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty-state">
+                No open invoices yet. Once you start creating invoices,
+                they will appear here so you can see who owes you.
+            </p>
+        {% endif %}
+    </div>
+</section>
+
+{% endblock %}

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
     "lawn_imports",
+    "forbes_lawn_dashboard",
  
   
     
