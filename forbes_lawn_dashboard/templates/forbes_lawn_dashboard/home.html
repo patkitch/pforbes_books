@@ -74,7 +74,10 @@ Overview of who owes you, cash collected, and upcoming obligations.
 <section class="panel">
     <div class="panel-header">
         <h2 class="section-title">Open Invoices</h2>
-        <a href="#" class="panel-link">View all</a>
+        {# 👇 point this at the new invoice_list view #}
+        <a href="{% url 'forbes_lawn_dashboard:invoice_list' %}" class="panel-link">
+            View all
+        </a>
     </div>
     <div class="panel-body">
         {% if open_invoices %}
@@ -93,10 +96,12 @@ Overview of who owes you, cash collected, and upcoming obligations.
                     {% for inv in open_invoices %}
                         <tr>
                             <td>{{ inv.invoice_number }}</td>
-                            <td>{{ inv.customer.customer_name }}</td>
-                            <td>{{ inv.issue_date|date:"M j, Y" }}</td>
+                            {# customer_name lives directly on Invoice #}
+                            <td>{{ inv.customer_name }}</td>
+                            {# your model uses invoice_date, not issue_date #}
+                            <td>{{ inv.invoice_date|date:"M j, Y" }}</td>
                             <td>{{ inv.due_date|date:"M j, Y" }}</td>
-                            <td>{{ inv.status }}</td>
+                            <td>{{ inv.get_status_display }}</td>
                             <td class="text-right">
                                 ${{ inv.balance_due }}
                             </td>

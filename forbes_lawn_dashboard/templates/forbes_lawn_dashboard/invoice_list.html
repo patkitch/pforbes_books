@@ -1,0 +1,66 @@
+﻿{% extends "forbes_lawn_dashboard/base.html" %}
+{# if you don't have a base, you can temporarily extend nothing and use plain HTML for v1 #}
+
+{% block content %}
+<h1>All Invoices – Forbes Lawn</h1>
+
+<form method="get" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+  <input type="text" name="q" value="{{ search_query }}" placeholder="Search by customer or invoice #"
+         style="padding: 4px 8px; min-width: 220px;">
+  <select name="status" style="padding: 4px 8px;">
+    <option value="">All statuses</option>
+    <option value="OPEN" {% if status_filter == "OPEN" %}selected{% endif %}>Open</option>
+    <option value="PARTIALLY_PAID" {% if status_filter == "PARTIALLY_PAID" %}selected{% endif %}>Partially paid</option>
+    <option value="PAID" {% if status_filter == "PAID" %}selected{% endif %}>Paid</option>
+    <option value="VOID" {% if status_filter == "VOID" %}selected{% endif %}>Void</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+  <thead>
+    <tr>
+      <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px;">Invoice #</th>
+      <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px;">Customer</th>
+      <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px;">Invoice date</th>
+      <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px;">Due date</th>
+      <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px;">Status</th>
+      <th style="text-align:right; border-bottom: 1px solid #ddd; padding: 6px;">Total</th>
+      <th style="text-align:right; border-bottom: 1px solid #ddd; padding: 6px;">Balance</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for inv in invoices_page %}
+      <tr>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">{{ inv.invoice_number }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">{{ inv.customer_name }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">{{ inv.invoice_date }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">{{ inv.due_date }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">{{ inv.get_status_display }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0; text-align:right;">{{ inv.total }}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0; text-align:right;">{{ inv.balance_due }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="7" style="padding: 10px; text-align:center;">No invoices found.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div style="margin-top: 1rem; display:flex; justify-content: space-between; align-items:center;">
+  <div>
+    Page {{ invoices_page.number }} of {{ invoices_page.paginator.num_pages }}
+  </div>
+  <div>
+    {% if invoices_page.has_previous %}
+      <a href="?page={{ invoices_page.previous_page_number }}&q={{ search_query }}&status={{ status_filter }}">Previous</a>
+    {% endif %}
+    {% if invoices_page.has_next %}
+      {% if invoices_page.has_previous %} | {% endif %}
+      <a href="?page={{ invoices_page.next_page_number }}&q={{ search_query }}&status={{ status_filter }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

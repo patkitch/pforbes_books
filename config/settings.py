@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "web_automation",
     "lawn_imports",
     "forbes_lawn_dashboard",
+    "forbes_lawn_billing",
  
   
     
