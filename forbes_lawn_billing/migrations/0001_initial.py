@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('django_ledger', '0029_adminreports'),
+        ('django_ledger', '0029_stagedtransactionmodel_matched_transaction_model_and_more'),
     ]
 
     operations = [
