@@ -100,25 +100,7 @@ class Invoice(models.Model):
     bill_to_zip = models.CharField(max_length=20, blank=True)
     bill_to_country = models.CharField(max_length=100, blank=True)
 
-    ship_to_name = models.CharField(max_length=200, blank=True)
-    ship_to_line1 = models.CharField(max_length=200, blank=True)
-    ship_to_line2 = models.CharField(max_length=200, blank=True)
-    ship_to_city = models.CharField(max_length=100, blank=True)
-    ship_to_state = models.CharField(max_length=50, blank=True)
-    ship_to_zip = models.CharField(max_length=20, blank=True)
-    ship_to_country = models.CharField(max_length=100, blank=True)
-
-    ship_from_name = models.CharField(max_length=200, blank=True)
-    ship_from_line1 = models.CharField(max_length=200, blank=True)
-    ship_from_line2 = models.CharField(max_length=200, blank=True)
-    ship_from_city = models.CharField(max_length=100, blank=True)
-    ship_from_state = models.CharField(max_length=50, blank=True)
-    ship_from_zip = models.CharField(max_length=20, blank=True)
-    ship_from_country = models.CharField(max_length=100, blank=True)
-
-    ship_via = models.CharField(max_length=100, blank=True)
-    shipping_date = models.DateField(null=True, blank=True)
-    tracking_number = models.CharField(max_length=100, blank=True)
+    
 
     
 

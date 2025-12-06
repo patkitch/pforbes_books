@@ -80,19 +80,10 @@ class InvoiceAdmin(admin.ModelAdmin):
                 "email_to", "email_cc", "email_bcc",
                 "bill_to_name", "bill_to_line1", "bill_to_line2",
                 "bill_to_city", "bill_to_state", "bill_to_zip", "bill_to_country",
-                "ship_to_name", "ship_to_line1", "ship_to_line2",
-                "ship_to_city", "ship_to_state", "ship_to_zip", "ship_to_country",
-                "ship_from_name", "ship_from_line1", "ship_from_line2",
-                "ship_from_city", "ship_from_state", "ship_from_zip", "ship_from_country",
             )
         }),
-        ("Shipping Details", {
-            "fields": (
-                "ship_via",
-                "shipping_date",
-                "tracking_number",
-            )
-        }),
+        
+        
         ("Notes", {
             "fields": (
                 "tags",
