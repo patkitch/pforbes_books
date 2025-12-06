@@ -12,6 +12,12 @@ Overview of who owes you, cash collected, and upcoming obligations.
 {% endblock %}
 
 {% block content %}
+<!-- Page Toolbar -->
+<div class="page-toolbar" style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+    <a href="{% url 'admin:index' %}" class="panel-link">
+        Admin
+    </a>
+</div>
 
 <!-- Top Metrics -->
 <section class="metrics-row">
