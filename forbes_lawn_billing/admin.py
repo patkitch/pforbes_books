@@ -19,7 +19,25 @@ class InvoiceLineInline(admin.TabularInline):
 class InvoicePaymentInline(admin.TabularInline):
     model = InvoicePayment
     extra = 0
-    fields = ("date", "amount", "method", "reference")
+
+    # Use the NEW field names here:
+    fields = (
+        "payment_date",
+        "amount",
+        "payment_method",
+        "jobber_type",
+        "jobber_paid_with",
+        "jobber_paid_through",
+        "reference",
+        "jobber_payment_id",
+    )
+
+    readonly_fields = (
+        "jobber_type",
+        "jobber_paid_with",
+        "jobber_paid_through",
+        "jobber_payment_id",
+    )
 
 
 class InvoiceAttachmentInline(admin.TabularInline):
@@ -34,6 +52,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     list_display = (
         "invoice_number",
         "customer_name",
+        "customer",
         "entity",
         "invoice_date",
         "due_date",
@@ -42,11 +61,15 @@ class InvoiceAdmin(admin.ModelAdmin):
         "amount_paid",
         "balance_due",
         "paid_in_full",
+        "ar_journal_entry",
         
     )
     list_filter = ("status", "invoice_date", "due_date", "paid_in_full")
-    search_fields = ("invoice_number", "customer_name", "email_to", "entity__name","jobber_invoice_id",)
+    search_fields = ("invoice_number", "customer_name", "customer__customer_name","customer__email",)
     date_hierarchy = "invoice_date"
+    # Let Django give you a nice search box for CustomerModel
+    # X remove this for now.
+    #autocomplete_fields = ("customer",)
 
     inlines = [InvoiceLineInline, InvoicePaymentInline, InvoiceAttachmentInline]
 
@@ -68,6 +91,7 @@ class InvoiceAdmin(admin.ModelAdmin):
             "fields": (
                 "entity",
                 "customer_name",
+                "customer",
                 "invoice_number",
                 "status",
                 "terms",
@@ -134,4 +158,4 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(InvoicePayment)
 class InvoicePaymentAdmin(admin.ModelAdmin):
-    list_display = ("invoice", "date", "amount")
+    list_display = ("invoice", "payment_date", "amount","payment_method")

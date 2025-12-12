@@ -1,6 +1,6 @@
 ﻿from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
-from django_ledger.models import ItemModel, BillModel, InvoiceModel, PurchaseOrderModel, ItemTransactionModel, UnitOfMeasureModel, EntityUnitModel,ReceiptModel,TransactionModel, StagedTransactionModel
+from django_ledger.models import ItemModel, BillModel, InvoiceModel, PurchaseOrderModel, ItemTransactionModel, UnitOfMeasureModel, EntityUnitModel,ReceiptModel,TransactionModel, StagedTransactionModel, CustomerModel, VendorModel
 from decimal import Decimal, InvalidOperation
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Sum, F, Max
@@ -50,6 +50,8 @@ register_with_auto_columns(EntityUnitModel)
 register_with_auto_columns(ReceiptModel)
 register_with_auto_columns(TransactionModel)
 register_with_auto_columns(StagedTransactionModel)
+register_with_auto_columns(CustomerModel)
+register_with_auto_columns(VendorModel)
 
 
 # ---------- Inventory Valuation report ----------

@@ -3,8 +3,8 @@
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
-from django_ledger.models.entity import EntityModel  # if this errors, we’ll adjust path
-
+from django_ledger.models.entity import EntityModel, CustomerModel # if this errors, we’ll adjust path
+from django_ledger.models import JournalEntryModel
 
 class InvoiceStatus(models.TextChoices):
     DRAFT = "DRAFT", "Draft"
@@ -36,7 +36,32 @@ class Invoice(models.Model):
         null=True,      # ← add this
         blank=True,     # ← and this
     )
-    customer_name = models.CharField(max_length=200)
+    # NEW: Link to Django Ledger CustomerModel
+    customer = models.ForeignKey(
+        CustomerModel,
+        on_delete=models.PROTECT,
+        related_name="forbes_lawn_invoices",
+        null=True,
+        blank=True,
+        help_text="Django Ledger customer record. Optional for now; will become required later."
+    )
+
+    # Existing snapshot / display name
+    customer_name = models.CharField(
+        max_length=200,
+        help_text="Display name for the customer at time of invoicing."
+    )
+
+    # ... rest of your fields ...
+
+    def save(self, *args, **kwargs):
+        # If a CustomerModel is set but customer_name is empty, sync it.
+        if self.customer and not self.customer_name:
+            # CustomerModel usually has 'customer_name' field
+            self.customer_name = self.customer.customer_name
+        super().save(*args, **kwargs)
+
+    
 
     # --- Jobber metadata (header-level) ---
     jobber_invoice_id = models.CharField(
@@ -178,10 +203,21 @@ class Invoice(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+        # --- Ledger posting metadata ---
+    ar_journal_entry = models.ForeignKey(
+        JournalEntryModel,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="forbes_lawn_invoices_ar",
+        help_text="JE that posts AR + revenue + tax for this invoice.",
+    ) 
+    
 
     class Meta:
         ordering = ["-invoice_date", "-id"]
-        
+
+      
 
     def __str__(self):
         return f"Invoice {self.invoice_number} - {self.customer_name}"
@@ -254,7 +290,7 @@ class Invoice(models.Model):
             # Only mark OPEN if it was DRAFT/OPEN before; VOID stays VOID
             if self.status != InvoiceStatus.VOID:
                 self.status = InvoiceStatus.OPEN
-
+    
 class InvoiceLine(models.Model):
     """
     Line items on the invoice, matching the QB columns:
@@ -284,9 +320,21 @@ class InvoiceLine(models.Model):
 
     service_date = models.DateField(null=True, blank=True)
 
-    # TODO: link to your actual ItemModel from Django Ledger when ready:
-    # item = models.ForeignKey("django_ledger.ItemModel", on_delete=models.PROTECT)
-    item_name = models.CharField(max_length=200, help_text="Product/Service name")
+    # 🔹 Link to Django Ledger ItemModel (non-inventory service item)
+    item_model = models.ForeignKey(
+        "django_ledger.ItemModel",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="forbes_lawn_invoice_lines",
+        help_text="Linked Django Ledger Item (service/product).",
+    )
+      # Snapshot name (what was on the invoice at the time)
+    item_name = models.CharField(
+        max_length=200,
+        help_text="Product/Service name as shown on the invoice.",
+    ) 
+    
 
     description = models.CharField(max_length=255, blank=True)
 
@@ -308,9 +356,9 @@ class InvoiceLine(models.Model):
         self.line_amount = (self.quantity * self.rate).quantize(Decimal("0.01"))
 class PaymentMethod(models.TextChoices):
     CASH = "CASH", "Cash"
+    CARD = "CARD", "Credit card"
+    ACH = "ACH", "Bank payment (ACH)"
     CHECK = "CHECK", "Check"
-    CARD = "CARD", "Card"
-    ACH = "ACH", "Bank Transfer"
     OTHER = "OTHER", "Other"
 
 
@@ -321,18 +369,23 @@ class InvoicePayment(models.Model):
     """
 
     invoice = models.ForeignKey(
-        Invoice,
+        "forbes_lawn_billing.Invoice",
         related_name="payments",
         on_delete=models.CASCADE,
     )
 
-    date = models.DateField(default=timezone.localdate)
+    payment_date = models.DateField(default=timezone.localdate)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    method = models.CharField(
+    payment_method = models.CharField(
         max_length=10,
         choices=PaymentMethod.choices,
         default=PaymentMethod.CASH,
     )
+    # (optional) raw Jobber fields, if you don’t already have them:
+    jobber_type = models.CharField(max_length=50, blank=True)
+    jobber_paid_with = models.CharField(max_length=50, blank=True)
+    jobber_paid_through = models.CharField(max_length=50, blank=True)
+
     reference = models.CharField(
         max_length=100,
         blank=True,
@@ -348,8 +401,18 @@ class InvoicePayment(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    payment_journal_entry = models.ForeignKey(
+        JournalEntryModel,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="forbes_lawn_invoice_payments",
+        help_text="JE that moves AR → Payments to Deposit.",
+    )
+
+
     class Meta:
-        ordering = ["date", "id"]
+        ordering = ["-payment_date", "id"]
         constraints = [
             models.UniqueConstraint(
                 fields=["invoice", "jobber_payment_id"],
@@ -357,8 +420,10 @@ class InvoicePayment(models.Model):
                 name="uniq_jobber_payment_per_invoice",
             )
         ]
+        # Ledger posting metadata
+    
     def __str__(self):
-        return f"Payment {self.amount} on {self.date} ({self.method})"
+        return f"Payment {self.amount} on {self.payment_date} ({self.get_payment_method_display()})"
 def invoice_attachment_upload_to(instance, filename):
     return f"invoices/{instance.invoice_id}/{filename}"
 

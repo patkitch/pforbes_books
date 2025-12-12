@@ -1,26 +1,19 @@
 ﻿# lawn_imports/management/commands/import_jobber_invoices.py
 
 import csv
-from decimal import Decimal
-from pathlib import Path
-
-from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
-from django.utils import timezone
-
-from django_ledger.models.entity import EntityModel
-from forbes_lawn_billing.models import Invoice, InvoiceLine, InvoiceStatus
-
-import csv
 import re
 from decimal import Decimal
 from pathlib import Path
 
+from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from django_ledger.models.entity import EntityModel
+from django_ledger.models import CustomerModel
+
 from forbes_lawn_billing.models import Invoice, InvoiceLine, InvoiceStatus
+from lawn_imports.utils import get_or_create_dl_customer_for_jobber
 
 
 class Command(BaseCommand):
@@ -41,6 +34,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.NOTICE(">>> RUNNING NEW V4 IMPORTER <<<"))
         csv_path = Path(options["csv_path"])
         entity_name = options["entity"]
         dry_run = options["dry_run"]
@@ -57,11 +51,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE(f"CSV: {csv_path}"))
         self.stdout.write(self.style.NOTICE(f"Mode: {'DRY RUN' if dry_run else 'COMMIT'}"))
 
+        ItemModel = apps.get_model("django_ledger", "ItemModel")
+
         # Map our internal keys to your actual CSV header names
         COLUMN = {
             "invoice_number": "Invoice #",
             "customer_name": "Client name",
             "client_email": "Client email",
+            "client_phone": "Client phone",
             "bill_to_line1": "Billing street",
             "bill_to_city": "Billing city",
             "bill_to_state": "Billing province",
@@ -87,23 +84,23 @@ class Command(BaseCommand):
             v = value.strip()
             if not v:
                 return Decimal("0.00")
-            # Strip $ and commas
             v = v.replace("$", "").replace(",", "")
             return Decimal(v)
 
         def parse_date(value: str):
             """
-    Jobber actual format: 'Nov 19, 2025'
+            Jobber actual format: 'Nov 19, 2025'
             """
             if not value:
                 return None
             v = value.strip()
             if not v or v == "-":
                 return None
+            # Try 'Nov 19, 2025'
             try:
                 return timezone.datetime.strptime(v, "%b %d, %Y").date()
             except ValueError:
-                # Try alternate format seen in some exports (19-Nov-25)
+                # Try alternate format '19-Nov-25' just in case
                 try:
                     return timezone.datetime.strptime(v, "%d-%b-%y").date()
                 except ValueError:
@@ -139,49 +136,72 @@ class Command(BaseCommand):
 
         def parse_line_items(text: str, tax_rate_percent: Decimal, subtotal: Decimal):
             """
-            Parse the 'Line items' string into a list of dicts:
-            [
-                {"name": ..., "qty": Decimal, "rate": Decimal, "taxable": bool},
-                ...
-            ]
-            Expected format like: "2025 Lawn Treatments (1, $64)"
-            If multiple exist, assume separation with ';' or '|'.
+            Parse Jobber's 'Line items' column into a list of dicts.
+
+            Handles strings like:
+                "2025 Lawn Treatments (1, $58), Tip  (1, $9)"
+
+            Returns:
+                [
+                    {"name": "2025 Lawn Treatments", qty=1, rate=58, taxable=True},
+                    {"name": "Tip",                  qty=1, rate=9,  taxable=True},
+                ]
+
+            We ignore zero-dollar lines like 'Tip  (1, $0)'.
             """
             items = []
             if not text:
                 return items
 
-            # Split on ; or | if present
-            segments = re.split(r"\s*[;|]\s*", text.strip())
-            segments = [seg for seg in segments if seg]
-
             taxable_flag = tax_rate_percent > 0
 
+            # Match every "Name (qty, $rate)" in the whole string.
             pattern = re.compile(
-                r"^(?P<name>.+?)\s*\(\s*(?P<qty>[\d.]+)\s*,\s*\$(?P<rate>[\d.]+)\s*\)\s*$"
+                r"""
+                (?P<name>[^()]+?)        # text up to '(' (no parentheses)
+                \(\s*
+                (?P<qty>[\d.]+)          # quantity
+                \s*,\s*\$
+                (?P<rate>[\d.]+)         # rate
+                \s*\)
+                """,
+                re.VERBOSE,
             )
 
-            for seg in segments:
-                m = pattern.match(seg)
-                if m:
-                    name = m.group("name").strip()
-                    qty = Decimal(m.group("qty"))
-                    rate = Decimal(m.group("rate"))
-                else:
-                    # Fallback: use full text as name, qty=1, rate based on subtotal split
-                    name = seg.strip()
-                    qty = Decimal("1.0")
-                    # If subtotal present and multiple segments, split roughly evenly
-                    if subtotal and len(segments) > 0:
-                        rate = (subtotal / len(segments)).quantize(Decimal("0.01"))
-                    else:
-                        rate = Decimal("0.00")
+            for m in pattern.finditer(text):
+                raw_name = m.group("name")
+
+                # Remove leading commas/spaces, then trailing commas, then trim
+                name = re.sub(r"^[,\s]+", "", raw_name).rstrip(",").strip()
+
+                qty = Decimal(m.group("qty"))
+                rate = Decimal(m.group("rate"))
+
+                # Ignore zero-dollar lines (e.g. 'Tip  (1, $0)')
+                if rate == 0:
+                    continue
+
+                # Normalize any line that *contains* 'tip' into 'Tip'
+                if "tip" in name.lower():
+                    name = "Tip"
+
 
                 items.append(
                     {
                         "name": name or "Service",
                         "qty": qty,
                         "rate": rate,
+                        "taxable": taxable_flag,
+                    }
+                )
+
+            # Fallback: if nothing matched but we have a subtotal, treat as one service line
+            if not items and subtotal:
+                items.append(
+                    {
+                        "name": text.strip(),
+                        "qty": Decimal("1.0"),
+                        "rate": subtotal,
                         "taxable": taxable_flag,
                     }
                 )
@@ -203,6 +223,7 @@ class Command(BaseCommand):
 
                 customer_name = (row.get(COLUMN["customer_name"]) or "").strip()
                 client_email = (row.get(COLUMN["client_email"]) or "").strip()
+                client_phone = (row.get(COLUMN["client_phone"]) or "").strip()
 
                 bill_to_line1 = (row.get(COLUMN["bill_to_line1"]) or "").strip()
                 bill_to_city = (row.get(COLUMN["bill_to_city"]) or "").strip()
@@ -221,14 +242,51 @@ class Command(BaseCommand):
                 discount_csv = parse_decimal(row.get(COLUMN["discount"]))
                 tax_amount_csv = parse_decimal(row.get(COLUMN["tax_amount"]))
                 tax_rate_percent = parse_tax_rate_percent(row.get(COLUMN["tax_percent"]))
+                tip_amount_csv = parse_decimal(row.get(COLUMN["tip"]))  # still parsed for debug/possible future use
 
-                line_items_text = row.get(COLUMN["line_items"]) or ""
+                raw_line_items_text = row.get(COLUMN["line_items"]) or ""
                 line_items = parse_line_items(
-                    line_items_text, tax_rate_percent, subtotal_csv
+                    raw_line_items_text,
+                    tax_rate_percent,
+                    subtotal_csv,
+                )
+                self.stdout.write(
+                    self.style.NOTICE(
+                        f"[DEBUG] invoice #{invoice_number} raw_line_items={raw_line_items_text!r} "
+                        f"-> parsed={line_items!r}"
+                    )
                 )
 
+                # 🔹 Resolve or simulate the Django Ledger customer
+                customer_action_label = "N/A"
+                dl_customer = None
+                created_customer = False
+
+                if dry_run:
+                    # Dry-run: don't create customers, just check whether they'd be new or existing
+                    qs = CustomerModel.objects.filter(
+                        entity_model=entity,
+                        customer_name=customer_name,
+                    )
+                    if client_email:
+                        qs = qs.filter(email__iexact=client_email)
+
+                    if qs.exists():
+                        customer_action_label = "EXISTING CUSTOMER"
+                    else:
+                        customer_action_label = "WOULD CREATE CUSTOMER"
+                else:
+                    dl_customer, created_customer = get_or_create_dl_customer_for_jobber(
+                        entity=entity,
+                        client_name=customer_name,
+                        client_email=client_email,
+                        client_phone=client_phone,
+                    )
+                    customer_action_label = (
+                        "NEW CUSTOMER" if created_customer else "EXISTING CUSTOMER"
+                    )
+
                 # Get or create invoice by (entity, jobber_invoice_id)
-                # jobber_invoice_id = Invoice # in your CSV
                 jobber_invoice_id = invoice_number
 
                 invoice = Invoice.objects.filter(
@@ -244,6 +302,9 @@ class Command(BaseCommand):
                     created = True
 
                 # Header fields
+                if not dry_run:
+                    invoice.customer = dl_customer  # 🔹 link to Django Ledger customer
+
                 invoice.invoice_number = invoice_number
                 invoice.customer_name = customer_name
                 invoice.email_to = client_email
@@ -254,12 +315,14 @@ class Command(BaseCommand):
                 invoice.bill_to_state = bill_to_state
                 invoice.bill_to_zip = bill_to_zip
 
-                invoice.invoice_date = invoice_date or invoice.invoice_date or timezone.localdate()
+                invoice.invoice_date = (
+                    invoice_date or invoice.invoice_date or timezone.localdate()
+                )
                 invoice.due_date = due_date or invoice.due_date
 
                 invoice.status = status
 
-                # Discount & tax info: let recompute use these
+                # Discount & tax info: let Jobber totals drive the math
                 invoice.discount_amount = discount_csv
                 invoice.deposit_amount = deposit_csv
                 invoice.tax_rate_percent = tax_rate_percent
@@ -268,7 +331,8 @@ class Command(BaseCommand):
                     action = "CREATE" if created else "UPDATE"
                     self.stdout.write(
                         f"[DRY RUN] {action} invoice #{invoice_number} for {customer_name} "
-                        f"(subtotal={subtotal_csv}, total={total_csv}, tax%={tax_rate_percent})"
+                        f"({customer_action_label}, subtotal={subtotal_csv}, "
+                        f"total={total_csv}, tax%={tax_rate_percent}, tip={tip_amount_csv})"
                     )
                     # We don't touch DB in dry run
                     continue
@@ -284,7 +348,8 @@ class Command(BaseCommand):
                     action = "UPDATED"
 
                 self.stdout.write(
-                    f"[{action}] Invoice {invoice.invoice_number} ({customer_name})"
+                    f"[{action}] Invoice {invoice.invoice_number} ({customer_name}) "
+                    f"[{customer_action_label}]"
                 )
 
                 # Clear existing lines and recreate from CSV
@@ -292,10 +357,28 @@ class Command(BaseCommand):
 
                 line_number = 1
                 for li in line_items:
+                    item_name = li["name"]
+
+                    # 🔍 Try to find an existing ItemModel for this entity + name
+                    item_model = ItemModel.objects.filter(
+                        entity=entity,
+                        name__iexact=item_name,
+                    ).first()
+
+                    if item_model is None:
+                        # For now, DON'T auto-create – just warn and let the line be text-only.
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"[DEBUG] No ItemModel found. item_name={repr(item_name)} "
+                                f"(entity={entity.slug})"
+                            )
+                        )
+
                     line = InvoiceLine(
                         invoice=invoice,
                         line_number=line_number,
-                        item_name=li["name"],
+                        item_model=item_model,
+                        item_name=item_name,  # snapshot name
                         description="",
                         quantity=li["qty"],
                         rate=li["rate"],
@@ -305,8 +388,6 @@ class Command(BaseCommand):
                     line.save()
                     created_lines += 1
                     line_number += 1
-
-                # After creating all InvoiceLine rows...
 
                 # TRUST JOBBER TOTALS INSTEAD OF RECOMPUTING FROM LINES
                 invoice.subtotal = subtotal_csv
@@ -318,7 +399,9 @@ class Command(BaseCommand):
 
                 # Derive amount_paid / balance from Jobber's balance column
                 invoice.balance_due = balance_csv
-                invoice.amount_paid = (invoice.total or Decimal("0.00")) - invoice.balance_due
+                invoice.amount_paid = (
+                    (invoice.total or Decimal("0.00")) - invoice.balance_due
+                )
 
                 # Status based on balance
                 if invoice.balance_due <= Decimal("0.00"):
@@ -332,9 +415,8 @@ class Command(BaseCommand):
                     invoice.paid_in_full = False
 
                 invoice.save()
-             
 
-                # If Jobber's balance is 0, mark as paid
+                # If Jobber's balance is 0, mark as paid (reinforce)
                 if balance_csv <= Decimal("0.00"):
                     invoice.status = InvoiceStatus.PAID
                     invoice.paid_in_full = True
@@ -345,17 +427,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"[{mode}] Finished reading CSV. "
                 f"Invoices created/updated (not counted in dry-run): "
-                f"created={created_invoices}, updated={updated_invoices}, lines_created={created_lines}"
+                f"created={created_invoices}, updated={updated_invoices}, "
+                f"lines_created={created_lines}"
             )
         )
-
-
-
-
-class _noop_context:
-    """Context manager that does nothing, used to mimic transaction.atomic in dry-run."""
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False

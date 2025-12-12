@@ -7,7 +7,37 @@ from django.utils import timezone
 from django.db.models import Sum
 
 from django_ledger.models.entity import EntityModel
-from forbes_lawn_billing.models import Invoice, InvoicePayment, InvoiceStatus
+from forbes_lawn_billing.models import (
+    Invoice,
+    InvoicePayment,
+    InvoiceStatus,
+    PaymentMethod,
+)
+
+
+def map_jobber_payment_method(type_raw: str, paid_with_raw: str, paid_through_raw: str) -> str:
+    """
+    Map Jobber 'Type' / 'Paid with' / 'Paid through' text into our PaymentMethod enum.
+    """
+    t = (type_raw or "").lower()
+    w = (paid_with_raw or "").lower()
+    thru = (paid_through_raw or "").lower()
+
+    # Most important signals first
+    if "cash" in w or "cash" in t:
+        return PaymentMethod.CASH
+
+    if "check" in w or "cheque" in w or "check" in t:
+        return PaymentMethod.CHECK
+
+    if "credit" in w or "card" in w or "visa" in w or "mastercard" in w:
+        return PaymentMethod.CARD
+
+    if "bank" in w or "ach" in w or "bank payment" in t or "ach" in t:
+        return PaymentMethod.ACH
+
+    # Fallback
+    return PaymentMethod.OTHER
 
 
 class Command(BaseCommand):
@@ -87,10 +117,10 @@ class Command(BaseCommand):
                 return None
 
             FORMATS = [
-                "%d-%b-%y",      # 3-Dec-25
-                "%b %d, %Y",     # Dec 03, 2025  / Nov 19, 2025
-                "%Y-%m-%d",      # 2025-12-03 (rare but possible)
-        ]
+                "%d-%b-%y",   # 3-Dec-25
+                "%b %d, %Y",  # Dec 03, 2025 / Nov 19, 2025
+                "%Y-%m-%d",   # 2025-12-03 (rare but possible)
+            ]
 
             for fmt in FORMATS:
                 try:
@@ -132,32 +162,42 @@ class Command(BaseCommand):
             reader = csv.DictReader(f)
 
             for row in reader:
+                # --- BASIC FIELDS ---
                 invoice_number = (row.get(COLUMN["invoice_number"]) or "").strip()
                 if not invoice_number:
                     continue  # no invoice ref, nothing to attach
 
                 client_name = (row.get(COLUMN["client_name"]) or "").strip()
                 date_raw = row.get(COLUMN["date"]) or ""
-                time_raw = row.get(COLUMN["time"]) or ""
-                paid_with = (row.get(COLUMN["paid_with"]) or "").strip()
-                paid_through = (row.get(COLUMN["paid_through"]) or "").strip()
-                total_raw = row.get(COLUMN["total"]) or ""
+                payment_date = parse_date(date_raw)
+                if payment_date is None:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Skipping row for invoice #{invoice_number}: "
+                            f"could not parse date '{date_raw}'"
+                        )
+                    )
+                    continue
+
+                type_raw = (row.get(COLUMN["type"]) or "").strip()
+                paid_with_raw = (row.get(COLUMN["paid_with"]) or "").strip()
+                paid_through_raw = (row.get(COLUMN["paid_through"]) or "").strip()
+
+                total_raw = row.get(COLUMN["total"]) or "0"
+                raw_amount = parse_decimal(total_raw)
+                amount = abs(raw_amount)  # Jobber exports negative for received money
+
                 note = (row.get(COLUMN["note"]) or "").strip()
                 card_last4 = (row.get(COLUMN["card_last4"]) or "").strip()
                 card_type = (row.get(COLUMN["card_type"]) or "").strip()
                 payout_id = (row.get(COLUMN["payout_id"]) or "").strip()
 
-                payment_date = parse_date(date_raw)
-                if payment_date is None:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Skipping row for invoice #{invoice_number}: could not parse date '{date_raw}'"
-                        )
-                    )
-                    continue
-
-                raw_amount = parse_decimal(total_raw)
-                amount = abs(raw_amount)  # Jobber exports negative for money you receive
+                # Determine payment method
+                payment_method = map_jobber_payment_method(
+                    type_raw,
+                    paid_with_raw,
+                    paid_through_raw,
+                )
 
                 # Lookup invoice by entity + invoice_number (which matches Jobber's Invoice #)
                 invoice = (
@@ -168,7 +208,8 @@ class Command(BaseCommand):
                 if invoice is None:
                     self.stdout.write(
                         self.style.WARNING(
-                            f"Invoice #{invoice_number} not found for payment row (client={client_name}, amount={amount})."
+                            f"Invoice #{invoice_number} not found for payment row "
+                            f"(client={client_name}, amount={amount})."
                         )
                     )
                     continue
@@ -176,27 +217,11 @@ class Command(BaseCommand):
                 # Build a dedupe fingerprint: invoice + date + amount
                 lookup = {
                     "invoice": invoice,
-                    "date": payment_date,
+                    "payment_date": payment_date,
                     "amount": amount,
                 }
 
-                # Extra info if your model has method/reference
-                payment_kwargs = {}
-                method_value = f"{paid_with} via {paid_through}".strip()
-               
-                #reference_parts = []
-                #if note:
-                    #reference_parts.append(note)
-                #if card_type or card_last4:
-                    #reference_parts.append(f"{card_type} {card_last4}".strip())
-                #if payout_id:
-                    #reference_parts.append(f"Payout {payout_id}")
-                #reference_value = " | ".join(part for part in reference_parts if part)
-
-                #if hasattr(InvoicePayment, "method"):
-                    #payment_kwargs["method"] = method_value
-                #if hasattr(InvoicePayment, "reference"):
-                    #payment_kwargs["reference"] = reference_value
+                method_value = f"{paid_with_raw} via {paid_through_raw}".strip()
 
                 if dry_run:
                     # Check if this payment already exists
@@ -210,14 +235,32 @@ class Command(BaseCommand):
                     else:
                         self.stdout.write(
                             f"[DRY RUN] CREATE payment for invoice #{invoice_number} "
-                            f"on {payment_date} amount {amount} ({method_value})"
+                            f"on {payment_date} amount {amount} "
+                            f"method={payment_method} ({method_value})"
                         )
                     continue
 
+                # --- CREATE / UPDATE PAYMENT ---
                 payment, created = InvoicePayment.objects.get_or_create(
-                    defaults=payment_kwargs,
                     **lookup,
+                    defaults={
+                        "payment_method": payment_method,
+                        "jobber_type": type_raw,
+                        "jobber_paid_with": paid_with_raw,
+                        "jobber_paid_through": paid_through_raw,
+                        "jobber_payment_id": payout_id,
+                    },
                 )
+
+                if not created:
+                    # Update method & raw fields in case they changed or were defaulted to CASH before
+                    payment.payment_method = payment_method
+                    payment.jobber_type = type_raw
+                    payment.jobber_paid_with = paid_with_raw
+                    payment.jobber_paid_through = paid_through_raw
+                    payment.note = note
+                    payment.jobber_payment_id = payout_id
+                    payment.save()
 
                 if created:
                     created_payments += 1
