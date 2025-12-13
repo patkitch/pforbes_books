@@ -1,0 +1,140 @@
+﻿{% extends "base_forbes_lawn.html" %}
+
+{% block page_title %}Imports Hub{% endblock %}
+{% block page_subtitle %}Upload + monitor Jobber + bank imports. Buttons first. No drama.{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+  <div class="panel-header">
+    <h2 class="section-title">Counts ({{ year }})</h2>
+  </div>
+  <div class="panel-body">
+    <table class="table">
+      <tbody>
+        <tr>
+          <td><strong>Unposted Invoices</strong></td>
+          <td>{{ invoices_unposted_count }}</td>
+          <td class="text-right">${{ invoices_unposted_total }}</td>
+        </tr>
+        <tr>
+          <td><strong>Unposted Payments</strong></td>
+          <td>{{ payments_unposted_count }}</td>
+          <td class="text-right">${{ payments_unposted_total }}</td>
+        </tr>
+        <tr>
+          <td><strong>Bank Staged Transactions (DL)</strong></td>
+          <td>{{ bank_staged_count }}</td>
+          <td class="text-right">${{ bank_staged_total }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if messages %}
+  <section class="panel">
+    <div class="panel-body">
+      {% for message in messages %}
+        <p>{{ message }}</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-header">
+    <h2 class="section-title">Run Commands</h2>
+  </div>
+  <div class="panel-body">
+
+    <h3 style="margin-top:0;">Post invoices & payments into ledger</h3>
+    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_posting" />
+
+      <div class="quick-actions-grid">
+        <input class="qa-button" name="entity_slug" value="{{ entity.slug }}" />
+        <input class="qa-button" name="ledger_xid" value="invoice-i-2025-0000000001-81378" />
+        <input class="qa-button" name="year" value="{{ year }}" />
+        <button class="qa-button qa-button-primary" type="submit">Run Posting</button>
+      </div>
+    </form>
+
+    <hr style="margin: 1rem 0;" />
+
+    <h3>Import Jobber invoices</h3>
+    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_jobber_invoices" />
+
+      <div class="quick-actions-grid">
+        <input
+          class="qa-button"
+          name="jobber_invoices_csv_path"
+          placeholder="C:\Users\patki\Downloads\Jobber Invoices Transaction List (4).csv"
+        />
+
+        <label style="display:flex; align-items:center; gap:.5rem;">
+          <input type="checkbox" name="jobber_invoices_dry_run" value="1" checked>
+          Dry-run
+        </label>
+
+        <button class="qa-button qa-button-primary" type="submit">Run Jobber Invoices</button>
+      </div>
+    </form>
+
+    <hr style="margin: 1rem 0;" />
+
+    <h3>Import Jobber payments</h3>
+    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_jobber_payments" />
+
+      <div class="quick-actions-grid">
+        <input
+          class="qa-button"
+          name="jobber_payments_csv_path"
+          placeholder="C:\Users\patki\Downloads\Jobber Payments Transaction List (4).csv"
+        />
+
+        <label style="display:flex; align-items:center; gap:.5rem;">
+          <input type="checkbox" name="jobber_payments_dry_run" value="1" checked>
+          Dry-run
+        </label>
+
+        <button class="qa-button qa-button-primary" type="submit">Run Jobber Payments</button>
+      </div>
+    </form>
+
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2 class="section-title">Django Ledger Links</h2>
+  </div>
+  <div class="panel-body">
+    <div class="quick-actions-grid">
+      <a class="qa-button" href="{% url 'admin:django_ledger_stagedtransactionmodel_changelist' %}">
+        Staged Transactions (Admin)
+      </a>
+      <a class="qa-button" href="/django_ledger/import/">Bank Import (QFX)</a>
+      <a class="qa-button" href="/django_ledger/staged/">Review Staged (UI)</a>
+      <a class="qa-button" href="{% url 'admin:index' %}">Admin Home</a>
+    </div>
+  </div>
+</section>
+
+{% if last_output %}
+<section class="panel">
+  <div class="panel-header">
+    <h2 class="section-title">Last Command Output</h2>
+  </div>
+  <div class="panel-body">
+    <pre style="white-space: pre-wrap;">{{ last_output }}</pre>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

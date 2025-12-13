@@ -20,13 +20,30 @@
                 <a href="{% url 'forbes_lawn_dashboard:home' %}" class="nav-item {% block nav_home_active %}{% endblock %}">
                     Home
                 </a>
+                <a href="{% url 'forbes_lawn_dashboard:invoice_list' %}"
+                    class="nav-item {% block nav_invoices_active %}{% endblock %}">
+                    Invoices
+                </a>
+
+                <a href="{% url 'forbes_lawn_dashboard:tax_hub' %}"
+                    class="nav-item {% block nav_tax_active %}{% endblock %}">
+                    Taxes
+                </a>
+
+                 <a href="{% url 'forbes_lawn_dashboard:imports_hub' %}"
+                    class="nav-item {% block nav_imports_active %}{% endblock %}">
+                    Imports
+                </a>
+
+                <a href="{% url 'forbes_lawn_dashboard:accounting_hub' %}"
+                    class="nav-item {% block nav_accounting_active %}{% endblock %}">
+                    Accounting
+                </a>
                 <!-- Future links -->
                 <!--
                 <a href="#" class="nav-item">Customers</a>
                 <a href="#" class="nav-item">Vendors</a>
-                <a href="#" class="nav-item">Invoices</a>
                 <a href="#" class="nav-item">Items &amp; Services</a>
-                <a href="#" class="nav-item">Taxes</a>
                 <a href="#" class="nav-item">Reports</a>
                 -->
             </nav>
