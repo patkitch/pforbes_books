@@ -49,16 +49,14 @@
   <div class="panel-body">
 
     <h3 style="margin-top:0;">Post invoices & payments into ledger</h3>
-    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="run_posting" />
-
-      <div class="quick-actions-grid">
-        <input class="qa-button" name="entity_slug" value="{{ entity.slug }}" />
-        <input class="qa-button" name="ledger_xid" value="invoice-i-2025-0000000001-81378" />
-        <input class="qa-button" name="year" value="{{ year }}" />
-        <button class="qa-button qa-button-primary" type="submit">Run Posting</button>
-      </div>
+    <form method="post" action="{% url 'forbes_lawn_dashboard:run_posting_command' %}">
+        {% csrf_token %}
+        <div class="quick-actions-grid">
+            <input class="qa-button" name="entity_slug" value="{{ entity.slug }}" />
+            <input class="qa-button" name="ledger_xid" value="invoice-i-2025-0000000001-81378" />
+            <input class="qa-button" name="year" value="{{ year }}" />
+            <button class="qa-button qa-button-primary" type="submit">Run Posting</button>
+        </div>
     </form>
 
     <hr style="margin: 1rem 0;" />

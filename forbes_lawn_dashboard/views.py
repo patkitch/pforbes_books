@@ -35,15 +35,26 @@ def run_posting_command(request):
 
     entity_slug = request.POST.get("entity_slug", "").strip()
     ledger_xid = request.POST.get("ledger_xid", "").strip()
-    year = int(request.POST.get("year", "2025"))
+    year_raw = request.POST.get("year", "").strip()
 
     out = StringIO()
+
+    if not entity_slug or not ledger_xid:
+        messages.error(request, "Missing entity_slug or ledger_xid.")
+        return redirect("forbes_lawn_dashboard:imports_hub")
+
+    try:
+        year = int(year_raw or "2025")
+    except ValueError:
+        messages.error(request, f"Invalid year: {year_raw!r}")
+        return redirect("forbes_lawn_dashboard:imports_hub")
+
     try:
         call_command(
             "post_forbes_lawn_2025_invoices",
-            entity_slug=entity_slug,
-            ledger_xid=ledger_xid,
-            year=year,
+            "--entity-slug", entity_slug,
+            "--ledger-xid", ledger_xid,
+            "--year", str(year),
             stdout=out,
             stderr=out,
         )
@@ -53,6 +64,7 @@ def run_posting_command(request):
 
     request.session["imports_last_output"] = out.getvalue()
     return redirect("forbes_lawn_dashboard:imports_hub")
+
 
 @staff_member_required
 def run_jobber_invoices_command(request):
@@ -274,16 +286,15 @@ def imports_hub(request):
     today = timezone.localdate()
     year = int(request.GET.get("year") or today.year)
 
-    # Try to get Forbes Lawn entity by NAME (works across local & DO)
     try:
         entity = EntityModel.objects.get(name=ENTITY_NAME_FORBES_LAWN)
     except EntityModel.DoesNotExist:
         entity = None
 
-    # Base context (define FIRST)
     context = {
         "today": today,
         "year": year,
+        "entity": entity,
         "invoices_unposted_count": 0,
         "invoices_unposted_total": Decimal("0.00"),
         "payments_unposted_count": 0,
@@ -291,175 +302,10 @@ def imports_hub(request):
         "bank_staged_count": 0,
         "bank_staged_total": Decimal("0.00"),
         "last_output": request.session.pop("imports_last_output", ""),
-        "entity": entity,
     }
 
     if entity is None:
         return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
-
-    # -------------------------
-    # POST: run commands
-    # -------------------------
-    if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
-            # -----------------------------
-    # POST actions (upload + run)
-    # -----------------------------
-   
-        def _save_uploaded_file(uploaded_file, prefix: str) -> str:
-            storage = FileSystemStorage(location=settings.IMPORT_UPLOAD_DIR)
-            filename = f"{prefix}_{uploaded_file.name}"
-            saved_name = storage.save(filename, uploaded_file)
-            return storage.path(saved_name)
-
-        try:
-            if action == "run_jobber_invoices":
-                dry_run = request.POST.get("jobber_invoices_dry_run") == "1"
-                f = request.FILES.get("jobber_invoices_file")
-                if not f:
-                    messages.error(request, "No invoices CSV selected.")
-                    return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
-
-                tmp_path = _save_uploaded_file(f, "jobber_invoices")
-
-                from io import StringIO
-                out = StringIO()
-                try:
-                    # Adjust command name if yours differs:
-                    call_command("import_jobber_invoices", tmp_path, dry_run=dry_run, stdout=out)
-                    request.session["imports_last_output"] = out.getvalue()
-                    messages.success(request, "Jobber invoices import completed.")
-                finally:
-                    # cleanup temp file
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
-
-            elif action == "run_jobber_payments":
-                dry_run = request.POST.get("jobber_payments_dry_run") == "1"
-                f = request.FILES.get("jobber_payments_file")
-                if not f:
-                    messages.error(request, "No payments CSV selected.")
-                    return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
-
-                tmp_path = _save_uploaded_file(f, "jobber_payments")
-
-                from io import StringIO
-                out = StringIO()
-                try:
-                    # Your known command:
-                    call_command("import_jobber_payments", tmp_path, dry_run=dry_run, stdout=out)
-                    request.session["imports_last_output"] = out.getvalue()
-                    messages.success(request, "Jobber payments import completed.")
-                finally:
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
-
-            elif action == "run_posting":
-                # if you want to keep this unified as well
-                entity_slug = request.POST.get("entity_slug")
-                ledger_xid = request.POST.get("ledger_xid")
-                year = request.POST.get("year")
-
-                from io import StringIO
-                out = StringIO()
-                call_command(
-                    "post_forbes_lawn_2025_invoices",
-                    entity_slug=entity_slug,
-                    ledger_xid=ledger_xid,
-                    year=int(year),
-                    stdout=out,
-                )
-                request.session["imports_last_output"] = out.getvalue()
-                messages.success(request, "Posting completed.")
-
-        except Exception as e:
-            messages.error(request, f"Command failed: {e}")
-
-        # Prevent form resubmission on refresh
-        return redirect("forbes_lawn_dashboard:imports_hub")
-
-
-        # helper to validate file paths from the dashboard
-        def _validated_csv_path(field_name: str) -> Path:
-            raw = (request.POST.get(field_name) or "").strip().strip('"')
-            if not raw:
-                raise ValueError(f"{field_name} is blank.")
-            p = Path(raw)
-            if not p.exists():
-                raise ValueError(f"File not found: {p}")
-            if not p.is_file():
-                raise ValueError(f"Path is not a file (looks like a folder): {p}")
-            return p
-
-        out = StringIO()
-
-        try:
-            if action == "run_posting":
-                entity_slug = (request.POST.get("entity_slug") or "").strip()
-                ledger_xid = (request.POST.get("ledger_xid") or "").strip()
-                year_post = int(request.POST.get("year") or year)
-
-                if not entity_slug or not ledger_xid:
-                    raise ValueError("entity_slug and ledger_xid are required for posting.")
-
-                call_command(
-                    "post_forbes_lawn_2025_invoices",
-                    entity_slug=entity_slug,
-                    ledger_xid=ledger_xid,
-                    year=year_post,
-                    stdout=out,
-                )
-                messages.success(request, "Posting completed.")
-
-            elif action == "run_jobber_payments":
-                csv_path = _validated_csv_path("jobber_payments_csv_path")
-                dry_run = bool(request.POST.get("jobber_payments_dry_run"))
-
-                # pass dry_run flag only if checked
-                kwargs = {"stdout": out}
-                if dry_run:
-                    kwargs["dry_run"] = True
-
-                call_command(
-                    "import_jobber_payments",
-                    str(csv_path),
-                    **kwargs,
-                )
-                messages.success(request, "Jobber payments import completed.")
-
-            elif action == "run_jobber_invoices":
-                csv_path = _validated_csv_path("jobber_invoices_csv_path")
-                dry_run = bool(request.POST.get("jobber_invoices_dry_run"))
-
-                kwargs = {"stdout": out}
-                if dry_run:
-                    kwargs["dry_run"] = True
-
-                call_command(
-                    "import_jobber_invoices",
-                    str(csv_path),
-                    **kwargs,
-                )
-                messages.success(request, "Jobber invoices import completed.")
-
-            else:
-                messages.error(request, "Unknown action from Imports Hub.")
-
-        except Exception as e:
-            messages.error(request, f"Command failed: {e}")
-
-        # Save console output for the page to display
-        request.session["imports_last_output"] = out.getvalue()
-
-        return redirect("forbes_lawn_dashboard:imports_hub")
-
-    # -------------------------
-    # GET: counts (your existing logic)
-    # -------------------------
 
     inv_qs = Invoice.objects.filter(
         entity=entity,

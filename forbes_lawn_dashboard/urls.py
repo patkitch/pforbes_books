@@ -11,5 +11,7 @@ urlpatterns = [
     path("tax/", views.tax_hub, name="tax_hub"),
     path("imports/", views.imports_hub, name="imports_hub"),
     path("accounting/", views.accounting_hub, name="accounting_hub"),
+    path("imports/run-posting/", views.run_posting_command, name="run_posting_command"),
+
    
 ]
