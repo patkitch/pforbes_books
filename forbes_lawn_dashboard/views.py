@@ -20,6 +20,10 @@ import os
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 import tempfile
+from django_ledger.models import LedgerModel
+
+
+
 
 
 
@@ -33,11 +37,9 @@ def run_posting_command(request):
     if request.method != "POST":
         return redirect("forbes_lawn_dashboard:imports_hub")
 
-    entity_slug = request.POST.get("entity_slug", "").strip()
-    ledger_xid = request.POST.get("ledger_xid", "").strip()
-    year_raw = request.POST.get("year", "").strip()
-
-    out = StringIO()
+    entity_slug = (request.POST.get("entity_slug") or "").strip()
+    ledger_xid = (request.POST.get("ledger_xid") or "").strip()
+    year_raw = (request.POST.get("year") or "").strip()
 
     if not entity_slug or not ledger_xid:
         messages.error(request, "Missing entity_slug or ledger_xid.")
@@ -49,20 +51,22 @@ def run_posting_command(request):
         messages.error(request, f"Invalid year: {year_raw!r}")
         return redirect("forbes_lawn_dashboard:imports_hub")
 
+    out = StringIO()
     try:
         call_command(
             "post_forbes_lawn_2025_invoices",
-            "--entity-slug", entity_slug,
-            "--ledger-xid", ledger_xid,
-            "--year", str(year),
+            entity_slug=entity_slug,
+            ledger_xid=ledger_xid,
+            year=year,
             stdout=out,
             stderr=out,
         )
         messages.success(request, "Posting command ran successfully.")
     except Exception as e:
         messages.error(request, f"Posting command failed: {e}")
+    finally:
+        request.session["imports_last_output"] = out.getvalue()
 
-    request.session["imports_last_output"] = out.getvalue()
     return redirect("forbes_lawn_dashboard:imports_hub")
 
 
@@ -302,11 +306,21 @@ def imports_hub(request):
         "bank_staged_count": 0,
         "bank_staged_total": Decimal("0.00"),
         "last_output": request.session.pop("imports_last_output", ""),
+        "ledgers": [],
+        "ledger_xid_default": "",
     }
 
     if entity is None:
         return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
 
+    # ✅ load ledgers for dropdown (matches your model field name: "entity")
+    ledgers_qs = LedgerModel.objects.filter(entity=entity).order_by("name")
+    context["ledgers"] = ledgers_qs
+
+    default_ledger = ledgers_qs.first()
+    context["ledger_xid_default"] = default_ledger.ledger_xid if default_ledger else ""
+
+    # Counts: unposted invoices
     inv_qs = Invoice.objects.filter(
         entity=entity,
         invoice_date__year=year,
@@ -315,6 +329,7 @@ def imports_hub(request):
     context["invoices_unposted_count"] = inv_qs.count()
     context["invoices_unposted_total"] = inv_qs.aggregate(t=Sum("total"))["t"] or Decimal("0.00")
 
+    # Counts: unposted payments
     pay_qs = InvoicePayment.objects.filter(
         invoice__entity=entity,
         payment_date__year=year,
@@ -323,6 +338,7 @@ def imports_hub(request):
     context["payments_unposted_count"] = pay_qs.count()
     context["payments_unposted_total"] = pay_qs.aggregate(t=Sum("amount"))["t"] or Decimal("0.00")
 
+    # Counts: staged bank transactions (DL)
     st_qs = StagedTransactionModel.objects.filter(
         _entity_slug=entity.slug,
         created__year=year,
@@ -331,6 +347,8 @@ def imports_hub(request):
     context["bank_staged_total"] = st_qs.aggregate(t=Sum("amount"))["t"] or Decimal("0.00")
 
     return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
+
+
 
 
 def accounting_hub(request):
