@@ -17,7 +17,7 @@ class Command(BaseCommand):
             "--entity-slug",
             type=str,
             required=True,
-            help="Slug of the Django Ledger Entity (e.g. forbes-lawn-spraying-llc-vtcqxrcl)",
+            help="Slug of the Django Ledger Entity (e.g. forbes-lawn-spraying-llc-elg3zg1u)",
         )
         parser.add_argument(
             "--ledger-xid",

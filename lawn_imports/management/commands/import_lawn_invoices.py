@@ -13,7 +13,7 @@ from django_ledger.models import (
 )
 
 # Slug of your Forbes Lawn Spraying entity in Django Ledger
-ENTITY_SLUG_LAWN = "forbes-lawn-spraying-llc-vtcqxrcl"
+ENTITY_SLUG_LAWN = "forbes-lawn-spraying-llc-elg3zg1u"
 
 
 # ------------------------
