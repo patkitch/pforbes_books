@@ -16,6 +16,12 @@ from io import StringIO
 from django.shortcuts import redirect
 from django.contrib import messages
 from pathlib import Path
+import os
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+import tempfile
+
+
 
 ENTITY_NAME_FORBES_LAWN = "Forbes Lawn Spraying LLC"
 
@@ -47,24 +53,46 @@ def run_posting_command(request):
 
     request.session["imports_last_output"] = out.getvalue()
     return redirect("forbes_lawn_dashboard:imports_hub")
+
 @staff_member_required
 def run_jobber_invoices_command(request):
     if request.method != "POST":
         return redirect("forbes_lawn_dashboard:imports_hub")
 
-    csv_path = request.POST.get("csv_path", "").strip()
     dry_run = request.POST.get("dry_run") == "1"
 
+    uploaded = request.FILES.get("csv_file")
+    if not uploaded:
+        messages.error(request, "No CSV uploaded. Please choose a file.")
+        return redirect("forbes_lawn_dashboard:imports_hub")
+
     out = StringIO()
+
+    # Save upload to a real temp file Django can pass to the management command
+    tmp_path = None
     try:
+        suffix = os.path.splitext(uploaded.name)[1] or ".csv"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = tmp.name
+            for chunk in uploaded.chunks():
+                tmp.write(chunk)
+
+        # Run command
         if dry_run:
-            call_command("import_jobber_invoices", csv_path, "--dry-run", stdout=out, stderr=out)
+            call_command("import_jobber_invoices", tmp_path, "--dry-run", stdout=out, stderr=out)
         else:
-            call_command("import_jobber_invoices", csv_path, stdout=out, stderr=out)
+            call_command("import_jobber_invoices", tmp_path, stdout=out, stderr=out)
 
         messages.success(request, "Jobber invoices import ran successfully.")
     except Exception as e:
         messages.error(request, f"Jobber invoices import failed: {e}")
+    finally:
+        # Clean up temp file
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
     request.session["imports_last_output"] = out.getvalue()
     return redirect("forbes_lawn_dashboard:imports_hub")
@@ -74,22 +102,41 @@ def run_jobber_payments_command(request):
     if request.method != "POST":
         return redirect("forbes_lawn_dashboard:imports_hub")
 
-    csv_path = request.POST.get("csv_path", "").strip()
     dry_run = request.POST.get("dry_run") == "1"
 
+    uploaded = request.FILES.get("csv_file")
+    if not uploaded:
+        messages.error(request, "No CSV uploaded. Please choose a file.")
+        return redirect("forbes_lawn_dashboard:imports_hub")
+
     out = StringIO()
+    tmp_path = None
+
     try:
+        suffix = os.path.splitext(uploaded.name)[1] or ".csv"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = tmp.name
+            for chunk in uploaded.chunks():
+                tmp.write(chunk)
+
         if dry_run:
-            call_command("import_jobber_payments", csv_path, "--dry-run", stdout=out, stderr=out)
+            call_command("import_jobber_payments", tmp_path, "--dry-run", stdout=out, stderr=out)
         else:
-            call_command("import_jobber_payments", csv_path, stdout=out, stderr=out)
+            call_command("import_jobber_payments", tmp_path, stdout=out, stderr=out)
 
         messages.success(request, "Jobber payments import ran successfully.")
     except Exception as e:
         messages.error(request, f"Jobber payments import failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
     request.session["imports_last_output"] = out.getvalue()
     return redirect("forbes_lawn_dashboard:imports_hub")
+
 
 def dashboard_home(request):
     """
@@ -255,6 +302,86 @@ def imports_hub(request):
     # -------------------------
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
+            # -----------------------------
+    # POST actions (upload + run)
+    # -----------------------------
+   
+        def _save_uploaded_file(uploaded_file, prefix: str) -> str:
+            storage = FileSystemStorage(location=settings.IMPORT_UPLOAD_DIR)
+            filename = f"{prefix}_{uploaded_file.name}"
+            saved_name = storage.save(filename, uploaded_file)
+            return storage.path(saved_name)
+
+        try:
+            if action == "run_jobber_invoices":
+                dry_run = request.POST.get("jobber_invoices_dry_run") == "1"
+                f = request.FILES.get("jobber_invoices_file")
+                if not f:
+                    messages.error(request, "No invoices CSV selected.")
+                    return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
+
+                tmp_path = _save_uploaded_file(f, "jobber_invoices")
+
+                from io import StringIO
+                out = StringIO()
+                try:
+                    # Adjust command name if yours differs:
+                    call_command("import_jobber_invoices", tmp_path, dry_run=dry_run, stdout=out)
+                    request.session["imports_last_output"] = out.getvalue()
+                    messages.success(request, "Jobber invoices import completed.")
+                finally:
+                    # cleanup temp file
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+            elif action == "run_jobber_payments":
+                dry_run = request.POST.get("jobber_payments_dry_run") == "1"
+                f = request.FILES.get("jobber_payments_file")
+                if not f:
+                    messages.error(request, "No payments CSV selected.")
+                    return render(request, "forbes_lawn_dashboard/imports_hub.html", context)
+
+                tmp_path = _save_uploaded_file(f, "jobber_payments")
+
+                from io import StringIO
+                out = StringIO()
+                try:
+                    # Your known command:
+                    call_command("import_jobber_payments", tmp_path, dry_run=dry_run, stdout=out)
+                    request.session["imports_last_output"] = out.getvalue()
+                    messages.success(request, "Jobber payments import completed.")
+                finally:
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+            elif action == "run_posting":
+                # if you want to keep this unified as well
+                entity_slug = request.POST.get("entity_slug")
+                ledger_xid = request.POST.get("ledger_xid")
+                year = request.POST.get("year")
+
+                from io import StringIO
+                out = StringIO()
+                call_command(
+                    "post_forbes_lawn_2025_invoices",
+                    entity_slug=entity_slug,
+                    ledger_xid=ledger_xid,
+                    year=int(year),
+                    stdout=out,
+                )
+                request.session["imports_last_output"] = out.getvalue()
+                messages.success(request, "Posting completed.")
+
+        except Exception as e:
+            messages.error(request, f"Command failed: {e}")
+
+        # Prevent form resubmission on refresh
+        return redirect("forbes_lawn_dashboard:imports_hub")
+
 
         # helper to validate file paths from the dashboard
         def _validated_csv_path(field_name: str) -> Path:

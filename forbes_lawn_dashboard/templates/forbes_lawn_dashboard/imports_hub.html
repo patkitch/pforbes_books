@@ -64,47 +64,45 @@
     <hr style="margin: 1rem 0;" />
 
     <h3>Import Jobber invoices</h3>
-    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="run_jobber_invoices" />
+    <form method="post"
+      action="{% url 'forbes_lawn_dashboard:run_jobber_invoices_command' %}"
+      enctype="multipart/form-data">
+    {% csrf_token %}
 
-      <div class="quick-actions-grid">
-        <input
-          class="qa-button"
-          name="jobber_invoices_csv_path"
-          placeholder="C:\Users\patki\Downloads\Jobber Invoices Transaction List (4).csv"
-        />
+    <div class="quick-actions-grid">
+        <input class="qa-button" type="file" name="csv_file" accept=".csv" />
 
         <label style="display:flex; align-items:center; gap:.5rem;">
-          <input type="checkbox" name="jobber_invoices_dry_run" value="1" checked>
-          Dry-run
+            <input type="checkbox" name="dry_run" value="1" checked>
+            Dry-run
         </label>
 
-        <button class="qa-button qa-button-primary" type="submit">Run Jobber Invoices</button>
-      </div>
-    </form>
+        <button class="qa-button qa-button-primary" type="submit">
+            Run Jobber Invoices
+        </button>
+    </div>
+  </form>
+
 
     <hr style="margin: 1rem 0;" />
 
     <h3>Import Jobber payments</h3>
-    <form method="post" action="{% url 'forbes_lawn_dashboard:imports_hub' %}">
+    <form method="post"
+        action="{% url 'forbes_lawn_dashboard:run_jobber_payments_command' %}"
+        enctype="multipart/form-data">
       {% csrf_token %}
-      <input type="hidden" name="action" value="run_jobber_payments" />
 
-      <div class="quick-actions-grid">
-        <input
-          class="qa-button"
-          name="jobber_payments_csv_path"
-          placeholder="C:\Users\patki\Downloads\Jobber Payments Transaction List (4).csv"
-        />
+        <div class="quick-actions-grid">
+            <input class="qa-button" type="file" name="csv_file" accept=".csv" />
 
-        <label style="display:flex; align-items:center; gap:.5rem;">
-          <input type="checkbox" name="jobber_payments_dry_run" value="1" checked>
-          Dry-run
-        </label>
-
-        <button class="qa-button qa-button-primary" type="submit">Run Jobber Payments</button>
-      </div>
+            <label style="display:flex; align-items:center; gap:.5rem;">
+                <input type="checkbox" name="dry_run" value="1" checked>
+                Dry-run
+            </label>
+            <button class="qa-button qa-button-primary" type="submit">
+                Run Jobber Payments
+            </button>
+        </div>
     </form>
 
   </div>

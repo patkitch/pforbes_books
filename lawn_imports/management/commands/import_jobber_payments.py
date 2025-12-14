@@ -249,7 +249,13 @@ class Command(BaseCommand):
                         "jobber_paid_with": paid_with_raw,
                         "jobber_paid_through": paid_through_raw,
                         "jobber_payment_id": payout_id,
+                        "reference": " | ".join([p for p in [
+                            note,
+                            (f"{card_type} {card_last4}".strip() if (card_type or card_last4) else ""),
+                            (f"Payout {payout_id}".strip() if payout_id else ""),
+                        ] if p]),
                     },
+                    
                 )
 
                 if not created:
@@ -258,8 +264,13 @@ class Command(BaseCommand):
                     payment.jobber_type = type_raw
                     payment.jobber_paid_with = paid_with_raw
                     payment.jobber_paid_through = paid_through_raw
-                    payment.note = note
+                    #payment.note = note#
                     payment.jobber_payment_id = payout_id
+                    payment.reference = " | ".join([p for p in [
+                        note,
+                        (f"{card_type} {card_last4}".strip() if (card_type or card_last4) else ""),
+                        (f"Payout {payout_id}".strip() if payout_id else ""),
+                    ] if p])
                     payment.save()
 
                 if created:
