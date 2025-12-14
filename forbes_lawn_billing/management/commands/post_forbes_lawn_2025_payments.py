@@ -24,7 +24,7 @@ class Command(BaseCommand):
             type=str,
             required=True,
             help="Target ledger XID to post payments into "
-                 "(e.g. invoice-i-2025-0000000001-81378)",
+                 "(e.g. Invoices-I-posting invoice and payments)",
         )
         parser.add_argument(
             "--year",
