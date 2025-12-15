@@ -18,6 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 from reports.views_inventory_safe import SafeInventoryRecountView
+from django.http import FileResponse
+from pathlib import Path
+
+def download_report(request, filename):
+    path = Path("reports") / filename
+    return FileResponse(open(path, "rb"), as_attachment=True)
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/ledger/", permanent=False)),  # <— add this line
@@ -29,5 +35,5 @@ urlpatterns = [
     path("admin/reports/", include(("reports.urls_admin", "adminreports"), namespace="adminreports")),
     path("automation/", include("web_automation.urls")),
     path("forbes-lawn/", include("forbes_lawn_dashboard.urls")),
-    
+    path("downloads/<str:filename>/", download_report),
 ]

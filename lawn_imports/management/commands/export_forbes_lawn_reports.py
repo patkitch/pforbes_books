@@ -143,5 +143,12 @@ class Command(BaseCommand):
                     (inv.ar_journal_entry.je_number if inv.ar_journal_entry_id else ""),
                 ])
 
+        self.stdout.write("\n--- CSV PREVIEW (first 20 rows) ---\n")
+        with open(out_path, "r") as f:
+            for i, line in enumerate(f):
+                if i > 20:
+                    break
+        self.stdout.write(line.rstrip())
+
         self.stdout.write(self.style.SUCCESS(f"Wrote: {payments_path}"))
         self.stdout.write(self.style.SUCCESS(f"Wrote: {revenue_path}"))
