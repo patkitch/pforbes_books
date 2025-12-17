@@ -56,15 +56,20 @@ class Command(BaseCommand):
         entity = EntityModel.objects.filter(slug=entity_slug).first()
         if not entity:
             raise CommandError(f"Entity not found: slug={entity_slug}")
-        print("DEBUG: looking for ledger where field == ledger_xid:", ledger_xid)
 
-        print("DEBUG: available ledgers:", list(
-        LedgerModel.objects.filter(entity=entity).values("name", "slug", "uuid")
-        ))
+        # DEBUG (safe): show what we’re trying to match and what exists
+        self.stdout.write(f"DEBUG: entity_slug={entity_slug} -> entity_uuid={entity.uuid}")
+        self.stdout.write(f"DEBUG: looking for ledger where ledger_xid == {ledger_xid!r}")
 
+        self.stdout.write("DEBUG: available ledgers for this entity:")
+        for row in LedgerModel.objects.filter(entity=entity).values("name", "ledger_xid", "uuid"):
+            self.stdout.write(f"  - name={row['name']!r} ledger_xid={row['ledger_xid']!r} uuid={row['uuid']}")
+
+        # ✅ Correct lookup (LedgerModel uses ledger_xid, not slug/xid)
         ledger = LedgerModel.objects.filter(entity=entity, ledger_xid=ledger_xid).first()
         if not ledger:
-            raise CommandError(f"Ledger not found: entity={entity_slug} xid={ledger_xid}")
+            raise CommandError(f"Ledger not found: entity={entity_slug} ledger_xid={ledger_xid}")
+
 
         # Base query
         je_qs = JournalEntryModel.objects.filter(ledger=ledger)
