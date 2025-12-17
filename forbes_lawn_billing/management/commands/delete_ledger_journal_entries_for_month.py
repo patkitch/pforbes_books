@@ -56,6 +56,11 @@ class Command(BaseCommand):
         entity = EntityModel.objects.filter(slug=entity_slug).first()
         if not entity:
             raise CommandError(f"Entity not found: slug={entity_slug}")
+        print("DEBUG: looking for ledger where field == ledger_xid:", ledger_xid)
+
+        print("DEBUG: available ledgers:", list(
+        LedgerModel.objects.filter(entity=entity).values("name", "slug", "uuid")
+        ))
 
         ledger = LedgerModel.objects.filter(entity=entity, ledger_xid=ledger_xid).first()
         if not ledger:
