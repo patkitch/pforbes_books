@@ -89,6 +89,13 @@ class Invoice(models.Model):
     #     null=True, blank=True,
     #     on_delete=models.SET_NULL,
     # )
+    jobber_job_numbers_raw = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Raw Jobber Job #s from invoice export, e.g. '1219' or '1226,1225'."
+)
+
 
     # --- Invoice identity / dates / terms ---
 
