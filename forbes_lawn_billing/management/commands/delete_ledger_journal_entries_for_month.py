@@ -2,6 +2,7 @@
 
 from datetime import date
 from typing import Tuple
+from uuid import UUID
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
@@ -19,12 +20,33 @@ def month_range(year: int, month: int) -> Tuple[date, date]:
     return start, end
 
 
+def looks_like_uuid(value: str) -> bool:
+    try:
+        UUID(str(value))
+        return True
+    except Exception:
+        return False
+
+
 class Command(BaseCommand):
     help = "Unlock/unpost (if possible) and delete all Journal Entries in a specific Entity+Ledger for a given month."
 
     def add_arguments(self, parser):
         parser.add_argument("--entity-slug", required=True)
-        parser.add_argument("--ledger-xid", required=True)
+
+        # ✅ New: preferred stable identifier
+        parser.add_argument("--ledger-uuid", required=False, help="Ledger UUID (recommended)")
+
+        # ✅ New: human friendly option
+        parser.add_argument("--ledger-name", required=False, help="Ledger name (exact match)")
+
+        # ✅ Legacy: kept for compatibility
+        parser.add_argument(
+            "--ledger-xid",
+            required=False,
+            help="Legacy identifier. We try to match ledger_xid, then name; if it looks like UUID, we try uuid too.",
+        )
+
         parser.add_argument("--year", type=int, required=True)
         parser.add_argument("--month", type=int, required=True)
 
@@ -40,12 +62,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         entity_slug = opts["entity_slug"]
-        ledger_xid = opts["ledger_xid"]
+        ledger_uuid = opts.get("ledger_uuid")
+        ledger_name = opts.get("ledger_name")
+        ledger_xid = opts.get("ledger_xid")
+
         year = opts["year"]
         month = opts["month"]
         commit = opts["commit"]
         force = opts["force"]
         hard_unlock = opts["hard_unlock"]
+
+        if not (ledger_uuid or ledger_name or ledger_xid):
+            raise CommandError("You must provide one of: --ledger-uuid OR --ledger-name OR --ledger-xid")
 
         start, end = month_range(year, month)
 
@@ -57,19 +85,53 @@ class Command(BaseCommand):
         if not entity:
             raise CommandError(f"Entity not found: slug={entity_slug}")
 
-        # DEBUG (safe): show what we’re trying to match and what exists
+        # --- DEBUG: show ledgers in this entity (safe) ---
         self.stdout.write(f"DEBUG: entity_slug={entity_slug} -> entity_uuid={entity.uuid}")
-        self.stdout.write(f"DEBUG: looking for ledger where ledger_xid == {ledger_xid!r}")
-
         self.stdout.write("DEBUG: available ledgers for this entity:")
         for row in LedgerModel.objects.filter(entity=entity).values("name", "ledger_xid", "uuid"):
-            self.stdout.write(f"  - name={row['name']!r} ledger_xid={row['ledger_xid']!r} uuid={row['uuid']}")
+            self.stdout.write(
+                f"  - name={row['name']!r} ledger_xid={row.get('ledger_xid')!r} uuid={row['uuid']}"
+            )
 
-        # ✅ Correct lookup (LedgerModel uses ledger_xid, not slug/xid)
-        ledger = LedgerModel.objects.filter(entity=entity, ledger_xid=ledger_xid).first()
+        # --- Resolve ledger ---
+        ledger = None
+        resolve_attempts = []
+
+        # 1) UUID (preferred)
+        if ledger_uuid:
+            resolve_attempts.append(f"uuid={ledger_uuid}")
+            ledger = LedgerModel.objects.filter(entity=entity, uuid=ledger_uuid).first()
+
+        # 2) Name (exact)
+        if ledger is None and ledger_name:
+            resolve_attempts.append(f"name={ledger_name}")
+            ledger = LedgerModel.objects.filter(entity=entity, name=ledger_name).first()
+
+        # 3) Legacy --ledger-xid:
+        #    - if UUID-looking -> try uuid
+        #    - then try ledger_xid
+        #    - then try name
+        if ledger is None and ledger_xid:
+            if looks_like_uuid(ledger_xid):
+                resolve_attempts.append(f"uuid(from ledger_xid)={ledger_xid}")
+                ledger = LedgerModel.objects.filter(entity=entity, uuid=ledger_xid).first()
+
+            if ledger is None:
+                resolve_attempts.append(f"ledger_xid={ledger_xid}")
+                ledger = LedgerModel.objects.filter(entity=entity, ledger_xid=ledger_xid).first()
+
+            if ledger is None:
+                resolve_attempts.append(f"name(from ledger_xid)={ledger_xid}")
+                ledger = LedgerModel.objects.filter(entity=entity, name=ledger_xid).first()
+
         if not ledger:
-            raise CommandError(f"Ledger not found: entity={entity_slug} ledger_xid={ledger_xid}")
+            raise CommandError(
+                f"Ledger not found for entity={entity_slug}. Tried: {', '.join(resolve_attempts)}"
+            )
 
+        self.stdout.write(self.style.SUCCESS(
+            f"Resolved ledger: name={ledger.name!r} uuid={ledger.uuid} ledger_xid={getattr(ledger, 'ledger_xid', None)!r}"
+        ))
 
         # Base query
         je_qs = JournalEntryModel.objects.filter(ledger=ledger)
@@ -90,7 +152,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE(
             f"\nTarget:"
             f"\n  entity={entity_slug}"
-            f"\n  ledger_xid={ledger_xid}"
+            f"\n  ledger_uuid={ledger.uuid}"
+            f"\n  ledger_name={ledger.name}"
             f"\n  month={start}..{end} (exclusive)"
         ))
         self.stdout.write(self.style.NOTICE(f"Journal Entries found: {count}"))
@@ -170,7 +233,6 @@ class Command(BaseCommand):
                 except Exception as e:
                     failed += 1
                     self.stdout.write(self.style.ERROR(f"FAILED JE {je.uuid}: {e}"))
-                    # Keep going; we want a full report in one run.
                     continue
 
         self.stdout.write(self.style.SUCCESS(f"\nDONE. deleted={deleted} skipped={skipped} failed={failed}"))
