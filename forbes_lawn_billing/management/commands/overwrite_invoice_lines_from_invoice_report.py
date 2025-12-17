@@ -18,7 +18,7 @@ def dec(val) -> Decimal:
     """Decimal-safe conversion. Accepts '', None, '70.20', '$70.20'."""
     if val is None:
         return Decimal("0")
-    s = str(val).strip().replace("$", "")
+    s = str(val).strip().replace("$", "").replace(",", "")
     if s == "":
         return Decimal("0")
     try:
@@ -37,6 +37,11 @@ def month_range(year: int, month: int) -> tuple[date, date]:
     else:
         end = date(year, month + 1, 1)
     return start, end
+
+
+def year_range(year: int) -> tuple[date, date]:
+    """Returns [start, end_exclusive) for full year."""
+    return date(year, 1, 1), date(year + 1, 1, 1)
 
 
 def parse_jobber_date(raw: str):
@@ -59,40 +64,6 @@ def parse_jobber_date(raw: str):
     return None
 
 
-def extract_service_names(line_items_text: str) -> list[str]:
-    """
-    Extract service names from Jobber 'Line items' like:
-      '2025 Lawn Treatments (1, $58), Tip (1, $0)'
-    Correctly keeps '(1, $58)' together while parsing.
-    Removes the '(...)' chunk and ignores Tip.
-    """
-    if not line_items_text:
-        return []
-
-    # Find each "Name ( ... )" block safely, even though "(...)" contains commas.
-    blocks = re.findall(r"([^()]+)\([^)]*\)", line_items_text)
-
-    names = []
-    for b in blocks:
-        name = b.strip().rstrip(",").strip()
-        if not name:
-            continue
-        if "tip" in name.lower():
-            continue
-        names.append(name)
-
-    # de-dup preserving order
-    seen = set()
-    out = []
-    for n in names:
-        k = n.lower()
-        if k in seen:
-            continue
-        seen.add(k)
-        out.append(n)
-    return out
-
-
 def normalize_service_name(name: str) -> str:
     """
     Normalize Jobber/DB service names so they match ItemModel.name reliably.
@@ -113,6 +84,55 @@ def normalize_service_name(name: str) -> str:
     s = re.sub(r"\s*-\s*$", "", s)
 
     return s.strip()
+
+
+_LINE_ITEM_PATTERN = re.compile(
+    r"""
+    (?P<name>[^()]+?)        # text up to '(' (no parentheses)
+    \(\s*
+    (?P<qty>[\d.]+)          # quantity
+    \s*,\s*\$
+    (?P<rate>[\d.]+)         # rate
+    \s*\)
+    """,
+    re.VERBOSE,
+)
+
+
+def parse_line_items(text: str) -> list[dict]:
+    """
+    Parse Jobber 'Line items' like:
+      "2025 Lawn Treatments (1, $55), AER/S Fall Aeration... (1, $55), Tip (1, $0)"
+
+    Returns list of:
+      {"name": str, "qty": Decimal, "rate": Decimal}
+
+    Rules:
+      - Normalizes names (comma/space/dash cleanup)
+      - Ignores lines with rate == 0.00 (including Tip $0)
+      - Keeps Tip if it has a nonzero rate (so you can capture missing tips)
+    """
+    items: list[dict] = []
+    if not text:
+        return items
+
+    for m in _LINE_ITEM_PATTERN.finditer(text):
+        raw_name = m.group("name")
+        name = normalize_service_name(raw_name)
+
+        qty = Decimal(m.group("qty"))
+        rate = Decimal(m.group("rate"))
+
+        if rate == Decimal("0") or rate == Decimal("0.00"):
+            continue
+
+        # Normalize any line that contains 'tip' into 'Tip'
+        if "tip" in name.lower():
+            name = "Tip"
+
+        items.append({"name": name or "Service", "qty": qty, "rate": rate})
+
+    return items
 
 
 # ----------------------------
@@ -138,26 +158,24 @@ class ReportRow:
 class Command(BaseCommand):
     help = (
         "Backfill Job #s and overwrite invoice lines from Jobber Invoice report.\n"
-        "Amount comes from Pre-tax total ($).\n"
-        "Classification (ItemModel FK) comes from the first service name in Line items (Tip ignored).\n"
-        "If multiple services exist, uses a 'Mixed Service - Taxable' ItemModel."
+        "Creates 1+ InvoiceLine rows by parsing Jobber 'Line items' (preserves splits).\n"
+        "Normalizes service names so they match ItemModel.name.\n"
+        "Optionally unpost/repost invoices after overwriting lines.\n"
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--csv", required=True, help="Path to Jobber INVOICE report CSV.")
         parser.add_argument("--year", type=int, required=True)
-        parser.add_argument("--month", type=int, required=True)
+
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument("--month", type=int, help="Month 1..12")
+        group.add_argument("--all-year", action="store_true", help="Process the full year.")
 
         parser.add_argument("--commit", action="store_true", help="Actually write changes. Default is dry-run.")
         parser.add_argument("--repost", action="store_true", help="Unpost/repost invoices after overwriting lines.")
         parser.add_argument("--unpost-only", action="store_true", help="Only unpost matching invoices; do not overwrite lines.")
-        parser.add_argument("--overwrite-only", action="store_true", help="Overwrite lines but do not repost (useful if you unpost manually first).")
+        parser.add_argument("--overwrite-only", action="store_true", help="Overwrite lines but do not repost.")
 
-        parser.add_argument(
-            "--mixed-item-name",
-            default="Mixed Service - Taxable",
-            help="ItemModel name to use when multiple services exist in Line items."
-        )
         parser.add_argument("--skip-paid", action="store_true", help="Skip invoices marked paid_in_full.")
 
     def handle(self, *args, **opts):
@@ -166,14 +184,22 @@ class Command(BaseCommand):
             raise CommandError(f"CSV not found: {csv_path}")
 
         year = opts["year"]
-        month = opts["month"]
-        start, end = month_range(year, month)
+        month = opts.get("month")
+        all_year = opts.get("all_year", False)
+
+        if all_year:
+            start, end = year_range(year)
+            scope_label = f"{year}-FULL"
+        else:
+            if not month:
+                raise CommandError("You must provide --month OR --all-year.")
+            start, end = month_range(year, month)
+            scope_label = f"{year}-{month:02d}"
 
         commit = opts["commit"]
         repost = opts["repost"]
         unpost_only = opts["unpost_only"]
         overwrite_only = opts["overwrite_only"]
-        mixed_item_name = normalize_service_name(opts["mixed_item_name"])
         skip_paid = opts["skip_paid"]
 
         if unpost_only and overwrite_only:
@@ -192,12 +218,12 @@ class Command(BaseCommand):
         skipped = 0
         missing = 0
 
-        invoices_qs = Invoice.objects.filter(
-            invoice_date__gte=start,
-            invoice_date__lt=end
-        ).order_by("invoice_date", "invoice_number")
+        invoices_qs = (
+            Invoice.objects.filter(invoice_date__gte=start, invoice_date__lt=end)
+            .order_by("invoice_date", "invoice_number")
+        )
 
-        self.stdout.write(self.style.NOTICE(f"\nMonth scope: {start} to {end} (exclusive)"))
+        self.stdout.write(self.style.NOTICE(f"\nScope: {scope_label}  ({start} to {end} exclusive)"))
         self.stdout.write(self.style.NOTICE(f"DB invoices in scope: {invoices_qs.count()}"))
         self.stdout.write(self.style.NOTICE(f"CSV rows in scope: {len(rows)}"))
         self.stdout.write(self.style.NOTICE(f"MODE: {'COMMIT' if commit else 'DRY RUN'}\n"))
@@ -236,58 +262,60 @@ class Command(BaseCommand):
                 if repost and not overwrite_only:
                     self._maybe_unpost(inv, commit=commit)
 
-                # Decide which ItemModel to attach
-                service_names = [normalize_service_name(n) for n in extract_service_names(row.line_items_text)]
-                service_names = [n for n in service_names if n]
+                parsed_items = parse_line_items(row.line_items_text)
 
-                if len(service_names) == 0:
-                    chosen_name = mixed_item_name
-                    self.stdout.write(self.style.WARNING(
-                        f"[{inv_no}] No service names found in Line items; using mixed item {mixed_item_name!r}"
+                # Fallback: if Jobber didn't parse into blocks, use a single line using pre-tax total
+                if not parsed_items:
+                    fallback_name = normalize_service_name(row.line_items_text) or "Service"
+                    parsed_items = [{"name": fallback_name, "qty": Decimal("1.0"), "rate": row.pre_tax_total}]
+
+                # Resolve item models per line
+                resolved = []
+                for li in parsed_items:
+                    name = normalize_service_name(li["name"])
+                    item_model = (
+                        ItemModel.objects.filter(entity=inv.entity, name__iexact=name).first()
+                        or ItemModel.objects.filter(entity=inv.entity, name__icontains=name).first()
+                    )
+                    resolved.append((name, li["qty"], li["rate"], item_model))
+
+                # Debug summary
+                names_only = [n for (n, _, _, _) in resolved]
+                if len(names_only) > 1:
+                    self.stdout.write(self.style.NOTICE(
+                        f"[{inv_no}] split -> {names_only}  (sum={sum((r for (_, _, r, _) in resolved), Decimal('0.00'))})"
                     ))
-                elif len(service_names) == 1:
-                    chosen_name = service_names[0]
-                else:
-                    chosen_name = mixed_item_name
-                    self.stdout.write(self.style.WARNING(
-                        f"[{inv_no}] Multiple services {service_names}; using mixed item {mixed_item_name!r}"
-                    ))
-
-                chosen_name = normalize_service_name(chosen_name)
-
-                # Find ItemModel: exact match first, then a soft contains fallback
-                item_model = (
-                    ItemModel.objects.filter(entity=inv.entity, name__iexact=chosen_name).first()
-                    or ItemModel.objects.filter(entity=inv.entity, name__icontains=chosen_name).first()
-                )
-
-                if item_model is None:
-                    self.stdout.write(self.style.WARNING(
-                        f"[{inv_no}] ItemModel not found for {chosen_name!r}. Leaving item_model NULL (posting may skip)."
-                    ))
-
-                pre_tax = row.pre_tax_total
-                self.stdout.write(f"[{inv_no}] overwrite lines -> '{chosen_name}' @ {pre_tax}")
 
                 if commit:
                     InvoiceLine.objects.filter(invoice=inv).delete()
 
-                    line = InvoiceLine(
-                        invoice=inv,
-                        line_number=1,
-                        item_model=item_model,
-                        item_name=chosen_name,
-                        description=chosen_name,  # keep clean (no confusing overwrite notes)
-                        quantity=Decimal("1"),
-                        rate=pre_tax,
-                        taxable=True,  # keep True for now; your ItemModel mapping controls buckets
-                    )
-                    line.recompute_amount()
-                    line.save()
+                    line_number = 1
+                    for (name, qty, rate, item_model) in resolved:
+                        if item_model is None:
+                            self.stdout.write(self.style.WARNING(
+                                f"[{inv_no}] ItemModel not found for {name!r}. "
+                                f"Line will remain unclassified (posting may skip it)."
+                            ))
 
-                    if hasattr(inv, "recompute_totals"):
-                        inv.recompute_totals()
-                        inv.save()
+                        line = InvoiceLine(
+                            invoice=inv,
+                            line_number=line_number,
+                            item_model=item_model,
+                            item_name=name,
+                            description=name,   # clean description (your preference)
+                            quantity=qty,
+                            rate=rate,
+                            taxable=True,       # retained; posting uses item_model + earnings_account, not this flag
+                        )
+                        line.recompute_amount()
+                        line.save()
+                        line_number += 1
+
+                    # IMPORTANT: keep Jobber totals authoritative (matches your importer philosophy)
+                    inv.subtotal = row.pre_tax_total
+                    inv.tax_amount = row.tax_amount
+                    inv.total = row.total
+                    inv.save(update_fields=["subtotal", "tax_amount", "total"])
 
                 if repost and not overwrite_only:
                     self._maybe_post(inv, commit=commit)
