@@ -1,9 +1,13 @@
-﻿import csv
+﻿from __future__ import annotations
+
+import csv
+import os
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import Tuple
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
@@ -27,7 +31,7 @@ def dec(val) -> Decimal:
         raise CommandError(f"Cannot parse Decimal from {val!r}") from e
 
 
-def month_range(year: int, month: int) -> tuple[date, date]:
+def month_range(year: int, month: int) -> Tuple[date, date]:
     """Returns [start, end_exclusive) range."""
     if month < 1 or month > 12:
         raise CommandError("month must be 1..12")
@@ -39,7 +43,7 @@ def month_range(year: int, month: int) -> tuple[date, date]:
     return start, end
 
 
-def year_range(year: int) -> tuple[date, date]:
+def year_range(year: int) -> Tuple[date, date]:
     """Returns [start, end_exclusive) for full year."""
     return date(year, 1, 1), date(year + 1, 1, 1)
 
@@ -161,10 +165,18 @@ class Command(BaseCommand):
         "Creates 1+ InvoiceLine rows by parsing Jobber 'Line items' (preserves splits).\n"
         "Normalizes service names so they match ItemModel.name.\n"
         "Optionally unpost/repost invoices after overwriting lines.\n"
+        "\n"
+        "CSV source options:\n"
+        "  - --csv /path/to/report.csv\n"
+        "  - --spaces-key 'Invoices_Report_....csv' (private OK; downloaded via DO Spaces creds)\n"
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--csv", required=True, help="Path to Jobber INVOICE report CSV.")
+        # ✅ Source: local path OR DO Spaces object key
+        src = parser.add_mutually_exclusive_group(required=True)
+        src.add_argument("--csv", help="Local path to Jobber INVOICE report CSV.")
+        src.add_argument("--spaces-key", help="Spaces object key in DO Spaces bucket (private OK).")
+
         parser.add_argument("--year", type=int, required=True)
 
         group = parser.add_mutually_exclusive_group(required=True)
@@ -175,13 +187,19 @@ class Command(BaseCommand):
         parser.add_argument("--repost", action="store_true", help="Unpost/repost invoices after overwriting lines.")
         parser.add_argument("--unpost-only", action="store_true", help="Only unpost matching invoices; do not overwrite lines.")
         parser.add_argument("--overwrite-only", action="store_true", help="Overwrite lines but do not repost.")
-
         parser.add_argument("--skip-paid", action="store_true", help="Skip invoices marked paid_in_full.")
 
     def handle(self, *args, **opts):
-        csv_path = Path(opts["csv"])
-        if not csv_path.exists():
-            raise CommandError(f"CSV not found: {csv_path}")
+        csv_arg = opts.get("csv")
+        spaces_key = opts.get("spaces_key")
+
+        # Resolve CSV source
+        if spaces_key:
+            csv_path = self._download_from_spaces(spaces_key)
+        else:
+            csv_path = Path(csv_arg)
+            if not csv_path.exists():
+                raise CommandError(f"CSV not found: {csv_path}")
 
         year = opts["year"]
         month = opts.get("month")
@@ -224,6 +242,7 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(self.style.NOTICE(f"\nScope: {scope_label}  ({start} to {end} exclusive)"))
+        self.stdout.write(self.style.NOTICE(f"CSV source: {csv_path}"))
         self.stdout.write(self.style.NOTICE(f"DB invoices in scope: {invoices_qs.count()}"))
         self.stdout.write(self.style.NOTICE(f"CSV rows in scope: {len(rows)}"))
         self.stdout.write(self.style.NOTICE(f"MODE: {'COMMIT' if commit else 'DRY RUN'}\n"))
@@ -327,6 +346,62 @@ class Command(BaseCommand):
         ))
         if not commit:
             self.stdout.write(self.style.WARNING("Dry-run mode: no changes were written."))
+
+    def _download_from_spaces(self, key: str) -> Path:
+        """
+        Download a private object from DigitalOcean Spaces to /tmp and return local Path.
+        Requires env vars:
+          DO_SPACES_KEY, DO_SPACES_SECRET, DO_SPACES_BUCKET, DO_SPACES_ENDPOINT
+          (optional) DO_SPACES_REGION
+        """
+        try:
+            import boto3
+        except ImportError as e:
+            raise CommandError("boto3 is required to download from Spaces. Add it to requirements.") from e
+
+        bucket = os.environ.get("DO_SPACES_BUCKET")
+        endpoint = os.environ.get("DO_SPACES_ENDPOINT")
+        region = os.environ.get("DO_SPACES_REGION", "nyc3")
+        access_key = os.environ.get("DO_SPACES_KEY")
+        secret_key = os.environ.get("DO_SPACES_SECRET")
+
+        missing = [n for n, v in {
+            "DO_SPACES_BUCKET": bucket,
+            "DO_SPACES_ENDPOINT": endpoint,
+            "DO_SPACES_KEY": access_key,
+            "DO_SPACES_SECRET": secret_key,
+        }.items() if not v]
+        if missing:
+            raise CommandError(f"Missing env var(s) for Spaces: {', '.join(missing)}")
+
+        s3 = boto3.client(
+            "s3",
+            region_name=region,
+            endpoint_url=f"https://{endpoint}",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+        )
+
+        # Use a safe-ish local filename. (Keep parentheses; Spaces key is exact.)
+        safe_name = key.split("/")[-1].replace(" ", "_")
+        dest = Path("/tmp") / safe_name
+
+        self.stdout.write(self.style.NOTICE(
+            f"Downloading from Spaces: bucket={bucket} key={key!r} -> {dest}"
+        ))
+
+        try:
+            s3.download_file(bucket, key, str(dest))
+        except Exception as e:
+            raise CommandError(
+                f"Failed to download from Spaces. bucket={bucket} key={key!r}. "
+                f"Confirm the object exists and permissions are Read."
+            ) from e
+
+        if not dest.exists():
+            raise CommandError(f"Download failed: file not found after download: {dest}")
+
+        return dest
 
     def _load_invoice_report(self, csv_path: Path, start: date, end: date) -> list[ReportRow]:
         rows: list[ReportRow] = []
