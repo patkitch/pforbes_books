@@ -5,3 +5,4 @@ python-dateutil
 django-environ
 whitenoise
 django-ledger>=0.6
+requests
