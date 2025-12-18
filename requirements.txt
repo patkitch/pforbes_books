@@ -7,3 +7,4 @@ whitenoise
 django-ledger>=0.6
 requests
 python-dotenv
+gunicorn
