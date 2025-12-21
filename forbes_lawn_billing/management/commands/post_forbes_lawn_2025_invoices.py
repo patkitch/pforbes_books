@@ -5,7 +5,7 @@ from django.db import transaction
 
 from django_ledger.models import EntityModel, LedgerModel
 
-from forbes_lawn_billing.models import Invoice, InvoiceStatus, InvoicePayment
+from forbes_lawn_billing.models import Invoice, InvoiceStatus, PaymentRecord
 from forbes_lawn_billing.ledger_posting import (
     post_open_invoice_to_ledger,
     post_invoice_payment_to_ledger,
