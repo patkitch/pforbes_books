@@ -300,3 +300,60 @@ class JobberPayoutPayment(models.Model):
             )
         ]
 
+class JobberPayoutTransaction(JobberSyncBase):
+    """
+    Jobber truth for payout balanceTransactions rows.
+    Money fields here are integer cents (as proven by Jobber response).
+    """
+    entity = models.ForeignKey(
+        EntityModel,
+        on_delete=models.PROTECT,
+        related_name="jobber_payout_transactions",
+    )
+
+    payout = models.ForeignKey(
+        JobberPayout,
+        on_delete=models.CASCADE,
+        related_name="transactions",
+    )
+
+    # This is balanceTransactions.nodes[].id (EncodedId)
+    balance_transaction_id = models.CharField(max_length=255)
+
+    # e.g. PAYMENT, FEE, REFUND, ADJUSTMENT (whatever Jobber returns)
+    txn_type = models.CharField(max_length=50)
+
+    gross_cents = models.IntegerField(null=True, blank=True)
+    fee_cents = models.IntegerField(null=True, blank=True)
+    net_cents = models.IntegerField(null=True, blank=True)
+
+    created = models.DateTimeField(null=True, blank=True)
+
+    # tipAmount appears on PaymentBalanceTransaction; treat as cents unless proven otherwise
+    tip_cents = models.IntegerField(null=True, blank=True)
+
+    # Link to Jobber PaymentRecord when this txn is a PaymentBalanceTransaction
+    payment = models.ForeignKey(
+        "JobberPayment",
+        on_delete=models.PROTECT,
+        related_name="payout_transactions",
+        null=True,
+        blank=True,
+    )
+    payment_record_id = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["entity", "balance_transaction_id"],
+                name="uq_jobber_payout_txn_entity_balance_txn_id",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["entity", "txn_type"], name="ix_jobber_payout_txn_type"),
+            models.Index(fields=["created"], name="ix_jobber_payout_txn_created"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.txn_type} {self.balance_transaction_id}"
+
