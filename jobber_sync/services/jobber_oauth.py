@@ -47,7 +47,7 @@ def verify_state(state: str) -> bool:
 
 def build_authorize_url(*, state: str) -> str:
     base = getattr(settings, "JOBBER_OAUTH_AUTHORIZE_URL", "https://api.getjobber.com/api/oauth/authorize")
-    redirect_uri = getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "")
+    redirect_uri = getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "https://pforbes-books-uuad7.ondigitalocean.app/jobber/oauth/callback/")
     if not redirect_uri:
         raise RuntimeError("JOBBER_OAUTH_REDIRECT_URI missing in settings/env.")
 
