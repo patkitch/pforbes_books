@@ -71,9 +71,18 @@ def _basic_auth_header() -> str:
     return f"Basic {token}"
 
 
-def exchange_code_for_token(code: str) -> TokenResult:
+def exchange_code_for_token(code: str) -> dict:
+    """
+    Exchange OAuth authorization code for access/refresh tokens.
+    Returns parsed JSON dict from Jobber.
+    """
+    if not code:
+        raise RuntimeError("Missing OAuth code parameter.")
+
     token_url = getattr(settings, "JOBBER_OAUTH_TOKEN_URL", "https://api.getjobber.com/api/oauth/token")
-    redirect_uri = getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "")
+    redirect_uri = (getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "") or "").strip()
+    if not redirect_uri:
+        raise RuntimeError("JOBBER_OAUTH_REDIRECT_URI missing in settings/env.")
 
     data = {
         "grant_type": "authorization_code",
@@ -86,33 +95,17 @@ def exchange_code_for_token(code: str) -> TokenResult:
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    from django.conf import settings
-
-    cid = getattr(settings, "JOBBER_CLIENT_ID", "")
-    csec = getattr(settings, "JOBBER_CLIENT_SECRET", "")
-    redir = getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "")
-
-    print("JOBBER_CLIENT_ID:", cid)
-    print("JOBBER_CLIENT_SECRET_LEN:", len(csec))
-    print("JOBBER_CLIENT_SECRET_LAST4:", csec[-4:] if csec else "MISSING")
-    print("JOBBER_OAUTH_REDIRECT_URI:", redir)
-
 
     r = requests.post(token_url, data=data, headers=headers, timeout=30)
-    # helpful error body
     if r.status_code >= 400:
-        raise RuntimeError(f"Jobber token exchange failed. HTTP {r.status_code}. Body: {r.text}")
+        raise RuntimeError(
+            f"Jobber token exchange failed. HTTP {r.status_code}. Body: {r.text}"
+        )
 
-    body = r.json()
-    expires_in = int(body.get("expires_in", 3600))
-    expires_at = timezone.now() + timedelta(seconds=expires_in)
-
-    return TokenResult(
-        access_token=body["access_token"],
-        refresh_token=body.get("refresh_token"),
-        token_type=body.get("token_type", "Bearer"),
-        expires_at=expires_at,
-    )
+    try:
+        return r.json()
+    except Exception:
+        raise RuntimeError(f"Jobber token exchange returned non-JSON: {r.text}")
 
 def refresh_access_token() -> JobberToken:
     token = JobberToken.objects.first()
