@@ -61,12 +61,14 @@ def build_authorize_url(*, state: str) -> str:
 
 
 def _basic_auth_header() -> str:
-    cid = getattr(settings, "JOBBER_CLIENT_ID", "")
-    csec = getattr(settings, "JOBBER_CLIENT_SECRET", "")
-    if not cid or not csec:
-        raise RuntimeError("JOBBER_CLIENT_ID / JOBBER_CLIENT_SECRET missing in settings/env.")
-    raw = f"{cid}:{csec}".encode("utf-8")
-    return "Basic " + base64.b64encode(raw).decode("utf-8")
+    client_id = (getattr(settings, "JOBBER_CLIENT_ID", "") or "").strip()
+    client_secret = (getattr(settings, "JOBBER_CLIENT_SECRET", "") or "").strip()
+
+    if not client_id or not client_secret:
+        raise RuntimeError("Missing JOBBER_CLIENT_ID or JOBBER_CLIENT_SECRET in settings/env.")
+
+    token = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
+    return f"Basic {token}"
 
 
 def exchange_code_for_token(code: str) -> TokenResult:
@@ -84,6 +86,17 @@ def exchange_code_for_token(code: str) -> TokenResult:
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
+    from django.conf import settings
+
+    cid = getattr(settings, "JOBBER_CLIENT_ID", "")
+    csec = getattr(settings, "JOBBER_CLIENT_SECRET", "")
+    redir = getattr(settings, "JOBBER_OAUTH_REDIRECT_URI", "")
+
+    print("JOBBER_CLIENT_ID:", cid)
+    print("JOBBER_CLIENT_SECRET_LEN:", len(csec))
+    print("JOBBER_CLIENT_SECRET_LAST4:", csec[-4:] if csec else "MISSING")
+    print("JOBBER_OAUTH_REDIRECT_URI:", redir)
+
 
     r = requests.post(token_url, data=data, headers=headers, timeout=30)
     # helpful error body
