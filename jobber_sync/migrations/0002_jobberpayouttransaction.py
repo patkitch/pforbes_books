@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         
-        
+        ('jobber_sync', '0001_initial'),
     ]
 
     operations = [
