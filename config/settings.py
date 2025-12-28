@@ -13,6 +13,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
+
 # Initialize environment variables
 env = environ.Env(
     DEBUG=(bool, True)
@@ -30,6 +31,21 @@ SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
 DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost","127.0.0.1", "0.0.0.0",]
 CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
+
+
+import os
+
+JOBBER_API_URL = os.getenv("JOBBER_API_URL", "https://api.getjobber.com/api/graphql")
+JOBBER_ACCESS_TOKEN = os.getenv("JOBBER_ACCESS_TOKEN", "")
+JOBBER_API_VERSION = os.getenv("JOBBER_API_VERSION", "2025-04-16")
+JOBBER_CLIENT_ID = "7e67e5f1-15c6-43ad-a75f-44ab5e0f29ce"
+JOBBER_CLIENT_SECRET ="86c6c27da56b610c94b04c9070305b7fe008ce0a46bf94cbfd9d14d351860d4a"
+JJOBBER_OAUTH_REDIRECT_URI = os.getenv(
+    "JOBBER_OAUTH_REDIRECT_URI",
+    "https://pforbes-books-uuad7.ondigitalocean.app/jobber/oauth/callback/"
+)
+JOBBER_OAUTH_TOKEN_URL = os.getenv("JOBBER_OAUTH_TOKEN_URL", "https://api.getjobber.com/api/oauth/token")
+JOBBER_OAUTH_AUTHORIZE_URL = os.getenv("JOBBER_OAUTH_AUTHORIZE_URL", "https://api.getjobber.com/api/oauth/authorize")
 
 
 # Application definition

@@ -36,4 +36,5 @@ urlpatterns = [
     path("automation/", include("web_automation.urls")),
     path("forbes-lawn/", include("forbes_lawn_dashboard.urls")),
     path("downloads/<str:filename>/", download_report),
+    path("jobber/oauth/", include("jobber_sync.urls")),
 ]

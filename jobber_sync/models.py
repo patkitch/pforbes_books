@@ -8,6 +8,28 @@ from django.utils import timezone
 # We do NOT use Django Ledger CustomerModel or ItemModel.
 from django_ledger.models.entity import EntityModel
 
+class JobberToken(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    access_token = models.TextField()
+    refresh_token = models.TextField()
+
+    token_type = models.CharField(max_length=50, blank=True, default="Bearer")
+    expires_in = models.IntegerField(null=True, blank=True)  # seconds (optional)
+
+    obtained_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"JobberToken({self.created_at:%Y-%m-%d %H:%M})"
+    @property
+    def is_expired(self) -> bool:
+        """
+        Treat token as expired if expires_at is missing OR within a 60s buffer.
+        """
+        if not getattr(self, "expires_at", None):
+            return True
+        return self.expires_at <= (timezone.now() + timezone.timedelta(seconds=60))
+
 
 class JobberSyncBase(models.Model):
     """
