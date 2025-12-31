@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('django_ledger', '0028_adminreports'),
+        
         ('forbes_lawn_accounting', '0002_serviceitem'),
     ]
 
