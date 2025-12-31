@@ -1,4 +1,4 @@
-﻿# lawn_imports/utils.py
+# lawn_imports/utils.py
 
 from typing import Optional, Tuple
 

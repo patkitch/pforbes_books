@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect
 from .forms import NewProductForm, ProductChoiceForm, SEOProductLookupForm
 from .suggestions import generate_product_suggestions 
 from django.contrib import messages

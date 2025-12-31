@@ -1,4 +1,4 @@
-﻿# jobber_sync/services/jobber_client.py
+# jobber_sync/services/jobber_client.py
 from __future__ import annotations
 
 import json

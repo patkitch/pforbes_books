@@ -1,4 +1,4 @@
-﻿# forbes_lawn_billing/admin.py
+# forbes_lawn_billing/admin.py
 
 from django.contrib import admin
 from .models import Invoice, InvoiceLine, InvoicePayment, InvoiceAttachment

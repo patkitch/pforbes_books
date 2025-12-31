@@ -1,4 +1,4 @@
-﻿# lawn_imports/management/commands/import_jobber_invoices.py
+# lawn_imports/management/commands/import_jobber_invoices.py
 
 import csv
 import re

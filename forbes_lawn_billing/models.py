@@ -1,4 +1,4 @@
-﻿# forbes_lawn_billing/models.py
+# forbes_lawn_billing/models.py
 
 from decimal import Decimal
 from django.db import models

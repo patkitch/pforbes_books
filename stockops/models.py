@@ -1,4 +1,4 @@
-﻿from django.db import models, transaction
+from django.db import models, transaction
 from django.utils.text import slugify
 from django.utils.timezone import now
 from decimal import Decimal

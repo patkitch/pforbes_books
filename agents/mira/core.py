@@ -1,4 +1,4 @@
-﻿# agents/mira/core.py
+# agents/mira/core.py
 
 from typing import Dict, Any
 

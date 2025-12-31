@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 
 # Admin-only proxy model (no DB table). Shows in Admin under "Django Ledger".
 class AdminReports(models.Model):

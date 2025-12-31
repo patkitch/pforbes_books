@@ -1,4 +1,4 @@
-﻿# jobber_sync/management/commands/jobber_smoke_test.py
+# jobber_sync/management/commands/jobber_smoke_test.py
 from __future__ import annotations
 
 import json

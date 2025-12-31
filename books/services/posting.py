@@ -1,4 +1,4 @@
-﻿# books/services/posting.py
+# books/services/posting.py
 from decimal import Decimal
 from django.utils import timezone
 

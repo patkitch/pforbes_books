@@ -1,4 +1,4 @@
-﻿from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError
 from django_ledger.models import EntityModel
 
 from reports.inventory_sync import (

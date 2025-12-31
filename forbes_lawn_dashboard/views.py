@@ -1,4 +1,4 @@
-﻿# forbes_lawn_dashboard/views.py
+# forbes_lawn_dashboard/views.py
 
 from datetime import date
 from decimal import Decimal

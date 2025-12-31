@@ -1,4 +1,4 @@
-﻿from typing import Dict, List
+from typing import Dict, List
 
 
 def _clean_text(value: str) -> str:

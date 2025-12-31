@@ -1,4 +1,4 @@
-﻿# stockops/services.py
+# stockops/services.py
 from decimal import Decimal
 from django_ledger.models.items import ItemModel
 from django_ledger.models.entity import EntityModel

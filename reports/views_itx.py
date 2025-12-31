@@ -1,4 +1,4 @@
-﻿# reports/views_itx.py
+# reports/views_itx.py
 from decimal import Decimal
 from django.http import HttpResponse
 from django.utils.encoding import smart_str

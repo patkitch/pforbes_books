@@ -1,4 +1,4 @@
-﻿from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from automation_logs.models import AgentRun, AgentEvent

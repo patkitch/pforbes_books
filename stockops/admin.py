@@ -1,4 +1,4 @@
-﻿from decimal import Decimal
+from decimal import Decimal
 from os import name
 from xml.sax.expatreader import ExpatLocator
 from django.contrib import admin

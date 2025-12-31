@@ -1,4 +1,4 @@
-﻿from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 

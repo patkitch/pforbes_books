@@ -1,4 +1,4 @@
-﻿# reports/views.py
+# reports/views.py
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.http import FileResponse, Http404

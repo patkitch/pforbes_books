@@ -1,4 +1,4 @@
-﻿# jobber_sync/graphql/queries.py
+# jobber_sync/graphql/queries.py
 
 INVOICES_WINDOW = """
 query InvoicesWindow(

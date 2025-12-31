@@ -1,4 +1,4 @@
-﻿# forbes_lawn_billing/management/commands/post_forbes_lawn_2025_invoices.py
+# forbes_lawn_billing/management/commands/post_forbes_lawn_2025_invoices.py
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction

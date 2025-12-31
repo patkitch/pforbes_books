@@ -1,4 +1,4 @@
-﻿from django_ledger.models import ItemTransactionModel
+from django_ledger.models import ItemTransactionModel
 
 qs = ItemTransactionModel.objects.filter(
     po_item_status=ItemTransactionModel.STATUS_RECEIVED

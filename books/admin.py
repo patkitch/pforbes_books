@@ -1,4 +1,4 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 from django_ledger.models import ItemModel, BillModel, InvoiceModel, PurchaseOrderModel, ItemTransactionModel, UnitOfMeasureModel, EntityUnitModel,ReceiptModel,TransactionModel, StagedTransactionModel, CustomerModel, VendorModel
 from decimal import Decimal, InvalidOperation

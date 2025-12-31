@@ -1,5 +1,3 @@
-﻿
-
 from email.mime import base
 from pathlib import Path
 import os
@@ -7,11 +5,11 @@ import environ
 
 import sys
 from django.core.management.utils import get_random_secret_key
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
 
 
 # Initialize environment variables
@@ -29,23 +27,54 @@ DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_B
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
 DEBUG = env.bool("DEBUG", default=True)
-ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost","127.0.0.1", "0.0.0.0",]
+ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost", "127.0.0.1", "0.0.0.0"]
 CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
 
 
-import os
+# ============================================================================
+# JOBBER API CONFIGURATION
+# ============================================================================
+# All Jobber credentials are read from environment variables for security.
+# Set these in DigitalOcean App Platform > Settings > App-Level Environment Variables
+# or in your local .env file for development.
 
-JOBBER_API_URL = os.getenv("JOBBER_API_URL", "https://api.getjobber.com/api/graphql")
-JOBBER_ACCESS_TOKEN = os.getenv("JOBBER_ACCESS_TOKEN", "")
-JOBBER_API_VERSION = os.getenv("JOBBER_API_VERSION", "2025-04-16")
-JOBBER_CLIENT_ID = "7e67e5f1-15c6-43ad-a75f-44ab5e0f29ce"
-JOBBER_CLIENT_SECRET ="86c6c27da56b610c94b04c9070305b7fe008ce0a46bf94cbfd9d14d351860d4a"
-JJOBBER_OAUTH_REDIRECT_URI = os.getenv(
+JOBBER_API_URL = os.getenv(
+    "JOBBER_API_URL", 
+    "https://api.getjobber.com/api/graphql"
+)
+
+JOBBER_API_VERSION = os.getenv(
+    "JOBBER_API_VERSION", 
+    "2025-04-16"
+)
+
+# OAuth credentials - MUST be set in environment variables
+JOBBER_CLIENT_ID = os.getenv("JOBBER_CLIENT_ID", "")
+JOBBER_CLIENT_SECRET = os.getenv("JOBBER_CLIENT_SECRET", "")
+
+# OAuth URLs
+JOBBER_OAUTH_REDIRECT_URI = os.getenv(
     "JOBBER_OAUTH_REDIRECT_URI",
     "https://pforbes-books-uuad7.ondigitalocean.app/jobber/oauth/callback/"
 )
-JOBBER_OAUTH_TOKEN_URL = os.getenv("JOBBER_OAUTH_TOKEN_URL", "https://api.getjobber.com/api/oauth/token")
-JOBBER_OAUTH_AUTHORIZE_URL = os.getenv("JOBBER_OAUTH_AUTHORIZE_URL", "https://api.getjobber.com/api/oauth/authorize")
+
+JOBBER_OAUTH_TOKEN_URL = os.getenv(
+    "JOBBER_OAUTH_TOKEN_URL", 
+    "https://api.getjobber.com/api/oauth/token"
+)
+
+JOBBER_OAUTH_AUTHORIZE_URL = os.getenv(
+    "JOBBER_OAUTH_AUTHORIZE_URL", 
+    "https://api.getjobber.com/api/oauth/authorize"
+)
+
+# Access token - obtained through OAuth flow and stored in database (JobberToken model)
+# This can be set temporarily for testing, but should be managed through OAuth in production
+JOBBER_ACCESS_TOKEN = os.getenv("JOBBER_ACCESS_TOKEN", "")
+
+# ============================================================================
+# END JOBBER CONFIGURATION
+# ============================================================================
 
 
 # Application definition
@@ -68,9 +97,7 @@ INSTALLED_APPS = [
     "forbes_lawn_dashboard",
     "forbes_lawn_billing",
     "jobber_sync",
- 
-  
-    
+    "forbes_lawn_accounting",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -85,7 +112,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -119,7 +145,7 @@ if db_url:
     }
 else:
     DATABASES = {
-            "default": {
+        "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": env("DB_NAME", default="pforbes_books"),
             "USER": env("DB_USER", default="pat"),
@@ -164,13 +190,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-
 STATIC_URL = 'static/'
+
 if "runserver" in sys.argv:
     from django.core.management.commands.runserver import Command as runserver
     runserver.default_port = "8003"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-

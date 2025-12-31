@@ -1,4 +1,4 @@
-﻿from django_ledger.models import AccountModel
+from django_ledger.models import AccountModel
 
 class AccountLookupError(Exception):
     pass

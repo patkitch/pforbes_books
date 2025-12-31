@@ -1,4 +1,4 @@
-﻿# accounting/models.py  (minimal Payment model to support the flow)
+# accounting/models.py  (minimal Payment model to support the flow)
 from django.db import models
 from django.conf import settings
 

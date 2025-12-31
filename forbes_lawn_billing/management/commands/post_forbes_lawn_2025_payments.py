@@ -1,4 +1,4 @@
-﻿# lawn_imports/management/commands/post_forbes_lawn_2025_payments.py
+# lawn_imports/management/commands/post_forbes_lawn_2025_payments.py
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone

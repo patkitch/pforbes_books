@@ -1,0 +1,434 @@
+[
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2MzA4OTk=",
+    "name": "R01 Early Spring Treatment February - April",
+    "description": "-Targeting spring growth, weed seeds and spot treatment of broadleaf weeds as needed",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": 0.0,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTY=",
+    "name": "R02 Late Spring Treatment April - May",
+    "description": "Fertilizer for color and Broadleaf weed control as needed.",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTM=",
+    "name": "R03 Early Summer Treatment  June - July",
+    "description": "Fertilization for preparing your lawn for summer heat. Nutsedge and Broad leaf Control as needed",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTU=",
+    "name": "R04 Grub Control Treatment July - August",
+    "description": "Grub control to protect your lawn from harmful insects",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTc=",
+    "name": "R05 Summer Treatment July - August",
+    "description": "Slow release fertilizer with broadleaf weed control as needed",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTQ=",
+    "name": "R06 Fall Treatment September - October",
+    "description": "Fertilization and Broadleaf weed control",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTg=",
+    "name": "R07 Winterizer Treatment October - December",
+    "description": "Balance fertilizer for root growth",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2MzA5MDA=",
+    "name": "Service Visit",
+    "description": "Visit or retreat",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2MzA4OTc=",
+    "name": "Expanded Services",
+    "description": null,
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2MzA4OTg=",
+    "name": "AER Fall Aeration September - November",
+    "description": "Fall Aeration",
+    "defaultUnitCost": 190.0,
+    "internalUnitCost": null,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjE=",
+    "name": "AER/S Fall Aeration & Seed  September - November -",
+    "description": "Fall Aeration & Seed",
+    "defaultUnitCost": 252.0,
+    "internalUnitCost": null,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjI=",
+    "name": "Lime Treatment",
+    "description": "Lime treatment to correct PH balance of soil.",
+    "defaultUnitCost": 68.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1NjY2OTk=",
+    "name": "Labor",
+    "description": "Hourly labor charge",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1NjY3MDA=",
+    "name": "Inspection",
+    "description": "Complete inspection of Turf",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY1ODU5NTE=",
+    "name": "Hours",
+    "description": null,
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NTg=",
+    "name": "Customer visits/retreats",
+    "description": "No charge visit",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NTk=",
+    "name": "Customer Visit",
+    "description": null,
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjA=",
+    "name": "Expanded Service",
+    "description": null,
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjQ=",
+    "name": "R01 Mosquito Treatment May",
+    "description": "Mosquito Treatment",
+    "defaultUnitCost": 75.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjU=",
+    "name": "R02 Mosquito Treatment June",
+    "description": "Monthly Mosquito Treatment",
+    "defaultUnitCost": 75.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4NjY=",
+    "name": "R03 Mosquito Treatment July",
+    "description": "Monthly Mosquito Treatment",
+    "defaultUnitCost": 75.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4Njc=",
+    "name": "R04 Mosquito Treatment August",
+    "description": "Monthly Mosquito Treatment",
+    "defaultUnitCost": 70.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY2Njc4Njg=",
+    "name": "R05 Mosquito Treatment September",
+    "description": "Monthly Mosquito Treatment",
+    "defaultUnitCost": 70.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTY3Mzk1ODk=",
+    "name": "Regular Lawn Program",
+    "description": "Regular yearly Lawn Services- 7 Treatments",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTcxNzM4MjI=",
+    "name": "2022 Lawn Treatment",
+    "description": "Lawn Care Treatment which may include fertilization, weed control and grub control as needed.",
+    "defaultUnitCost": 58.5,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTcxNzM4MjM=",
+    "name": "2022 Mosquito Treatment",
+    "description": "Mosquito control visit",
+    "defaultUnitCost": 75.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMTc0MDY3ODg=",
+    "name": "Overseed",
+    "description": "Overseeding for Bare Areas",
+    "defaultUnitCost": 62.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjAyODA5NDM=",
+    "name": "Core Aeration",
+    "description": "Spring core Aeration",
+    "defaultUnitCost": 190.0,
+    "internalUnitCost": null,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjEwODIyMTc=",
+    "name": "Bad Debts",
+    "description": "Uncollected payment",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjE0MzU4Njc=",
+    "name": "Noxious weed treatment",
+    "description": "Treat and or remove Noxious weeds",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjE2ODg4MDM=",
+    "name": "Tips",
+    "description": "",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": 0.0,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjE5NzM3MjM=",
+    "name": "Vegetation Control",
+    "description": "Non Selective weed control",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjE5OTgzNjg=",
+    "name": "Mowing with edge trimming",
+    "description": "",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc3Nzg=",
+    "name": "March Lawn Treatment",
+    "description": "Fertilizer with pre-emergent weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4MDc=",
+    "name": "April Lawn Treatment",
+    "description": "Fertilizer with pre-emergent and broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4Mjc=",
+    "name": "May Lawn Treatment",
+    "description": "Fertilizer with Broadleaf weed control",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4Mzc=",
+    "name": "June Lawn Treatment",
+    "description": "Fertilizer with Nutsedge and Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4NDI=",
+    "name": "July Lawn Treatment",
+    "description": "Fertilizer with Nutsedge and Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4NjA=",
+    "name": "August Lawn Treatment",
+    "description": "Slow release Fertilizer with Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4NjI=",
+    "name": "September Lawn Treatment",
+    "description": "Fertilizer and Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4NjQ=",
+    "name": "October Lawn Treatment",
+    "description": "Fertilizer and Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1NTc4NzY=",
+    "name": "November Lawn Treatment",
+    "description": "Fertilizer targeting root growth.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI1ODEyMDI=",
+    "name": "Veg control service call",
+    "description": "",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjI4NDQ4Njg=",
+    "name": "Weed control",
+    "description": "Broadleaf weed control.",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": null,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjU1Njc5ODQ=",
+    "name": "2024 Lawn Treatment ",
+    "description": "Lawn treatments",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": 0.0,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjYzNjM5MjY=",
+    "name": "Renovation- small",
+    "description": "",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": 0.0,
+    "taxable": true,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMjc3OTI4MTE=",
+    "name": "Tip ",
+    "description": "Tips",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": 0.0,
+    "taxable": false,
+    "category": "SERVICE"
+  },
+  {
+    "id": "Z2lkOi8vSm9iYmVyL1Byb2R1Y3RPclNlcnZpY2UvMzMwNjIwMjI=",
+    "name": "2025 Lawn Treatments",
+    "description": "2025 Lawn treatments",
+    "defaultUnitCost": 0.0,
+    "internalUnitCost": 0.0,
+    "taxable": true,
+    "category": "SERVICE"
+  }
+]

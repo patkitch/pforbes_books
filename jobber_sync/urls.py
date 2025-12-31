@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 from jobber_sync import views
 from .views import jobber_oauth_start, jobber_oauth_callback
 app_name = "jobber_sync"

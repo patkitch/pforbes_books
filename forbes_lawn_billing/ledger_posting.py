@@ -1,4 +1,4 @@
-﻿from decimal import Decimal
+from decimal import Decimal
 from datetime import datetime
 
 from django.db import transaction
