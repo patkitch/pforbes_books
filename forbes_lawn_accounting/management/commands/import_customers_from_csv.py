@@ -193,16 +193,17 @@ class Command(BaseCommand):
             service_state = billing_parts.get('state', '')
             service_zip = billing_parts.get('zip', '')
         
-        # Generate unique jobber_client_id from name
+        # Generate unique jobber_id from name
         # (since we don't have real Jobber IDs from CSV)
-        jobber_id = f"csv-{contact_name.lower().replace(' ', '-')}"
+        unique_id = f"csv-{contact_name.lower().replace(' ', '-').replace('&', 'and').replace('.', '').replace(',', '')}"
         
         # Create or update
         customer, is_new = Customer.objects.update_or_create(
-            jobber_client_id=jobber_id,
+            jobber_id=unique_id,
             defaults={
                 'entity': entity,
                 'name': contact_name,
+                'jobber_client_id': unique_id,  # Set this too for consistency
                 'company_name': contact_data.get('company', ''),
                 'email': contact_data.get('email', ''),
                 'phone': contact_data.get('phone', ''),
