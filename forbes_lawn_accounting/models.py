@@ -175,6 +175,127 @@ class Customer(models.Model):
         )['total'] or Decimal('0.00')
         return balance
 
+class Property(models.Model):
+    """
+    Property/Service Location - where work is performed
+    A customer can have multiple properties (rental properties, landscaper clients, etc.)
+    """
+    
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='properties',
+        help_text="Customer who owns/manages this property"
+    )
+    
+    entity = models.ForeignKey(
+        EntityModel,
+        on_delete=models.PROTECT,
+        related_name='forbes_lawn_properties',
+        help_text="Forbes Lawn Spraying LLC entity"
+    )
+    
+    # Property identification
+    property_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional property name (e.g., 'Main House', 'Rental Property #1')"
+    )
+    
+    # Address
+    street1 = models.CharField(max_length=255, help_text="Street address")
+    street2 = models.CharField(max_length=255, blank=True, help_text="Apt, Unit, Suite")
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=50, default='Kansas')
+    country = models.CharField(max_length=100, default='United States')
+    zip_code = models.CharField(max_length=20)
+    
+    # Property details
+    lawn_square_footage = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total lawn area in square feet"
+    )
+    
+    # Tax information (from Jobber)
+    tax_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Jobber tax name (e.g., 'KS-Johnson-Overland Park')"
+    )
+    
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        help_text="Tax rate as percentage (e.g., 9.35 for 9.35%)"
+    )
+    
+    # Property-specific notes
+    notes = models.TextField(
+        blank=True,
+        help_text="Property-specific notes (gate code, dog, locked gate, etc.)"
+    )
+    
+    # Status
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Is this the customer's primary/default property?"
+    )
+    
+    active = models.BooleanField(
+        default=True,
+        help_text="Is this property actively serviced?"
+    )
+    
+    # Sync tracking
+    jobber_property_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Jobber property ID (for deduplication)"
+    )
+    
+    synced_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this record was last synced"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'forbes_lawn_property'
+        ordering = ['customer__name', '-is_primary', 'street1']
+        verbose_name = 'Property'
+        verbose_name_plural = 'Properties'
+        indexes = [
+            models.Index(fields=['customer', 'is_primary']),
+            models.Index(fields=['entity', 'active']),
+        ]
+    
+    def __str__(self):
+        if self.property_name:
+            return f"{self.customer.name} - {self.property_name}"
+        return f"{self.customer.name} - {self.street1}"
+    
+    @property
+    def full_address(self):
+        """Return formatted address"""
+        parts = [
+            self.street1,
+            self.street2,
+            f"{self.city}, {self.state} {self.zip_code}"
+        ]
+        return ", ".join([p for p in parts if p])
+    
+    def save(self, *args, **kwargs):
+        """Auto-set entity from customer"""
+        if not self.entity_id and self.customer_id:
+            self.entity = self.customer.entity
+        super().save(*args, **kwargs)
 
 class ServiceItem(models.Model):
     """
@@ -342,6 +463,14 @@ class Invoice(models.Model):
         on_delete=models.PROTECT,
         related_name='invoices',
         help_text="Customer being invoiced"
+    )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='invoices',
+        help_text="Property/location where service was performed"
     )
     
     # Jobber metadata

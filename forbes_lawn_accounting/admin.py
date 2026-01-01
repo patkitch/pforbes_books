@@ -12,7 +12,8 @@ from forbes_lawn_accounting.models import (
     Invoice,
     InvoiceLine,
     InvoicePayment,
-    SalesTaxSummary
+    SalesTaxSummary,
+    Property,
 )
 
 
@@ -58,6 +59,83 @@ class CustomerAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(self.readonly_fields)
+        if obj:  # Editing existing customer
+            readonly.append('property_count')
+        return readonly
+    
+    def property_count(self, obj):
+        count = obj.properties.count()
+        if count > 0:
+            from django.utils.html import format_html
+            url = f"/admin/forbes_lawn_accounting/property/?customer__id__exact={obj.id}"
+            return format_html('<a href="{}">{} properties</a>', url, count)
+        return '0 properties'
+    property_count.short_description = 'Properties'
+
+@admin.register(Property)
+class PropertyAdmin(admin.ModelAdmin):
+    list_display = ['customer', 'property_name', 'address_display', 'lawn_square_footage', 'tax_rate', 'is_primary', 'active']
+    list_filter = ['is_primary', 'active', 'state', 'city']
+    search_fields = ['customer__name', 'property_name', 'street1', 'city', 'zip_code']
+    readonly_fields = ['jobber_property_id', 'synced_at', 'created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Customer', {
+            'fields': ('customer', 'entity', 'property_name')
+        }),
+        ('Address', {
+            'fields': (
+                'street1',
+                'street2',
+                ('city', 'state'),
+                ('zip_code', 'country'),
+            )
+        }),
+        ('Property Details', {
+            'fields': (
+                'lawn_square_footage',
+                ('tax_name', 'tax_rate'),
+                'notes',
+            )
+        }),
+        ('Status', {
+            'fields': (
+                ('is_primary', 'active'),
+            )
+        }),
+        ('Sync Info', {
+            'fields': ('jobber_property_id', 'synced_at'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def address_display(self, obj):
+        return obj.full_address
+    address_display.short_description = 'Address'
+    
+    actions = ['mark_as_primary', 'mark_as_inactive']
+    
+    def mark_as_primary(self, request, queryset):
+        """Mark selected property as primary for its customer"""
+        for prop in queryset:
+            # Unmark other properties for this customer
+            Property.objects.filter(customer=prop.customer).update(is_primary=False)
+            # Mark this one as primary
+            prop.is_primary = True
+            prop.save()
+        self.message_user(request, f"Marked {queryset.count()} properties as primary.")
+    mark_as_primary.short_description = "Mark as primary property"
+    
+    def mark_as_inactive(self, request, queryset):
+        queryset.update(active=False)
+        self.message_user(request, f"Marked {queryset.count()} properties as inactive.")
+    mark_as_inactive.short_description = "Mark as inactive"
 
 
 @admin.register(ServiceItem)
