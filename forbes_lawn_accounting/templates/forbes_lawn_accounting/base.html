@@ -248,8 +248,8 @@
             
             <div class="nav-section">
                 <div class="nav-section-title">Customers & Invoices</div>
-                <a href="#" class="nav-link disabled" title="Coming soon">
-                    <i class="bi bi-people"></i> Customers <small class="text-muted">(Coming Soon)</small>
+                <a href="{% url 'forbes_lawn_accounting:customer_list' %}" class="nav-link {% if 'customer' in request.path %}active{% endif %}">
+                    <i class="bi bi-people"></i> Customers
                 </a>
                 <a href="#" class="nav-link disabled" title="Coming soon">
                     <i class="bi bi-receipt"></i> Invoices <small class="text-muted">(Coming Soon)</small>

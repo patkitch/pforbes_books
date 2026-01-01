@@ -1,0 +1,195 @@
+{% extends 'forbes_lawn_accounting/base.html' %}
+
+{% block title %}{{ customer.name }} - Customers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'forbes_lawn_accounting:customer_list' %}">Customers</a></li>
+            <li class="breadcrumb-item active">{{ customer.name }}</li>
+        </ol>
+    </nav>
+    <h1 class="page-title">{{ customer.name }}</h1>
+    {% if customer.company_name %}
+    <p class="page-subtitle">{{ customer.company_name }}</p>
+    {% endif %}
+</div>
+
+<!-- Customer Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">AR Balance</div>
+                <div class="metric-value {% if ar_balance > 0 %}text-warning{% else %}text-success{% endif %}">
+                    ${{ ar_balance|floatformat:2 }}
+                </div>
+                <small class="text-muted">Amount owed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Invoiced</div>
+                <div class="metric-value text-primary">${{ total_invoiced|floatformat:2 }}</div>
+                <small class="text-muted">All time</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Paid</div>
+                <div class="metric-value text-success">${{ total_paid|floatformat:2 }}</div>
+                <small class="text-muted">All time</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Invoices</div>
+                <div class="metric-value">{{ invoice_count }}</div>
+                <small class="text-muted">Total count</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Information -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Contact Information</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <th style="width: 120px;">Email:</th>
+                        <td>
+                            {% if customer.email %}
+                            <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+                            {% else %}
+                            <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Phone:</th>
+                        <td>
+                            {% if customer.phone %}
+                            <a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>
+                            {% else %}
+                            <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Status:</th>
+                        <td>
+                            {% if customer.active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Synced:</th>
+                        <td>{{ customer.synced_at|date:"M d, Y g:i A" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Service Address</h6>
+            </div>
+            <div class="card-body">
+                {% if customer.service_address_line1 %}
+                <address class="mb-0">
+                    {{ customer.service_address_line1 }}<br>
+                    {% if customer.service_address_line2 %}
+                    {{ customer.service_address_line2 }}<br>
+                    {% endif %}
+                    {{ customer.service_city }}, {{ customer.service_state }} {{ customer.service_zip }}
+                </address>
+                {% else %}
+                <p class="text-muted mb-0">No service address on file</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice History -->
+<div class="table-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Invoice History</h6>
+        <span class="badge bg-primary">{{ invoice_count }} invoices</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr>
+                    <td><strong>#{{ invoice.invoice_number }}</strong></td>
+                    <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                    <td>${{ invoice.total|floatformat:2 }}</td>
+                    <td>${{ invoice.amount_paid|floatformat:2 }}</td>
+                    <td>
+                        {% if invoice.balance_due > 0 %}
+                        <span class="text-warning">${{ invoice.balance_due|floatformat:2 }}</span>
+                        {% else %}
+                        <span class="text-success">$0.00</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if invoice.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                        {% elif invoice.status == 'partial' %}
+                        <span class="badge bg-warning">Partial</span>
+                        {% elif invoice.status == 'sent' or invoice.status == 'viewed' %}
+                        <span class="badge bg-info">Sent</span>
+                        {% elif invoice.status == 'overdue' %}
+                        <span class="badge bg-danger">Overdue</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ invoice.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No invoices found for this customer yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

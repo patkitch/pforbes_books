@@ -1,0 +1,144 @@
+{% extends 'forbes_lawn_accounting/base.html' %}
+
+{% block title %}Customers - Forbes Lawn Accounting{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">Customers</h1>
+        <p class="page-subtitle">{{ total_customers }} customers found</p>
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input 
+                    type="text" 
+                    name="search" 
+                    class="form-control" 
+                    placeholder="Search by name, email, phone, or address..." 
+                    value="{{ search }}"
+                >
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Active Only</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>All Customers</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Customer Table -->
+<div class="table-card">
+    <div class="card-header">
+        <h6 class="mb-0">Customer List</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Service Address</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td>
+                        <strong>{{ customer.name }}</strong>
+                        {% if customer.company_name %}
+                        <br><small class="text-muted">{{ customer.company_name }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.email %}
+                        <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.phone %}
+                        <a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.service_address_line1 %}
+                        {{ customer.service_address_line1 }}<br>
+                        <small class="text-muted">{{ customer.service_city }}, {{ customer.service_state }} {{ customer.service_zip }}</small>
+                        {% else %}
+                        <span class="text-muted">No address</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'forbes_lawn_accounting:customer_detail' customer.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No customers found. Try adjusting your search or filters.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Customer pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}">First</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}">Next</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}">Last</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

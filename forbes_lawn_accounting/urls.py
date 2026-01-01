@@ -5,11 +5,7 @@ URLs for Forbes Lawn Accounting Dashboard
 
 from django.urls import path
 from forbes_lawn_accounting.views.dashboard import DashboardView
-
-# Import other views (we'll create these next)
-# from forbes_lawn_accounting.views.customers import CustomerListView, CustomerDetailView
-# from forbes_lawn_accounting.views.invoices import InvoiceListView, InvoiceDetailView
-# from forbes_lawn_accounting.views.reports import SalesTaxReportView, ARAgingView, RevenueExpensesView
+from forbes_lawn_accounting.views.customers import CustomerListView, CustomerDetailView
 
 app_name = 'forbes_lawn_accounting'
 
@@ -17,11 +13,11 @@ urlpatterns = [
     # Dashboard
     path('', DashboardView.as_view(), name='dashboard'),
     
-    # Customers (placeholders - we'll create these views next)
-    # path('customers/', CustomerListView.as_view(), name='customer_list'),
-    # path('customers/<int:pk>/', CustomerDetailView.as_view(), name='customer_detail'),
+    # Customers
+    path('customers/', CustomerListView.as_view(), name='customer_list'),
+    path('customers/<int:pk>/', CustomerDetailView.as_view(), name='customer_detail'),
     
-    # Invoices (placeholders)
+    # Invoices (placeholders - we'll create these views next)
     # path('invoices/', InvoiceListView.as_view(), name='invoice_list'),
     # path('invoices/unpaid/', InvoiceListView.as_view(queryset_filter='unpaid'), name='invoice_unpaid'),
     # path('invoices/<int:pk>/', InvoiceDetailView.as_view(), name='invoice_detail'),
