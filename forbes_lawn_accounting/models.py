@@ -771,3 +771,204 @@ class InvoicePayment(models.Model):
     
     def __str__(self):
         return f"${self.amount} on {self.payment_date} - {self.get_payment_method_display()}"
+
+
+# ADD THIS TO forbes_lawn_accounting/models.py
+# Place at the end of the file
+
+class SalesTaxSummary(models.Model):
+    """
+    Monthly sales tax summary for Kansas DOR filing.
+    Auto-calculated from invoices, uses Jobber tax amounts as source of truth.
+    """
+    
+    entity = models.ForeignKey(
+        EntityModel,
+        on_delete=models.PROTECT,
+        related_name='forbes_lawn_tax_summaries',
+        help_text="Forbes Lawn Spraying LLC entity"
+    )
+    
+    # Period
+    month = models.DateField(
+        help_text="First day of the month (e.g., 2026-01-01 for January 2026)",
+        db_index=True
+    )
+    
+    # Revenue breakdown (auto-calculated from invoices)
+    total_revenue = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Total invoice revenue for the month"
+    )
+    
+    taxable_revenue = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Revenue from taxable services"
+    )
+    
+    non_taxable_revenue = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Revenue from non-taxable services (mowing, aeration, etc.)"
+    )
+    
+    # Tax collected - FROM JOBBER (never recalculate!)
+    tax_collected = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Total tax from Jobber invoices - SOURCE OF TRUTH"
+    )
+    
+    # Filing tracking
+    filed = models.BooleanField(
+        default=False,
+        help_text="Has this month's tax been filed with Kansas DOR?"
+    )
+    
+    filed_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date filed with Kansas DOR"
+    )
+    
+    # Payment tracking
+    payment_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Amount paid to Kansas DOR"
+    )
+    
+    payment_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date payment was made to Kansas DOR"
+    )
+    
+    payment_confirmation = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Confirmation number from Kansas DOR"
+    )
+    
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        help_text="Filing notes, adjustments, etc."
+    )
+    
+    # Tracking
+    last_calculated = models.DateTimeField(
+        auto_now=True,
+        help_text="When amounts were last recalculated from invoices"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'forbes_lawn_sales_tax_summary'
+        ordering = ['-month']
+        unique_together = [['entity', 'month']]
+        indexes = [
+            models.Index(fields=['entity', 'month']),
+            models.Index(fields=['filed', 'month']),
+        ]
+        verbose_name = 'Sales Tax Summary'
+        verbose_name_plural = 'Sales Tax Summaries'
+    
+    def __str__(self):
+        return f"Sales Tax - {self.month.strftime('%B %Y')}"
+    
+    @property
+    def due_date(self):
+        """
+        Kansas sales tax due on 25th of following month.
+        e.g., December 2025 tax is due January 25, 2026
+        """
+        if self.month.month == 12:
+            return self.month.replace(year=self.month.year + 1, month=1, day=25)
+        else:
+            return self.month.replace(month=self.month.month + 1, day=25)
+    
+    @property
+    def is_overdue(self):
+        """Is the filing overdue?"""
+        if self.filed:
+            return False
+        return timezone.now().date() > self.due_date
+    
+    @property
+    def is_due_soon(self):
+        """Is filing due within 10 days?"""
+        if self.filed:
+            return False
+        days_until = (self.due_date - timezone.now().date()).days
+        return 0 <= days_until <= 10
+    
+    @property
+    def days_until_due(self):
+        """Days until due date (negative if overdue)"""
+        return (self.due_date - timezone.now().date()).days
+    
+    def recalculate_from_invoices(self):
+        """
+        Recalculate tax summary from invoices.
+        Uses Jobber tax amounts as source of truth - NO ROUNDING ISSUES!
+        """
+        from django.db.models import Sum, Q
+        
+        # Get all invoices for this month (exclude draft/void)
+        invoices = Invoice.objects.filter(
+            entity=self.entity,
+            invoice_date__year=self.month.year,
+            invoice_date__month=self.month.month
+        ).exclude(
+            status__in=[InvoiceStatus.DRAFT, InvoiceStatus.VOID]
+        )
+        
+        # Total revenue
+        self.total_revenue = invoices.aggregate(
+            total=Sum('total')
+        )['total'] or Decimal('0.00')
+        
+        # Taxable revenue (sum of taxable_subtotal from each invoice)
+        self.taxable_revenue = invoices.aggregate(
+            total=Sum('taxable_subtotal')
+        )['total'] or Decimal('0.00')
+        
+        # Tax collected - DIRECTLY FROM JOBBER
+        self.tax_collected = invoices.aggregate(
+            total=Sum('tax_amount')
+        )['total'] or Decimal('0.00')
+        
+        # Non-taxable is everything else
+        self.non_taxable_revenue = invoices.aggregate(
+            total=Sum('subtotal')
+        )['total'] or Decimal('0.00')
+        self.non_taxable_revenue -= self.taxable_revenue
+        
+        self.save()
+        
+        return self
+    
+    def mark_as_filed(self, filed_date=None, payment_amount=None, payment_date=None, confirmation=''):
+        """Mark this month as filed with Kansas DOR"""
+        self.filed = True
+        self.filed_date = filed_date or timezone.now().date()
+        
+        if payment_amount:
+            self.payment_amount = payment_amount
+        if payment_date:
+            self.payment_date = payment_date
+        if confirmation:
+            self.payment_confirmation = confirmation
+        
+        self.save()
