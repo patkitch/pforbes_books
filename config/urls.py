@@ -26,7 +26,7 @@ def download_report(request, filename):
     return FileResponse(open(path, "rb"), as_attachment=True)
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/ledger/", permanent=False)),  # <— add this line
+    path("", RedirectView.as_view(url="/ledger/", permanent=False)),  # <â€” add this line
     path('admin/', admin.site.urls),
     path('ledger/', include(("django_ledger.urls","django_ledger"),namespace="django_ledger")),
     path("ledger/inventory-recount/<slug:entity_slug>/",
@@ -34,7 +34,8 @@ urlpatterns = [
         name="safe-inventory-recount"),
     path("admin/reports/", include(("reports.urls_admin", "adminreports"), namespace="adminreports")),
     path("automation/", include("web_automation.urls")),
-    path("forbes-lawn/", include("forbes_lawn_dashboard.urls")),
+    #path("forbes-lawn/", include("forbes_lawn_dashboard.urls")),
     path("downloads/<str:filename>/", download_report),
     path("jobber/oauth/", include("jobber_sync.urls")),
+    path('forbes-lawn/', include('forbes_lawn_accounting.urls')),
 ]

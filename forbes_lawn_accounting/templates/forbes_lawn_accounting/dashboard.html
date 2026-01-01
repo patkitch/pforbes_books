@@ -1,0 +1,191 @@
+{% extends 'forbes_lawn_accounting/base.html' %}
+
+{% block title %}Dashboard - Forbes Lawn Accounting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Welcome back! Here's what's happening with your business today.</p>
+</div>
+
+<!-- Alerts -->
+{% if alerts %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for alert in alerts %}
+        <div class="alert alert-{{alert.type}} d-flex align-items-center" role="alert">
+            <span class="alert-icon">{{alert.icon}}</span>
+            <div class="flex-grow-1">
+                {{alert.message}}
+            </div>
+            {% if alert.link %}
+            <a href="{{alert.link}}" class="btn btn-sm btn-outline-{{alert.type}}">{{alert.link_text}}</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Today's Snapshot -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h5 class="mb-3">Today's Snapshot</h5>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Today's Revenue</div>
+                <div class="metric-value text-success">${{today_revenue|floatformat:2}}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Unpaid Invoices</div>
+                <div class="metric-value text-warning">{{unpaid_invoices.count}}</div>
+                <small class="text-muted">${{unpaid_invoices.total|floatformat:2}} owed</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Cash Balance</div>
+                <div class="metric-value text-primary">${{cash_balance|floatformat:2}}</div>
+                <small class="text-muted">From Django-Ledger</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Active Customers</div>
+                <div class="metric-value">{{stats.total_customers}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- This Week -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h5 class="mb-3">This Week</h5>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Weekly Revenue</div>
+                <div class="metric-value text-primary">${{week_revenue|floatformat:2}}</div>
+                {% if week_change > 0 %}
+                <div class="metric-change positive">
+                    <i class="bi bi-arrow-up"></i> {{week_change}}% vs last week
+                </div>
+                {% elif week_change < 0 %}
+                <div class="metric-change negative">
+                    <i class="bi bi-arrow-down"></i> {{week_change}}% vs last week
+                </div>
+                {% else %}
+                <div class="metric-change text-muted">No change vs last week</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Payments This Week</div>
+                <div class="metric-value">{{stats.payments_this_week}}</div>
+                <small class="text-muted">Payments received</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- This Month ({{current_month}}) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h5 class="mb-3">This Month ({{current_month}})</h5>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Revenue</div>
+                <div class="metric-value text-success">${{month_revenue|floatformat:2}}</div>
+                <small class="text-muted">{{stats.invoices_this_month}} invoices</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Expenses</div>
+                <div class="metric-value text-danger">${{month_expenses|floatformat:2}}</div>
+                <small class="text-muted">From Django-Ledger</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Net Income</div>
+                <div class="metric-value {% if month_net >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{month_net|floatformat:2}}
+                </div>
+                <small class="text-muted">Revenue - Expenses</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Sales Tax</div>
+                <div class="metric-value text-info">${{month_tax|floatformat:2}}</div>
+                <small class="text-muted">Collected this month</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="#" class="btn btn-outline-primary disabled">
+                        <i class="bi bi-clock-history"></i> View AR Report (Coming Soon)
+                    </a>
+                    <a href="#" class="btn btn-outline-success disabled">
+                        <i class="bi bi-calculator"></i> File Sales Tax (Coming Soon)
+                    </a>
+                    <a href="#" class="btn btn-outline-info disabled">
+                        <i class="bi bi-bar-chart"></i> Run P&L Report (Coming Soon)
+                    </a>
+                    <a href="#" class="btn btn-outline-warning disabled">
+                        <i class="bi bi-check2-square"></i> Balance Check (Coming Soon)
+                    </a>
+                    <a href="/ledger/" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-arrow-up-right"></i> Open Django-Ledger
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

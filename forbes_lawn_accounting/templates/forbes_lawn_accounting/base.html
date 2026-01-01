@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Forbes Lawn Accounting{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #2c5282;
+            --secondary-color: #4a90e2;
+            --success-color: #48bb78;
+            --danger-color: #f56565;
+            --warning-color: #ed8936;
+            --sidebar-bg: #1a365d;
+            --sidebar-text: #e2e8f0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7fafc;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, var(--sidebar-bg) 0%, #2d3748 100%);
+            color: var(--sidebar-text);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem 1rem;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-header h4 {
+            color: white;
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .sidebar-header p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .nav-section-title {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .sidebar .nav-link {
+            color: var(--sidebar-text);
+            padding: 0.6rem 1rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .sidebar .nav-link.active {
+            background: rgba(74, 144, 226, 0.2);
+            border-left-color: var(--secondary-color);
+            color: white;
+            font-weight: 500;
+        }
+        
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-right: 0.5rem;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+        }
+        
+        /* Cards */
+        .metric-card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        
+        .metric-label {
+            font-size: 0.875rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        
+        .metric-change {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .metric-change.positive {
+            color: var(--success-color);
+        }
+        
+        .metric-change.negative {
+            color: var(--danger-color);
+        }
+        
+        /* Alerts */
+        .alert {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .alert .alert-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+        
+        /* Tables */
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-card .card-header {
+            background: white;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 1rem 1.5rem;
+        }
+        
+        .table-card .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        /* Badges */
+        .badge {
+            padding: 0.35em 0.65em;
+            font-weight: 500;
+        }
+        
+        /* Page Header */
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0;
+        }
+        
+        .page-subtitle {
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+        
+        /* Buttons */
+        .btn {
+            border-radius: 6px;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #2c5282;
+            border-color: #2c5282;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h4>Forbes Lawn Accounting</h4>
+            <p>2026 Dashboard</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <a href="{% url 'forbes_lawn_accounting:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Customers & Invoices</div>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-people"></i> Customers <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-receipt"></i> Invoices <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-exclamation-circle"></i> Unpaid Invoices <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-cash-coin"></i> Payments <small class="text-muted">(Coming Soon)</small>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Reports</div>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-calculator"></i> Sales Tax Report <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-clock-history"></i> AR Aging <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-bar-chart"></i> Revenue vs Expenses <small class="text-muted">(Coming Soon)</small>
+                </a>
+                <a href="#" class="nav-link disabled" title="Coming soon">
+                    <i class="bi bi-check2-square"></i> Balance Check <small class="text-muted">(Coming Soon)</small>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">External</div>
+                <a href="/ledger/" target="_blank" class="nav-link">
+                    <i class="bi bi-box-arrow-up-right"></i> Django-Ledger
+                </a>
+                <a href="https://secure.getjobber.com" target="_blank" class="nav-link">
+                    <i class="bi bi-box-arrow-up-right"></i> Jobber
+                </a>
+            </div>
+        </nav>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
