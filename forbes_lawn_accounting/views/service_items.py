@@ -65,7 +65,6 @@ class ServiceItemCreateView(CreateView):
         ).first()
         
         if not forbes_entity:
-            from django.contrib import messages
             messages.error(self.request, 'Forbes Lawn Spraying entity not found!')
             return self.form_invalid(form)
         
