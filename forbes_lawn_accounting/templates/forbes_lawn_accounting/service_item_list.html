@@ -68,7 +68,7 @@
                         <br><small class="text-muted">{{ item.description|truncatewords:10 }}</small>
                         {% endif %}
                     </td>
-                    <td>{{ item.category|default:"—" }}</td>
+                    <td>{{ item.category_name|default:"—" }}</td>
                     <td>${{ item.default_rate|floatformat:2 }}</td>
                     <td>
                         {% if item.taxable %}

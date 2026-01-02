@@ -36,12 +36,21 @@ class ServiceItemListView(ListView):
 class ServiceItemCreateView(CreateView):
     model = ServiceItem
     template_name = 'forbes_lawn_accounting/service_item_form.html'
-    fields = ['name', 'description', 'category', 'default_rate', 'taxable', 'revenue_account', 'active']
+    fields = ['name', 'description', 'category_name', 'default_rate', 'taxable', 'revenue_account', 'active']
     success_url = reverse_lazy('forbes_lawn_accounting:service_item_list')
     
     def form_valid(self, form):
         # Auto-set entity
         form.instance.entity = EntityModel.objects.first()
+        
+        # Generate unique jobber_id for manually created items
+        import uuid
+        form.instance.jobber_id = f"manual-{uuid.uuid4().hex[:12]}"
+        
+        # Set synced_at
+        from django.utils import timezone
+        form.instance.synced_at = timezone.now()
+        
         messages.success(self.request, f'Service item "{form.instance.name}" created successfully!')
         return super().form_valid(form)
     
@@ -55,7 +64,7 @@ class ServiceItemCreateView(CreateView):
 class ServiceItemUpdateView(UpdateView):
     model = ServiceItem
     template_name = 'forbes_lawn_accounting/service_item_form.html'
-    fields = ['name', 'description', 'category', 'default_rate', 'taxable', 'revenue_account', 'active']
+    fields = ['name', 'description', 'category_name', 'default_rate', 'taxable', 'revenue_account', 'active']
     success_url = reverse_lazy('forbes_lawn_accounting:service_item_list')
     
     def form_valid(self, form):
