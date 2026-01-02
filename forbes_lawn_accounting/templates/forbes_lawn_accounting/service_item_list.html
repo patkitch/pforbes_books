@@ -1,0 +1,126 @@
+{% extends 'forbes_lawn_accounting/base.html' %}
+
+{% block title %}Service Items - Forbes Lawn Accounting{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">Service Items</h1>
+        <p class="page-subtitle">{{ total_items }} services available</p>
+    </div>
+    <a href="{% url 'forbes_lawn_accounting:service_item_add' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Service
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Services</div>
+                <div class="metric-value">{{ total_items }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Active Services</div>
+                <div class="metric-value text-success">{{ active_items }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Taxable Services</div>
+                <div class="metric-value text-info">{{ taxable_items }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Service Items Table -->
+<div class="table-card">
+    <div class="card-header">
+        <h6 class="mb-0">Service List</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Service Name</th>
+                    <th>Category</th>
+                    <th>Default Rate</th>
+                    <th>Taxable</th>
+                    <th>Revenue Account</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in service_items %}
+                <tr>
+                    <td>
+                        <strong>{{ item.name }}</strong>
+                        {% if item.description %}
+                        <br><small class="text-muted">{{ item.description|truncatewords:10 }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.category|default:"—" }}</td>
+                    <td>${{ item.default_rate|floatformat:2 }}</td>
+                    <td>
+                        {% if item.taxable %}
+                        <span class="badge bg-info">Taxable</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non-Taxable</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.revenue_account %}
+                        <small class="text-muted">{{ item.revenue_account.code }} - {{ item.revenue_account.name }}</small>
+                        {% else %}
+                        <span class="text-muted">Not set</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'forbes_lawn_accounting:service_item_edit' item.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No service items yet.</p>
+                        <a href="{% url 'forbes_lawn_accounting:service_item_add' %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Add Your First Service
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.metric-card {
+    transition: transform 0.2s;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+
+{% endblock %}

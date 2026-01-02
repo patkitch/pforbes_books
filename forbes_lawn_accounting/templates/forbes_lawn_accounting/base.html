@@ -251,6 +251,9 @@
                 <a href="{% url 'forbes_lawn_accounting:customer_list' %}" class="nav-link {% if 'customer' in request.path %}active{% endif %}">
                     <i class="bi bi-people"></i> Customers
                 </a>
+                <a href="{% url 'forbes_lawn_accounting:service_item_list' %}" class="nav-link {% if 'service-item' in request.path %}active{% endif %}">
+                    <i class="bi bi-gear"></i> Service Items
+                </a>
                 <a href="#" class="nav-link disabled" title="Coming soon">
                     <i class="bi bi-receipt"></i> Invoices <small class="text-muted">(Coming Soon)</small>
                 </a>
