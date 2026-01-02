@@ -17,8 +17,14 @@ class ServiceItemListView(ListView):
     context_object_name = 'service_items'
     
     def get_queryset(self):
-        # Get entity (assuming Forbes Lawn entity)
-        entity = EntityModel.objects.first()
+        # Get Forbes Lawn entity specifically
+        entity = EntityModel.objects.filter(
+            name__icontains='Forbes Lawn Spraying'
+        ).first()
+        
+        if not entity:
+            return ServiceItem.objects.none()
+        
         return ServiceItem.objects.filter(entity=entity).order_by('name')
     
     def get_context_data(self, **kwargs):
