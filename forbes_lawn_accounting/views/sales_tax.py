@@ -52,9 +52,7 @@ class SalesTaxReportView(TemplateView):
         
         # Calculate totals
         total_revenue = invoices.aggregate(Sum('total'))['total__sum'] or 0
-        total_taxable = invoices.filter(
-            Q(service_items__taxable=True)
-        ).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
+        total_taxable = invoices.aggregate(Sum('taxable_subtotal'))['taxable_subtotal__sum'] or 0
         total_tax = invoices.aggregate(Sum('tax_amount'))['tax_amount__sum'] or 0
         
         # Parse tax by jurisdiction
@@ -122,17 +120,14 @@ class SalesTaxReportView(TemplateView):
         
         for invoice in invoices:
             if invoice.tax_amount and invoice.tax_amount > 0:
-                taxable_total += float(invoice.subtotal or 0)
+                taxable_total += float(invoice.taxable_subtotal or 0)
                 
-                # Parse city from tax_rate_name (e.g., "KS-Johnson-Overland Park")
-                if invoice.service_items.exists():
-                    # Get property city from first line item
-                    first_item = invoice.service_items.first()
-                    if first_item and first_item.property:
-                        city = first_item.property.city
-                        if city not in city_breakdowns:
-                            city_breakdowns[city] = 0
-                        city_breakdowns[city] += float(invoice.subtotal or 0)
+                # Parse city from property
+                if invoice.property:
+                    city = invoice.property.city
+                    if city not in city_breakdowns:
+                        city_breakdowns[city] = 0
+                    city_breakdowns[city] += float(invoice.taxable_subtotal or 0)
         
         # Build jurisdiction summary (like Jobber format)
         result = []
