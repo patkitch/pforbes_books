@@ -267,8 +267,8 @@
             
             <div class="nav-section">
                 <div class="nav-section-title">Reports</div>
-                <a href="#" class="nav-link disabled" title="Coming soon">
-                    <i class="bi bi-calculator"></i> Sales Tax Report <small class="text-muted">(Coming Soon)</small>
+                <a href="{% url 'forbes_lawn_accounting:sales_tax_report' %}" class="nav-link {% if 'sales-tax' in request.path %}active{% endif %}">
+                    <i class="bi bi-calculator"></i> Sales Tax Report
                 </a>
                 <a href="#" class="nav-link disabled" title="Coming soon">
                     <i class="bi bi-clock-history"></i> AR Aging <small class="text-muted">(Coming Soon)</small>

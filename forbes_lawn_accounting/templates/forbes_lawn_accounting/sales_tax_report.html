@@ -1,0 +1,213 @@
+{% extends 'forbes_lawn_accounting/base.html' %}
+
+{% block title %}Sales Tax Report - Forbes Lawn Accounting{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="page-title">Sales Tax Report</h1>
+        <p class="page-subtitle">{{ month_display }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="?month={{ month_value }}&download=csv" class="btn btn-success">
+            <i class="bi bi-download"></i> Download CSV
+        </a>
+    </div>
+</div>
+
+<!-- Month Selector -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Select Month</label>
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    {% for month in available_months %}
+                    <option value="{{ month.value }}" {% if month.value == month_value %}selected{% endif %}>
+                        {{ month.display }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Alerts -->
+{% if is_overdue %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>OVERDUE!</strong> Sales tax for {{ month_display }} was due on {{ due_date|date:"F j, Y" }}.
+    Please file immediately to avoid penalties.
+</div>
+{% elif is_due_soon %}
+<div class="alert alert-warning">
+    <i class="bi bi-clock-fill"></i>
+    <strong>Due Soon!</strong> Sales tax for {{ month_display }} is due on {{ due_date|date:"F j, Y" }} 
+    ({{ days_until_due }} days remaining).
+</div>
+{% endif %}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Revenue</div>
+                <div class="metric-value">${{ total_revenue|floatformat:2 }}</div>
+                <small class="text-muted">All invoices</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Taxable Revenue</div>
+                <div class="metric-value text-info">${{ total_taxable|floatformat:2 }}</div>
+                <small class="text-muted">Subject to sales tax</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Tax Collected</div>
+                <div class="metric-value text-success">${{ total_tax|floatformat:2 }}</div>
+                <small class="text-muted">To remit to KS DOR</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="metric-label">Filing Status</div>
+                <div class="metric-value">
+                    {% if tax_summary.filed_date %}
+                    <span class="badge bg-success" style="font-size: 1rem;">Filed</span>
+                    {% else %}
+                    <span class="badge bg-warning" style="font-size: 1rem;">Not Filed</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">
+                    {% if tax_summary.filed_date %}
+                    Filed: {{ tax_summary.filed_date|date:"M j, Y" }}
+                    {% else %}
+                    Due: {{ due_date|date:"M j, Y" }}
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tax Breakdown (Jobber Format) -->
+<div class="table-card">
+    <div class="card-header">
+        <h6 class="mb-0">Tax Breakdown by Jurisdiction</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tax Name</th>
+                    <th class="text-end">Taxable Revenue</th>
+                    <th class="text-end">Tax Collected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for jurisdiction in jurisdictions %}
+                <tr {% if jurisdiction.level == 'state' %}class="table-primary"{% endif %}>
+                    <td>
+                        <strong>{{ jurisdiction.name }}</strong>
+                        {% if jurisdiction.level == 'state' %}
+                        <span class="badge bg-primary ms-2">State</span>
+                        {% elif jurisdiction.level == 'county' %}
+                        <span class="badge bg-info ms-2">County</span>
+                        {% elif jurisdiction.level == 'city' %}
+                        <span class="badge bg-secondary ms-2">City</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">${{ jurisdiction.taxable|floatformat:2 }}</td>
+                    <td class="text-end"><strong>${{ jurisdiction.tax|floatformat:2 }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center text-muted py-4">
+                        No taxable invoices for {{ month_display }} yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if jurisdictions %}
+            <tfoot>
+                <tr class="table-success">
+                    <th>TOTAL</th>
+                    <th class="text-end">${{ total_taxable|floatformat:2 }}</th>
+                    <th class="text-end">${{ total_tax|floatformat:2 }}</th>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- Filing Information -->
+{% if tax_summary %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Filing Information</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Filing Status:</strong>
+                {% if tax_summary.filed_date %}
+                <span class="badge bg-success">Filed</span>
+                <p class="mt-2">Filed on: {{ tax_summary.filed_date|date:"F j, Y" }}</p>
+                {% if tax_summary.confirmation_number %}
+                <p>Confirmation: {{ tax_summary.confirmation_number }}</p>
+                {% endif %}
+                {% if tax_summary.payment_amount %}
+                <p>Amount Paid: ${{ tax_summary.payment_amount|floatformat:2 }}</p>
+                {% endif %}
+                {% else %}
+                <span class="badge bg-warning">Not Filed</span>
+                <p class="mt-2">Due Date: <strong>{{ due_date|date:"F j, Y" }}</strong></p>
+                <a href="{% url 'admin:forbes_lawn_accounting_salestaxsummary_change' tax_summary.id %}" 
+                   class="btn btn-primary btn-sm mt-2" target="_blank">
+                    <i class="bi bi-check-circle"></i> Mark as Filed
+                </a>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-info mb-0">
+                    <h6>Filing Instructions:</h6>
+                    <ol class="mb-0 small">
+                        <li>Download CSV report above</li>
+                        <li>Visit <a href="https://www.ksrevenue.gov/" target="_blank">Kansas DOR Website</a></li>
+                        <li>Enter taxable revenue by city</li>
+                        <li>DOR auto-calculates state & county tax</li>
+                        <li>Submit payment by {{ due_date|date:"F j, Y" }}</li>
+                        <li>Mark as filed in admin</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.metric-card {
+    transition: transform 0.2s;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.table-primary td {
+    font-weight: 600;
+}
+</style>
+
+{% endblock %}
