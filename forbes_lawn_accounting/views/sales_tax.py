@@ -72,7 +72,7 @@ class SalesTaxReportView(TemplateView):
         
         # Calculate due date (20th of following month)
         due_date = (last_day + timedelta(days=1)).replace(day=20)
-        days_until_due = (due_date - timezone.now().date()).days
+        days_until_due = (due_date.date() - timezone.now().date()).days
         
         # Context
         context.update({
@@ -165,7 +165,7 @@ class SalesTaxReportView(TemplateView):
         """Get list of available months (Jan 2026 forward)"""
         months = []
         start = datetime(2026, 1, 1)
-        current = timezone.now()
+        current = timezone.now().replace(tzinfo=None)
         
         month = start
         while month <= current:

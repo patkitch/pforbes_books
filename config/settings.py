@@ -96,7 +96,6 @@ INSTALLED_APPS = [
     "lawn_imports",
     "forbes_lawn_dashboard",
     "forbes_lawn_billing",
-    "jobber_sync",
     "forbes_lawn_accounting",
 ]
 
