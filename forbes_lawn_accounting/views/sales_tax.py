@@ -32,9 +32,8 @@ class SalesTaxReportView(TemplateView):
             selected_date = timezone.now()
         
         # Get Forbes Lawn entity
-        entity = EntityModel.objects.filter(
-            name__icontains='Forbes Lawn Spraying'
-        ).first()
+        # Get Forbes Lawn entity by slug (production)
+        entity = EntityModel.objects.get(slug='forbes-lawn-spraying-llc-elg3zg1u')
         
         # Calculate month boundaries
         first_day = selected_date.replace(day=1)
