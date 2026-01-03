@@ -9,7 +9,7 @@
         <p class="page-subtitle">{{ month_display }}</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="?month={{ month_value }}&download=csv" class="btn btn-success">
+        <a href="{% url 'forbes_lawn_accounting:sales_tax_download' %}?month={{ month_value }}" class="btn btn-success">
             <i class="bi bi-download"></i> Download CSV
         </a>
     </div>

@@ -31,8 +31,7 @@ class SalesTaxReportView(TemplateView):
         else:
             selected_date = timezone.now()
         
-        # Get Forbes Lawn entity
-        # Get Forbes Lawn entity by slug (production)
+        # Get Forbes Lawn entity by slug (hardwired for production)
         entity = EntityModel.objects.get(slug='forbes-lawn-spraying-llc-elg3zg1u')
         
         # Calculate month boundaries
@@ -96,9 +95,8 @@ class SalesTaxReportView(TemplateView):
         """
         Parse tax amounts by jurisdiction (State, County, City)
         Based on tax_rate_name field in invoices
+        ALWAYS shows State and County headers, even if $0
         """
-        jurisdictions = {}
-        
         # Standard Kansas tax rates
         state_rate = 6.5
         county_rate = 1.475  # Johnson County
@@ -129,9 +127,10 @@ class SalesTaxReportView(TemplateView):
                     city_breakdowns[city] += float(invoice.taxable_subtotal or 0)
         
         # Build jurisdiction summary (like Jobber format)
+        # ALWAYS include State and County, even if $0
         result = []
         
-        # State
+        # State (ALWAYS shown)
         result.append({
             'name': f'Kansas State ({state_rate}%)',
             'taxable': taxable_total,
@@ -139,16 +138,15 @@ class SalesTaxReportView(TemplateView):
             'level': 'state'
         })
         
-        # County (if any taxable revenue in Kansas)
-        if taxable_total > 0:
-            result.append({
-                'name': f'Kansas, Johnson County ({county_rate}%)',
-                'taxable': taxable_total,
-                'tax': taxable_total * (county_rate / 100),
-                'level': 'county'
-            })
+        # County (ALWAYS shown - Johnson County is primary)
+        result.append({
+            'name': f'Kansas, Johnson County ({county_rate}%)',
+            'taxable': taxable_total,
+            'tax': taxable_total * (county_rate / 100),
+            'level': 'county'
+        })
         
-        # Cities
+        # Cities (only show if there's revenue in that city)
         for city, amount in city_breakdowns.items():
             city_rate = city_rates.get(city, 1.0)  # Default 1% if city not found
             result.append({
