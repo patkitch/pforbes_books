@@ -36,20 +36,24 @@ def get_woo_config():
     }
 
 # Canonical variation template for P.Forbes Art prints.
-# Harold v1: standardize on a single attribute "Size"
-# with two options: "11x14 white mat" and "8x10 white mat".
 
-STANDARD_PRINT_ATTRIBUTE_NAME = "Size"
-STANDARD_PRINT_ATTRIBUTE_SLUG = "pa_size"  # Woo will usually slugify "Size" like this
-STANDARD_PRINT_TITLE_SUFFIX = " – Open Edition Giclée Matted Print by P. Forbes"
+
+STANDARD_PRINT_ATTRIBUTE_NAME = "Print Option"
+STANDARD_PRINT_ATTRIBUTE_SLUG = "pa_print-option"  # Woo will usually slugify "Size" like this
+STANDARD_PRINT_TITLE_SUFFIX = " – Open Edition Giclée Fine Art Print by P. Forbes"
 STANDARD_PRINT_VARIATIONS = [
-    "11x14 white mat",
-    "8x10 white mat",
+    "11x14 white mat (8x10 print)",
+    "8x10 white mat (4x6 print)",
+    "11x14 Print Only (no mat)",
+
 ]
+
 STANDARD_PRINT_PRICING = {
-    "11x14 white mat": "45.00",
-    "8x10 white mat": "20.00",
+    "11x14 white mat (8x10 print)": "45.00",
+    "8x10 white mat (4x6 print)": "25.00",
+    "11x14 Print Only (no mat)": "45.00",
 }
+
 
 def inspect_product_for_standard_print(product: dict) -> dict:
     """
@@ -97,7 +101,7 @@ def inspect_product_for_standard_print(product: dict) -> dict:
             "name": name,
             "type": ptype,
             "is_standard": False,
-            "reason": "No 'Size' attribute found.",
+            "reason": "No 'Print Option' attribute found.",
         }
 
     options = size_attr.get("options", []) or []
@@ -117,7 +121,7 @@ def inspect_product_for_standard_print(product: dict) -> dict:
             "name": name,
             "type": ptype,
             "is_standard": False,
-            "reason": f"Size attribute options don't match template ({reason}).",
+            "reason": f"Print Option attribute options don't match template ({reason}).",
         }
 
     return {
@@ -182,81 +186,73 @@ def test_woocommerce_connection(max_products: int = 5) -> List[Dict]:
 # Pauly's product payload builder (no network calls here)
 # -------------------------------------------------------------------
 
-def build_variable_product_payload(artwork: Dict) -> Tuple[Dict, List[Dict]]:
+def build_variable_product_payload(
+    artwork: Dict
+) -> Tuple[Dict, List[Dict]]:
     """
-    Given a description of a new artwork, build:
-    - the parent variable product payload
-    - the two variation payloads (11x14 white mat, 8x10 white mat)
+    Build a draft WooCommerce variable product
+    with three Giclee fine art print options.
 
-    This DOES NOT send anything to WooCommerce.
-    It just returns the JSON-ready dicts.
+    This function makes NO network calls.
     """
-
-    # Fixed size labels for your shop
-    size_11x14 = "11x14 white mat"
-    size_8x10 = "8x10 white mat"
 
     title = artwork["title"]
     short_description = artwork["short_description"]
     long_description = artwork["description_long"]
     sku_base = artwork["sku_base"]
-    price_11x14 = artwork["price_11x14"]
-    price_8x10 = artwork["price_8x10"]
 
-    categories = []
-    tags = artwork.get("tags", [])
+    # Categories must be supplied as existing WooCommerce IDs.
+    category_ids = artwork.get("category_ids", [])
+    categories = [{"id": int(cid)} for cid in category_ids]
 
-    # Woo expects categories/tags as list of objects: {"name": "Category Name"}
-    category_objects = [{"name": name} for name in categories]
-    tag_objects = [{"name": name} for name in tags]
+    # Tags are optional; use existing WooCommerce tag IDs.
+    tag_ids = artwork.get("tag_ids", [])
+    tags = [{"id": int(tid)} for tid in tag_ids]
 
-    # Parent product payload (variable, draft)
     product_payload = {
         "name": title,
         "type": "variable",
-        "status": "draft",  # Always draft for safety
-        "description": long_description,        # full story, can be HTML
-        "short_description": short_description, # listing blurb
-        "sku": sku_base,                        # base SKU for the parent
-        "categories": category_objects,
-        "tags": tag_objects,
+        "status": "draft",
+        "description": long_description,
+        "short_description": short_description,
+        "sku": sku_base,
+        "categories": categories,
+        "tags": tags,
         "attributes": [
             {
-                "name": "Size",
+                "name": STANDARD_PRINT_ATTRIBUTE_NAME,
                 "position": 0,
                 "visible": True,
-                "variation": True,  # used for variations
-                "options": [size_11x14, size_8x10],
+                "variation": True,
+                "options": STANDARD_PRINT_VARIATIONS,
             }
         ],
-        # We will attach images later when we wire up image upload
     }
 
-    # Variation payloads (not sent yet)
-    variations_payload = [
-        {
-            "regular_price": price_11x14,
-            "sku": f"{sku_base}-11x14",
+    # Match each print option to its unique SKU suffix.
+    sku_suffixes = {
+        "11x14 white mat (8x10 print)": "11x14-MAT",
+        "8x10 white mat (4x6 print)": "8x10-MAT",
+        "11x14 Print Only (no mat)": "11x14-NOMAT",
+    }
+
+    variations_payload = []
+
+    for option in STANDARD_PRINT_VARIATIONS:
+        variations_payload.append({
+            "regular_price": STANDARD_PRINT_PRICING[option],
+            "sku": f"{sku_base}-{sku_suffixes[option]}",
             "attributes": [
                 {
-                    "name": "Size",
-                    "option": size_11x14,
+                    "name": STANDARD_PRINT_ATTRIBUTE_NAME,
+                    "option": option,
                 }
             ],
-        },
-        {
-            "regular_price": price_8x10,
-            "sku": f"{sku_base}-8x10",
-            "attributes": [
-                {
-                    "name": "Size",
-                    "option": size_8x10,
-                }
-            ],
-        },
-    ]
+        })
 
     return product_payload, variations_payload
+
+
 
 def woo_post(endpoint: str, payload: Dict) -> Dict:
     """
@@ -302,52 +298,58 @@ def _get_category_id_by_name(name: str) -> Optional[int]:
     return None
 
 
+
 def create_standard_print_product_from_web(
     intake: Dict[str, Any],
     final_copy: Dict[str, str],
 ) -> Dict[str, Any]:
     """
-    Create a new variable WooCommerce product (draft) for a matted Giclée print
-    using data collected from the Website Automation Dashboard.
-
-    - intake: data from NewProductForm (title, image_url, media_id, etc.)
-    - final_copy: chosen title/short/long/alt from Step 3.
+    Create a draft WooCommerce Giclee fine art print product
+    with three variations: two matted and one unmatted.
     """
 
-    title = final_copy.get("title", "").strip() or intake.get("title", "").strip()
-    short_description = final_copy.get("short_description", "").strip()
-    long_description = final_copy.get("long_description", "").strip()
+    title = (
+        final_copy.get("title", "").strip()
+        or intake.get("title", "").strip()
+    )
+    short_description = final_copy.get(
+        "short_description", ""
+    ).strip()
+    long_description = final_copy.get(
+        "long_description", ""
+    ).strip()
     alt_text = final_copy.get("alt_text", "").strip()
 
     image_url = (intake.get("image_url") or "").strip()
-    # We ignore media_id for now and just use the image URL
 
-    # Find the 'Giclée prints' category ID if it exists
-    giclee_cat_id = _get_category_id_by_name("Giclée prints")
+    # Find the new print category.
+    category_id = _get_category_id_by_name(
+        "Giclée Fine Art Prints"
+    )
 
-    categories: List[Dict[str, Any]] = []
-    if giclee_cat_id:
-        categories.append({"id": giclee_cat_id})
+    if not category_id:
+        raise RuntimeError(
+            "WooCommerce category 'Giclée Fine Art Prints' "
+            "was not found. Create or rename the category "
+            "in WooCommerce before creating products."
+        )
+
+    categories = [{"id": category_id}]
 
     images: List[Dict[str, Any]] = []
     if image_url:
-        images.append(
-            {
-                "src": image_url,
-                "alt": alt_text or title,
-            }
-        )
+        images.append({
+            "src": image_url,
+            "alt": alt_text or title,
+        })
 
-    # Standard matted variations
+    # Use the shared print settings.
     attributes = [
         {
-            "name": "Size",
+            "name": STANDARD_PRINT_ATTRIBUTE_NAME,
             "visible": True,
             "variation": True,
-            "options": [
-                "11x14 white mat",
-                "8x10 white mat",
-            ],
+            "options": STANDARD_PRINT_VARIATIONS,
         }
     ]
 
@@ -362,35 +364,46 @@ def create_standard_print_product_from_web(
         "attributes": attributes,
     }
 
-    # Create the variable product itself
+    # Prepare three print variations.
+    variation_payloads = []
+
+    for option in STANDARD_PRINT_VARIATIONS:
+        price = STANDARD_PRINT_PRICING[option]
+
+        variation_payloads.append({
+            "regular_price": price,
+            "attributes": [
+                {
+                    "name": STANDARD_PRINT_ATTRIBUTE_NAME,
+                    "option": option,
+                }
+            ],
+        })
+
+    # Create the draft parent product.
     product = woo_post("products", product_payload)
     product_id = product.get("id")
 
-    # Create the two size variations
-    variation_payloads = [
-        {
-            "regular_price": "45.00",
-            "attributes": [
-                {"name": "Size", "option": "11x14 white mat"},
-            ],
-        },
-        {
-            "regular_price": "20.00",
-            "attributes": [
-                {"name": "Size", "option": "8x10 white mat"},
-            ],
-        },
-    ]
+    if not product_id:
+        raise RuntimeError(
+            "WooCommerce did not return a product ID."
+        )
 
-    created_variations: List[Dict[str, Any]] = []
+    # Create the three variations.
+    created_variations = []
+
     for payload in variation_payloads:
-        v = woo_post(f"products/{product_id}/variations", payload)
-        created_variations.append(v)
+        variation = woo_post(
+            f"products/{product_id}/variations",
+            payload,
+        )
+        created_variations.append(variation)
 
     return {
         "product": product,
         "variations": created_variations,
     }
+
 
 
 
@@ -447,7 +460,8 @@ def convert_simple_product_to_standard_print(product_id: int, dry_run: bool = Tr
 
     # Pat's chosen standard short description (Option B)
     short_description = (
-        "Open Edition matted Giclée print of an original acrylic painting – Two Sizes"
+        "Open Edition Giclée fine art print of an original acrylic painting. "
+        "Available in three print options, including matted and unmatted."
     )
     # 3. Build the payload for the new variable product
     new_product_payload: Dict[str, Any] = {
@@ -462,7 +476,6 @@ def convert_simple_product_to_standard_print(product_id: int, dry_run: bool = Tr
         "attributes": [
             {
                 "name": STANDARD_PRINT_ATTRIBUTE_NAME,
-                "slug": STANDARD_PRINT_ATTRIBUTE_SLUG,
                 "visible": True,
                 "variation": True,
                 "options": STANDARD_PRINT_VARIATIONS,
@@ -530,7 +543,7 @@ def create_variable_product_draft(artwork: Dict) -> Dict:
 
     - Builds the parent variable product payload
     - Creates the parent product in WooCommerce as DRAFT
-    - Creates two variations (11x14 and 8x10 white mat)
+    - Creates three variations (two matted and one unmatted)
     - Returns a summary with product and variations data
 
     NOTE: This function DOES talk to WooCommerce and creates real objects

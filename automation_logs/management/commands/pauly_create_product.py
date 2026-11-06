@@ -10,8 +10,9 @@ from agents.pauly.core import create_variable_product_draft
 
 class Command(BaseCommand):
     help = (
-        "Create a variable WooCommerce product as DRAFT with two sizes "
-        "(11x14 and 8x10 white mat) from a JSON config file."
+        "Create a variable WooCommerce product as DRAFT with three print options "
+        "(11x14 matted, 8x10 matted, and 11x14 unmatted) "
+        "from a JSON config file."
     )
 
     def add_arguments(self, parser):
@@ -71,9 +72,9 @@ class Command(BaseCommand):
             # 3. Create product + variations in Woo (as DRAFT)
             # -----------------------------
             log(
-                "info",
-                "Pauly is creating a DRAFT variable product with two sizes "
-                "(11x14 white mat, 8x10 white mat).",
+                 "info",
+                 "Pauly is creating a DRAFT variable product with three print options "
+                 "(11x14 matted, 8x10 matted, 11x14 unmatted).",
             )
 
             creation_result = create_variable_product_draft(artwork)
@@ -97,7 +98,7 @@ class Command(BaseCommand):
                     "info",
                     (
                         "Pauly created variation ID={id} | SKU={sku} | "
-                        "Price={price} | Size={size}"
+                        "Price={price} | Print Option={size}"
                     ).format(
                         id=v.get("id"),
                         sku=v.get("sku"),
