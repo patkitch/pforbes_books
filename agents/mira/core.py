@@ -43,8 +43,9 @@ def generate_blog_from_product(product: Dict[str, Any]) -> Dict[str, Any]:
         story_paragraph = short_desc.replace("\r\n", " ").replace("\n", " ").strip()
     else:
         story_paragraph = (
-            f"{name} is an open edition Giclée matted print, created from my original painting. "
-            f"I wanted it to feel like a small window into a moment you might otherwise walk past."
+            f"{name} is an open edition Giclée fine art print "
+            f"reproduced from my original painting. "
+            f"I wanted it to capture something worth pausing to appreciate."
         )
 
     process_paragraph = (
@@ -55,9 +56,11 @@ def generate_blog_from_product(product: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     placement_paragraph = (
-        "This print works beautifully in living rooms, hallways, or cozy reading corners where "
-        "you want a quiet focal point. Because it's offered as a matted Giclée in two sizes, "
-        "it's easy to frame and fit into your existing space."
+        "This open edition Giclée fine art print is available "
+        "in three options: 8x10 with a white mat (4x6 image), "
+        "11x14 with a white mat (8x10 image), "
+        "or 11x14 unmatted. "
+        "Choose the presentation that best suits your space."
     )
 
     body_paragraphs = [
@@ -67,17 +70,17 @@ def generate_blog_from_product(product: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     bullet_points = [
-        "Open edition Giclée matted print based on my original painting.",
-        "Available in two sizes, ready to frame.",
-        "Rich color and texture that bring warmth and presence to your space.",
+        "Open edition Giclée fine art print based on my original painting.",
+        "Three print options: two matted and one unmatted.",
+        "Reproduced from original artwork by P. Forbes.",
     ]
 
     # Social caption – short, ready for copy/paste
     social_caption = (
-        f"New in the studio: {name} ✨\n\n"
-        f"Printed as an open edition Giclée matted print in two sizes, ready to frame. "
-        f"I painted this piece to capture a quiet, reflective moment — the kind that invites you to pause.\n\n"
-        f"Now available at P.Forbes Art. 🖼️"
+        f"New in the studio: {name}\n\n"
+        f"Now available as an open edition Giclée fine art print, "
+        f"with matted and unmatted options.\n\n"
+        f"Explore the collection at P. Forbes Art. 🖼️"
     )
 
     if tag_phrase:

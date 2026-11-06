@@ -129,63 +129,56 @@ def _truncate_to_length(text: str, max_len: int) -> str:
     return trimmed
 
 
-def _build_meta_description(product: Dict[str, Any], focus_keyphrase: str) -> str:
+
+def _build_meta_description(
+    product: Dict[str, Any],
+    focus_keyphrase: str
+) -> str:
     """
-    Build a Yoast-style meta description with dynamic tone:
-    - includes the focus keyphrase once (at the beginning)
-    - <= MAX_META_LENGTH characters
-    - uses 'matted' when it fits, otherwise drops it
+    Build a Yoast-style meta description.
+    Supports both matted and unmatted fine art prints.
+    Maximum length: 155 characters.
     """
     name = (product.get("name") or "").strip()
-    description = (product.get("description") or "").strip()
+    description = _strip_html(
+        product.get("description") or ""
+    )
 
-    artwork_title = _derive_artwork_title(name)
     mood = _guess_mood_from_text(name + " " + description)
 
-    # Decide base subject from keyphrase by stripping 'giclée print' / 'art print'
-    subject = focus_keyphrase
-    for phrase in ["giclée print", "giclee print", "art print"]:
-        subject = subject.replace(phrase, "").strip()
-    if not subject:
-        subject = artwork_title or "artwork"
-
-    # Build sentence template with 'matted' included first
     if mood == "dramatic":
-        base = (
-            f"{focus_keyphrase.capitalize()} with bold light and movement, "
-            f"matted and ready to frame. Open edition for a striking focal point."
+        ending = (
+            "Bold light and movement in an open edition "
+            "fine art print. Matted and unmatted options."
         )
     elif mood == "coastal":
-        base = (
-            f"{focus_keyphrase.capitalize()} capturing luminous coastal color, "
-            f"matted and ready to frame. Open edition to bring the ocean home."
+        ending = (
+            "Coastal color and atmosphere in an open edition "
+            "fine art print. Matted and unmatted options."
         )
     elif mood == "calm":
-        base = (
-            f"{focus_keyphrase.capitalize()} with soft impressionist light, "
-            f"matted and ready to frame. Open edition for peaceful, warm decor."
+        ending = (
+            "A peaceful scene reproduced as an open edition "
+            "fine art print. Matted and unmatted options."
         )
     elif mood == "story":
-        base = (
-            f"{focus_keyphrase.capitalize()} that tells a personal story, "
-            f"matted and ready to frame. Open edition for meaningful wall art."
+        ending = (
+            "A story captured in an open edition fine art "
+            "print. Matted and unmatted options."
         )
     else:
-        base = (
-            f"{focus_keyphrase.capitalize()} with rich color and texture, "
-            f"matted and ready to frame. Open edition for versatile home decor."
+        ending = (
+            "An open edition fine art print by P. Forbes, "
+            "available with or without a mat."
         )
 
-    # First try with 'matted' included
-    desc = _truncate_to_length(base, MAX_META_LENGTH)
-    if len(desc) <= MAX_META_LENGTH:
-        return desc
+    base = f"{focus_keyphrase.capitalize()}. {ending}"
 
-    # If still too long, try again without 'matted' (Option C behavior)
-    base_no_matted = base.replace("matted and ", "")
-    desc2 = _truncate_to_length(base_no_matted, MAX_META_LENGTH)
+    return _truncate_to_length(
+        base,
+        MAX_META_LENGTH
+    )
 
-    return desc2
 
 
 def build_sam_seo_suggestion(product: Dict[str, Any]) -> Dict[str, str]:
@@ -240,20 +233,23 @@ def suggest_seo_for_product(product: Dict[str, Any]) -> Dict[str, Any]:
     categories = [c.get("name", "") for c in product.get("categories", [])]
     tags = [t.get("name", "") for t in product.get("tags", [])]
 
-    # Focus keyphrase: try to be concise & human
-    # For your catalog, a good default is "Title | Giclée matted print by P. Forbes"
-    base_keyphrase = name
-    if "Giclée" not in base_keyphrase and "giclée" not in base_keyphrase.lower():
-        base_keyphrase = f"{base_keyphrase} | Giclée matted print by P. Forbes"
+    
+    # Use the shared focus keyphrase generator.
+    # Avoid references to matted-only prints.
+    focus_keyphrase = _build_focus_keyphrase(product)
 
-    focus_keyphrase = base_keyphrase
 
     # Meta description: short summary from short_desc or long_desc, fallback to name
     source = short_desc or long_desc or name
     source = source.replace("\n", " ").strip()
 
+    
     if not source:
-        source = f"{name} is an open edition Giclée matted print by P. Forbes Art."
+        source = (
+            f"{name} is an open edition Giclée fine art print "
+            f"by P. Forbes, available with or without a mat."
+    )
+
 
     # Ideal length: <= 155 chars (Yoast guideline)
     ideal_length = 155

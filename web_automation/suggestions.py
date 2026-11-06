@@ -1,3 +1,4 @@
+
 from typing import Dict, List
 
 
@@ -7,111 +8,122 @@ def _clean_text(value: str) -> str:
 
 def generate_product_suggestions(intake: Dict) -> Dict[str, List[str]]:
     """
-    Given raw intake data from NewProductForm, return suggestion lists for:
-      - titles
-      - short_descriptions
-      - long_descriptions
-      - alt_texts
+    Generate suggested titles, descriptions, and alt text
+    for P. Forbes Art Giclee fine art prints.
 
-    This is Pauly's 'brain' for Step 2 (but generic, for all automation).
+    Supports three print options:
+    - 11x14 white mat (8x10 print)
+    - 8x10 white mat (4x6 print)
+    - 11x14 Print Only (no mat)
     """
+
     title = _clean_text(intake.get("title", ""))
     medium = _clean_text(intake.get("medium", ""))
     subject = _clean_text(intake.get("subject", ""))
     story_notes = _clean_text(intake.get("story_notes", ""))
-    notes_for_agent = _clean_text(intake.get("notes_for_agent", ""))
+    notes_for_agent = _clean_text(
+        intake.get("notes_for_agent", "")
+    )
 
     # Fallbacks
     base_title = title or "Untitled"
-    subject_phrase = subject or "impressionist landscape"
+    subject_phrase = subject or "fine art"
     medium_phrase = medium or "original acrylic painting"
 
+    print_options_text = (
+        "Available in three print options: "
+        "8x10 with white mat (4x6 image), "
+        "11x14 with white mat (8x10 image), "
+        "or 11x14 unmatted."
+    )
+
     # --- Title suggestions ---
-    titles: List[str] = []
+    titles: List[str] = [
+        f"{base_title} | Open Edition Giclée Fine Art Print by P. Forbes",
+        f"{base_title} | Giclée Fine Art Print",
+        f"{base_title} | Open Edition Fine Art Print",
+    ]
 
-    # 1) Classic P.Forbes art store style
-    titles.append(f"{base_title} | Open Edition Giclée Matted Print by P. Forbes")
+    # --- Short descriptions ---
+    shorts: List[str] = [
+        (
+            f"Open edition Giclée fine art print reproduced "
+            f"from an {medium_phrase}. "
+            f"{print_options_text}"
+        ),
+        (
+            f"A fine art reproduction featuring {subject_phrase}, "
+            f"with the color and texture of the original artwork. "
+            f"{print_options_text}"
+        ),
+        (
+            f"Bring \"{base_title}\" into your space "
+            f"with an open edition Giclée fine art print. "
+            f"{print_options_text}"
+        ),
+    ]
 
-    # 2) Simpler format, better for SEO/product list
-    titles.append(f"{base_title} – Giclée Matted Print by P. Forbes")
-
-    # 3) Subject-emphasis format if we know the subject
-    if subject:
-        titles.append(
-            f"{base_title} | {subject_phrase} | Open Edition Giclée Print by P. Forbes"
-        )
-    else:
-        titles.append(
-            f"{base_title} | Fine Art Giclée Matted Print by P. Forbes"
-        )
-
-    # --- Short descriptions (1–2 sentences max) ---
-    shorts: List[str] = []
-
-    shorts.append(
-        f"Open edition matted Giclée print of an {medium_phrase}. "
-        f"Two sizes, ready to frame and add warmth to your space."
-    )
-
-    shorts.append(
-        f"A {subject_phrase} captured in rich color and texture, "
-        f"offered as an open edition Giclée matted print in two sizes."
-    )
-
-    shorts.append(
-        f"Printed from an {medium_phrase}, this open edition Giclée matted print "
-        f"brings a touch of P.Forbes Art to your home or office."
-    )
-
-    # --- Long descriptions (can include story notes if present) ---
+    # --- Long descriptions ---
     longs: List[str] = []
+
     if story_notes:
         longs.append(
-            f"\"{base_title}\" began as {medium_phrase.lower()}, inspired by {subject_phrase}. "
-            f"{story_notes.strip()} "
-            f"This open edition matted Giclée print is available in two sizes, ready to frame."
+            f"\"{base_title}\" is based on an "
+            f"{medium_phrase.lower()}. "
+            f"{story_notes} "
+            f"{print_options_text}"
         )
+
         longs.append(
-            f"This piece, titled \"{base_title}\", reflects P. Forbes’ impressionist approach to {subject_phrase}. "
-            f"{story_notes.strip()} "
-            f"Each open edition Giclée print is matted and prepared in two standard sizes."
+            f"\"{base_title}\" explores {subject_phrase}. "
+            f"{story_notes} "
+            f"{print_options_text}"
         )
+
     else:
         longs.append(
-            f"\"{base_title}\" is an {medium_phrase.lower()} rendered in P. Forbes’ impressionist style. "
-            f"This open edition Giclée matted print is available in two sizes, ready to frame and enjoy."
-        )
-        longs.append(
-            f"Soft color and texture bring \"{base_title}\" to life. "
-            f"Reproduced as an open edition matted Giclée print, it comes in two sizes to suit your space."
+            f"\"{base_title}\" is reproduced from an "
+            f"{medium_phrase.lower()}. "
+            f"{print_options_text}"
         )
 
-    # Third long description: hybrid of subject + medium + a hint of emotion
+        longs.append(
+            f"\"{base_title}\" features {subject_phrase}, "
+            f"presented as an open edition Giclée fine art print. "
+            f"{print_options_text}"
+        )
+
     longs.append(
-        f"In this work, \"{base_title}\", {subject_phrase} is expressed through layered color and brushwork. "
-        f"As an open edition matted Giclée print, it offers an accessible way to live with original art."
+        f"\"{base_title}\" is a fine art reproduction "
+        f"of an original work by P. Forbes. "
+        f"{print_options_text}"
     )
 
-    # --- Alt text suggestions (for accessibility + SEO) ---
+    # --- Image alt text ---
+    # Describe the artwork rather than the purchasing options.
     alts: List[str] = []
 
     if subject:
         alts.append(
-            f"\"{base_title}\" {subject_phrase} painting by P. Forbes, available as a matted Giclée art print."
+            f"\"{base_title}\" depicting {subject_phrase}, "
+            f"original artwork by P. Forbes."
         )
         alts.append(
-            f"Impressionist {subject_phrase} titled \"{base_title}\" by P. Forbes, reproduced as an open edition Giclée print."
+            f"Fine art image of {subject_phrase} "
+            f"from \"{base_title}\" by P. Forbes."
         )
     else:
         alts.append(
-            f"\"{base_title}\" painting by P. Forbes, reproduced as an open edition matted Giclée art print."
+            f"\"{base_title}\" original artwork by P. Forbes."
         )
         alts.append(
-            f"Impressionist artwork titled \"{base_title}\" by P. Forbes, available as a matted Giclée print."
+            f"Fine art reproduction of \"{base_title}\" "
+            f"by P. Forbes."
         )
 
     alts.append(
-        f"Wall art print of \"{base_title}\" by P. Forbes, open edition matted Giclée suitable for home decor."
+        f"\"{base_title}\" by P. Forbes, "
+        f"reproduced as a Giclée fine art print."
     )
 
     return {
