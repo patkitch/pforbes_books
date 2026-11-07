@@ -15,12 +15,28 @@ class NewProductForm(forms.Form):
         widget=forms.TextInput(attrs={"placeholder": "e.g. Acrylic on canvas"}),
     )
 
+
     subject = forms.CharField(
-        label="Subject / Theme",
+        label="Subject / Theme or Meaning",
         max_length=200,
         required=False,
-        widget=forms.TextInput(attrs={"placeholder": "e.g. Kansas prairie, lighthouse, ocean, dog"}),
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "e.g. Fox portrait, Kansas prairie, or overcoming adversity"
+            }
+        ),
     )
+
+    subject_type = forms.ChoiceField(
+        label="What does the subject field describe?",
+        choices=[
+            ("visual", "What is visible in the artwork"),
+            ("theme", "The artwork's theme or meaning"),
+        ],
+        initial="visual",
+        required=False,
+    )
+
 
     story_notes = forms.CharField(
         label="Story / Story Notes",
