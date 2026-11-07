@@ -357,6 +357,7 @@ def create_standard_print_product_from_web(
         "name": title,
         "type": "variable",
         "status": "draft",
+        "shipping_class": "flat-rate-for-giclee-prints",
         "description": long_description,
         "short_description": short_description,
         "categories": categories,
