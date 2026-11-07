@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -150,14 +150,30 @@
                 {% endif %}
             </div>
 
+
             <div class="field">
                 {{ form.subject.label_tag }}
                 {{ form.subject }}
-                <div class="help-text">A few words about what’s in the painting — prairie, lighthouse, dog, etc.</div>
+                <div class="help-text">
+                    Describe what is visible in the artwork or its deeper meaning.
+                </div>
                 {% if form.subject.errors %}
                     {{ form.subject.errors }}
                 {% endif %}
             </div>
+
+            <div class="field">
+                {{ form.subject_type.label_tag }}
+                {{ form.subject_type }}
+                <div class="help-text">
+                    Choose whether your description represents the visible
+                    subject or the artwork's theme or meaning.
+                </div>
+                {% if form.subject_type.errors %}
+                    {{ form.subject_type.errors }}
+                {% endif %}
+            </div>
+
 
             <div class="field">
                 {{ form.story_notes.label_tag }}
