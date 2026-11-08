@@ -14,7 +14,7 @@ Faker==37.11.0
 filelock==3.19.1
 fonttools==4.60.1
 fpdf2==2.8.4
-idna==3.11
+idna>=3.18,<4
 iniconfig==2.1.0
 Markdown==3.9
 ofxtools==0.9.5
