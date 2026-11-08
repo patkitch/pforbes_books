@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vincent — Original Artwork Intake</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0f172a; color: #e5e7eb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 850px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    h1 { margin: 0 0 .35rem; font-size: 1.8rem; }
+    .intro, .hint { color: #a8b2c2; }
+    .intro { margin-bottom: 1.8rem; }
+    .panel { background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; }
+    .field { margin-bottom: 1.25rem; }
+    .field label, .field legend { display: block; font-weight: 600; margin-bottom: .45rem; }
+    input[type="text"], input[type="number"], input[type="url"], textarea, select { box-sizing: border-box; width: 100%; color: #f8fafc; background: #1e293b; border: 1px solid #64748b; border-radius: 7px; padding: .68rem .75rem; font: inherit; }
+    textarea { resize: vertical; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+    .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .radio-group { border: 0; padding: 0; margin: 0 0 1.25rem; }
+    .radio-group label { display: inline-flex; align-items: center; font-weight: 400; margin: .3rem 1.3rem .3rem 0; gap: .35rem; }
+    .radio-group input { accent-color: #93c5fd; }
+    .hint { display: block; font-size: .85rem; margin: .35rem 0 0; }
+    .errors, .errorlist { color: #fecaca; }
+    .errorlist { margin: .35rem 0; padding-left: 1.25rem; }
+    .section-heading { border-top: 1px solid #334155; padding-top: 1.25rem; margin-top: 1.4rem; }
+    .actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+    button { background: #2563eb; color: white; border: 0; border-radius: 7px; padding: .7rem 1.15rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    a { color: #93c5fd; }
+    @media (max-width: 600px) { .columns { grid-template-columns: 1fr; } .panel { padding: 1rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Vincent — Add Original Artwork</h1>
+    <p class="intro">Enter details for a one-of-a-kind original. The next screen is a preview only; no WooCommerce product will be created.</p>
+    <div class="panel">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="field">
+          {{ form.title.label_tag }}{{ form.title }}{{ form.title.errors }}
+        </div>
+        <div class="columns">
+          <div class="field">{{ form.style.label_tag }}{{ form.style }}{{ form.style.errors }}</div>
+          <div class="field">{{ form.medium.label_tag }}{{ form.medium }}{{ form.medium.errors }}</div>
+        </div>
+
+        <h2 class="section-heading">Size and presentation</h2>
+        <div class="columns">
+          <div class="field">{{ form.width.label_tag }}{{ form.width }}{{ form.width.errors }}</div>
+          <div class="field">{{ form.height.label_tag }}{{ form.height }}{{ form.height.errors }}</div>
+        </div>
+        <div class="field">
+          {{ form.canvas_profile.label_tag }}{{ form.canvas_profile }}{{ form.canvas_profile.errors }}
+        </div>
+        <fieldset class="radio-group">
+          <legend>{{ form.framed.label }}</legend>
+          {% for radio in form.framed %}
+            <label for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label>
+          {% endfor %}
+          {{ form.framed.errors }}
+        </fieldset>
+        <div id="frame-dimensions" {% if not form.framed.value or form.framed.value == 'false' %}hidden{% endif %}>
+          <p class="hint">Enter the outside dimensions of the frame, not just the painting.</p>
+          <div class="columns">
+            <div class="field">{{ form.frame_width.label_tag }}{{ form.frame_width }}{{ form.frame_width.errors }}</div>
+            <div class="field">{{ form.frame_height.label_tag }}{{ form.frame_height }}{{ form.frame_height.errors }}</div>
+          </div>
+        </div>
+
+        <h2 class="section-heading">Price and shipping</h2>
+        <div class="columns">
+          <div class="field">{{ form.price.label_tag }}{{ form.price }}{{ form.price.errors }}</div>
+          <div class="field">
+            {{ form.shipping_size.label_tag }}{{ form.shipping_size }}{{ form.shipping_size.errors }}
+            <small class="hint">Select the shipping class yourself; it is not calculated from dimensions.</small>
+          </div>
+        </div>
+
+        <h2 class="section-heading">Artwork story</h2>
+        <div class="field">{{ form.subject.label_tag }}{{ form.subject }}{{ form.subject.errors }}</div>
+        <div class="field">{{ form.story_notes.label_tag }}{{ form.story_notes }}{{ form.story_notes.errors }}</div>
+        <div class="field">
+          {{ form.image_url.label_tag }}{{ form.image_url }}{{ form.image_url.errors }}
+          {% if form.image_url.help_text %}<small class="hint">{{ form.image_url.help_text }}</small>{% endif %}
+        </div>
+        <div class="actions">
+          <button type="submit">Preview Original Artwork</button>
+          <a href="{% url 'web_automation:dashboard' %}">Back to Dashboard</a>
+        </div>
+      </form>
+    </div>
+  </main>
+  <script>
+    (function () {
+      const wrapper = document.getElementById('frame-dimensions');
+      const choices = document.querySelectorAll('input[name="framed"]');
+      function syncFrameFields() {
+        const selected = document.querySelector('input[name="framed"]:checked');
+        wrapper.hidden = !selected || selected.value !== 'true';
+      }
+      choices.forEach(input => input.addEventListener('change', syncFrameFields));
+      syncFrameFields();
+    }());
+  </script>
+</body>
+</html>

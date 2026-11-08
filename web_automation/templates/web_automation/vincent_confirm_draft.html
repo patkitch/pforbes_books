@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vincent — Confirm Original Artwork Draft</title>
+  <style>
+    body { margin: 0; background: #0f172a; color: #e5e7eb; font: 16px/1.55 system-ui, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 32px 22px 60px; }
+    h1 { font-size: 1.85rem; margin-bottom: 5px; }
+    h2 { font-size: 1.2rem; margin-top: 0; }
+    .sub, .muted { color: #aeb9ca; }
+    .panel { background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 21px; margin: 22px 0; }
+    .notice { padding: 15px; background: #1e293b; border-radius: 8px; }
+    .warning { border-left: 4px solid #fbbf24; }
+    dl { display: grid; grid-template-columns: minmax(130px, 190px) 1fr; gap: 10px 16px; }
+    dt { color: #aeb9ca; } dd { margin: 0; overflow-wrap: anywhere; }
+    a { color: #93c5fd; }
+    .actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 22px; }
+    
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 15px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Vincent — Confirm Original Artwork Draft</h1>
+    <p class="sub">Final confirmation screen design (not yet connected to product creation).</p>
+    <div class="notice"><strong>Creation is disabled during development.</strong> This page cannot submit a WooCommerce request.</div>
+
+    {% if error %}
+      <section class="panel warning" role="alert"><h2>Review unavailable</h2><p>{{ error }}</p></section>
+    {% elif plan and product %}
+      {% if plan.requires_duplicate_review %}
+        <section class="panel warning" role="alert">
+          <h2>Existing artwork needs review</h2>
+          <p>Vincent found an exact or possible original-artwork match. Draft creation must remain blocked.</p>
+          <ul>
+          {% for match in plan.duplicate_matches.exact %}<li>Exact: {{ match.name }} — ID {{ match.id }}</li>{% endfor %}
+          {% for match in plan.duplicate_matches.possible %}<li>Possible: {{ match.name }} — ID {{ match.id }}</li>{% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+      <section class="panel">
+        <h2>Product to be created</h2>
+        <p class="muted">
+        Submission ID: {{ submission_id }}
+        </p>
+
+        <dl>
+          <dt>Artwork</dt><dd>{{ product.name }}</dd>
+          <dt>WooCommerce type</dt><dd>{{ product.type }}</dd>
+          <dt>Status</dt><dd>{{ product.status }}</dd>
+          <dt>Price</dt><dd>${{ product.regular_price }}</dd>
+          <dt>Shipping class</dt><dd>{{ product.shipping_class }}</dd>
+          <dt>Inventory</dt><dd>{{ product.stock_quantity }} in stock; backorders {{ product.backorders }}</dd>
+          <dt>Existing tags</dt><dd>{% for tag in plan.existing_tags %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+          <dt>New tags needed</dt><dd>{% for tag in plan.missing_tags %}{{ tag }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+        </dl>
+      </section>
+    {% else %}
+      <section class="panel"><p>Complete the artwork intake and draft review before confirming a product.</p></section>
+    {% endif %}
+
+    <div class="actions">
+      
+    {% if plan and product and not plan.requires_duplicate_review and submission_id %}
+      <form method="post" action="{% url 'web_automation:vincent_create_draft' %}">
+        {% csrf_token %}
+        <button type="submit">
+          Create WooCommerce Draft
+        </button>
+      </form>
+    {% endif %}
+
+      <a href="{% url 'web_automation:vincent_draft_review' %}">Back to Draft Review</a>
+      <a href="{% url 'web_automation:vincent_intake' %}">Edit Artwork Details</a>
+    </div>
+    <p class="muted">Before enabling creation, we'll add a POST-only view, authentication checks, a one-time submission guard, and duplicate checks immediately before the write.</p>
+  </main>
+</body>
+</html>

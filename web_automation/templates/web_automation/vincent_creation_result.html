@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vincent - Draft Creation Result</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: #e5e7eb;
+      font: 16px/1.6 system-ui, sans-serif;
+    }
+    main {
+      max-width: 760px;
+      margin: 60px auto;
+      padding: 30px;
+    }
+    .panel {
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 28px;
+    }
+    h1 { margin-top: 0; }
+    .status { color: #93c5fd; font-weight: 600; }
+    a { color: #93c5fd; }
+    .actions { margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Vincent - WooCommerce Draft</h1>
+
+      <p class="status">Status: {{ status|title }}</p>
+      <p>{{ message }}</p>
+
+      {% if product_id %}
+        <p>WooCommerce Product ID: <strong>{{ product_id }}</strong></p>
+      {% endif %}
+
+      <div class="actions">
+        <a href="{% url 'web_automation:vincent_confirm_draft' %}">
+          Back to Final Confirmation
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vincent — Original Artwork Preview</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0f172a; color: #e5e7eb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 850px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    h1 { margin: 0 0 .35rem; font-size: 1.8rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.2rem; }
+    h3 { font-size: 1.05rem; }
+    .intro, .hint { color: #a8b2c2; }
+    .intro { margin-bottom: 1.5rem; }
+    .panel { background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 1.4rem; margin-bottom: 1.25rem; }
+    .detail-list { display: grid; grid-template-columns: 145px 1fr; gap: .65rem 1rem; margin: 0; }
+    dt { color: #a8b2c2; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .preview-copy { line-height: 1.65; overflow-wrap: anywhere; }
+    .preview-copy ul { padding-left: 1.4rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .55rem; list-style: none; padding: 0; margin: 0; }
+    .tags li { padding: .4rem .65rem; background: #1e293b; border: 1px solid #475569; border-radius: 999px; font-size: .9rem; }
+    .notice { border-left: 4px solid #93c5fd; padding: .75rem 1rem; background: #1e293b; margin: 1rem 0 1.5rem; }
+    a { color: #93c5fd; }
+    .actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.6rem; }
+    .primary-link { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; border-radius: 7px; padding: .7rem 1rem; font-weight: 600; }
+    .primary-link:hover { background: #1d4ed8; }
+    @media (max-width: 600px) { .detail-list { grid-template-columns: 1fr; gap: .2rem; } dd { margin-bottom: .7rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Vincent — Original Artwork Preview</h1>
+  <p class="intro">Review the artwork details, suggested descriptions, and automatic tags before any future draft creation.</p>
+  <div class="notice"><strong>Preview only.</strong> Nothing has been created, published, or changed in WooCommerce. Tag names below are suggestions and have not been assigned.</div>
+
+  <section class="panel">
+    <h2>Artwork details</h2>
+    <dl class="detail-list">
+      <dt>Title</dt><dd>{{ intake.title }}</dd>
+      <dt>Style</dt><dd>{{ intake.style }}</dd>
+      <dt>Medium</dt><dd>{{ intake.medium }}</dd>
+      <dt>Artwork size</dt><dd>{{ intake.width }} × {{ intake.height }} inches (width × height)</dd>
+      <dt>Canvas type</dt><dd>{{ intake.canvas_profile }}</dd>
+      <dt>Framing</dt><dd>{% if intake.framed %}Framed{% else %}Unframed{% endif %}</dd>
+      {% if intake.framed %}
+      <dt>Outside frame size</dt><dd>{{ intake.frame_width }} × {{ intake.frame_height }} inches (width × height)</dd>
+      {% endif %}
+      <dt>Price</dt><dd>${{ intake.price }}</dd>
+      <dt>Shipping size</dt><dd>{{ intake.shipping_size|upper }} — manually selected (shipping class not yet applied)</dd>
+      {% if intake.subject %}<dt>Subject</dt><dd>{{ intake.subject }}</dd>{% endif %}
+      {% if intake.image_url %}<dt>Main image URL</dt><dd>{{ intake.image_url }}</dd>{% endif %}
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2>Suggested short description</h2>
+    <div class="preview-copy">{{ descriptions.short_description }}</div>
+  </section>
+
+  <section class="panel">
+    <h2>Suggested long description</h2>
+    <div class="preview-copy">{{ descriptions.long_description|safe }}</div>
+    <p class="hint">This is a preview of your product description. Review your text before creating the WooCommerce draft.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Automatically suggested product tags</h2>
+    {% if tags %}
+    <ul class="tags">
+      {% for tag in tags %}<li>{{ tag }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="hint">No tags were generated.</p>
+    {% endif %}
+  </section>
+
+  <div class="actions">
+    <a href="{% url 'web_automation:vincent_draft_review' %}">
+        Review WooCommerce Draft</a>
+    <a class="primary-link" href="{% url 'web_automation:vincent_intake' %}">Edit Artwork Details</a>
+    <a href="{% url 'web_automation:dashboard' %}">Back to Dashboard</a>
+  </div>
+</main>
+</body>
+</html>

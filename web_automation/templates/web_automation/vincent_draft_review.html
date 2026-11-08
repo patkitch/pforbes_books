@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vincent — Original Artwork Draft Review</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0f172a; color: #e5e7eb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 850px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    h1 { margin: 0 0 .4rem; font-size: 1.8rem; }
+    h2 { font-size: 1.2rem; margin-top: 0; }
+    .intro, .hint { color: #a8b2c2; }
+    .panel { background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 1.4rem; margin: 1.3rem 0; }
+    .notice { border-left: 4px solid #93c5fd; padding: .8rem 1rem; background: #1e293b; margin: 1.2rem 0; }
+    .warning { border-left-color: #fbbf24; }
+    dl { display: grid; grid-template-columns: 165px 1fr; gap: .65rem 1rem; }
+    dt { color: #a8b2c2; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .copy { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+    li { margin-bottom: .35rem; }
+    a { color: #93c5fd; }
+    .actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.7rem; }
+    .primary { background: #2563eb; color: white; text-decoration: none; border-radius: 7px; padding: .7rem 1rem; font-weight: 600; }
+    @media (max-width: 600px) { dl { grid-template-columns: 1fr; gap: .2rem; } dd { margin-bottom: .7rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Vincent — Original Artwork Draft Review</h1>
+  <p class="intro">Review the planned WooCommerce listing and any duplicate warnings.</p>
+  <div class="notice"><strong>Read-only review.</strong> No product or tag has been created, changed, or published. This page has no Create Draft button.</div>
+
+  {% if error %}
+    <section class="panel"><h2>Review unavailable</h2><p>{{ error }}</p></section>
+  {% elif plan %}
+    {% if plan.requires_duplicate_review %}
+      <div class="notice warning"><strong>Possible duplicate original artwork.</strong> Creation must be reviewed before proceeding.</div>
+      <section class="panel">
+        <h2>Matching original artwork</h2>
+        {% if plan.duplicate_matches.exact %}
+          <h3>Exact matches</h3>
+          <ul>{% for match in plan.duplicate_matches.exact %}<li>{{ match.name }} — WooCommerce ID {{ match.id }} ({{ match.status }})</li>{% endfor %}</ul>
+        {% endif %}
+        {% if plan.duplicate_matches.possible %}
+          <h3>Possible matches</h3>
+          <ul>{% for match in plan.duplicate_matches.possible %}<li>{{ match.name }} — WooCommerce ID {{ match.id }} ({{ match.status }})</li>{% endfor %}</ul>
+        {% endif %}
+      </section>
+    {% else %}
+      <div class="notice">No matching original artwork was found in this review. This is not a guarantee against every duplicate.</div>
+    {% endif %}
+
+    <section class="panel">
+      <h2>Planned product settings</h2>
+      <dl>
+        <dt>Title</dt><dd>{{ product.name }}</dd>
+        <dt>Product type</dt><dd>{{ product.type }}</dd>
+        <dt>Status</dt><dd>{{ product.status }}</dd>
+        <dt>Price</dt><dd>${{ product.regular_price }}</dd>
+        <dt>Category ID</dt><dd>{% for cat in product.categories %}{{ cat.id }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+        <dt>Shipping class</dt><dd>{{ product.shipping_class }}</dd>
+        <dt>Length</dt><dd>{{ product.dimensions.length|default:"—" }} inches</dd>
+        <dt>Width</dt><dd>{{ product.dimensions.width|default:"—" }} inches</dd>
+        <dt>Height / depth</dt><dd>{{ product.dimensions.height|default:"Not set" }}</dd>
+        <dt>Stock quantity</dt><dd>{{ product.stock_quantity }}</dd>
+        <dt>Manage stock</dt><dd>{{ product.manage_stock|yesno:"Yes,No" }}</dd>
+        <dt>Backorders</dt><dd>{{ product.backorders }}</dd>
+        <dt>Sold individually</dt><dd>{{ product.sold_individually|yesno:"Yes,No" }}</dd>
+        <dt>Main image</dt>
+        <dd>{% for img in product.images %}{{ img.src }}{% if img.alt %} — Alt text: {{ img.alt }}{% endif %}{% if not forloop.last %}<hr>{% endif %}{% empty %}No image provided{% endfor %}</dd>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Short description</h2>
+      <div class="copy">{{ product.short_description }}</div>
+    </section>
+    <section class="panel">
+      <h2>Long description</h2>
+      <div class="copy">{{ product.description }}</div>
+      <p class="hint">Displayed as escaped text in this read-only review for safety. The eventual WooCommerce draft will receive the description from Vincent's planner.</p>
+    </section>
+    <section class="panel">
+      <h2>Product tags</h2>
+      <h3>Existing tags to reuse</h3>
+      <ul>{% for tag in plan.existing_tags %}<li>{{ tag.name }} (ID {{ tag.id }})</li>{% empty %}<li>None</li>{% endfor %}</ul>
+      <h3>Missing tags (not yet created)</h3>
+      <ul>{% for tag in plan.missing_tags %}<li>{{ tag }}</li>{% empty %}<li>None</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+  <div class="actions">
+    
+    {% if plan and not plan.requires_duplicate_review %}
+      <a class="primary" href="{% url 'web_automation:vincent_confirm_draft' %}">
+        Continue to Final Confirmation
+      </a>
+    {% endif %}
+
+    <a class="primary" href="{% url 'web_automation:vincent_preview' %}">Back to Artwork Preview</a>
+    <a href="{% url 'web_automation:vincent_intake' %}">Edit Artwork Details</a>
+    <a href="{% url 'web_automation:dashboard' %}">Dashboard</a>
+  </div>
+</main>
+</body>
+</html>
