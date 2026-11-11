@@ -18,9 +18,6 @@ env = environ.Env(
 )
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR", default=False)
-
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -86,17 +83,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_ledger',
-    'helpers.apps.HelpersConfig',
-    'books.apps.BooksConfig',  # not just 'books'
-    'reports.apps.ReportsConfig',
-    'stockops.apps.StockopsConfig',
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
-    "lawn_imports",
-    "forbes_lawn_dashboard",
-    "forbes_lawn_billing",
-    "forbes_lawn_accounting",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -126,7 +114,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'django_ledger.context.django_ledger_context'
             ],
         },
     },
