@@ -82,7 +82,7 @@ class PrintStock(models.Model):
     def __str__(self): return f"{self.print_option} at {self.location}: {self.quantity}"
 
 class InventoryActivity(models.Model):
-    KINDS=[("purchase","Print stock added"),("return","Return to stock"),("transfer","Transfer"),("local_sale","Local print sale"),("original_sale","Original sold"),("gift","Gift"),("made_to_order","Made-to-order website sale (no stock change)"),("adjust_add","Count adjustment — add"),("adjust_remove","Count adjustment — remove")]
+    KINDS=[("purchase","Print stock added"),("return","Return to stock"),("transfer","Transfer"),("local_sale","Local print sale"),("original_sale","Original sold"),("gift","Gift"),("adjust_add","Count adjustment — add"),("adjust_remove","Count adjustment — remove")]
     original=models.ForeignKey(Original,null=True,blank=True,on_delete=models.PROTECT,related_name="activities")
     print_option=models.ForeignKey(PrintOption,null=True,blank=True,on_delete=models.PROTECT,related_name="activities")
     kind=models.CharField(max_length=20,choices=KINDS)
