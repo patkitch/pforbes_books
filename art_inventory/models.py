@@ -26,7 +26,7 @@ class Artwork(models.Model):
     medium=models.CharField(max_length=100,blank=True)
     width_inches=models.DecimalField(max_digits=7,decimal_places=2,null=True,blank=True)
     height_inches=models.DecimalField(max_digits=7,decimal_places=2,null=True,blank=True)
-    support=models.CharField(max_length=120,blank=True)
+    support=models.CharField(max_length=120,blank=True,verbose_name="Painting surface",help_text="Canvas, paper, wood panel, or another painting surface.")
     image_url=models.URLField(blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta: ordering=["title"]
@@ -82,7 +82,12 @@ class PrintStock(models.Model):
     def __str__(self): return f"{self.print_option} at {self.location}: {self.quantity}"
 
 class InventoryActivity(models.Model):
-    KINDS=[("purchase","Print stock added"),("return","Return to stock"),("transfer","Transfer"),("local_sale","Local print sale"),("original_sale","Original sold"),("gift","Gift"),("adjust_add","Count adjustment — add"),("adjust_remove","Count adjustment — remove")]
+    KINDS=[
+        ("purchase","Print stock added"),("return","Print returned to stock"),("transfer","Transfer"),
+        ("local_sale","Local print sale"),("original_sale","Original sold"),("original_return","Original returned"),
+        ("gift","Gift"),("adjust_add","Count adjustment — add"),("adjust_remove","Count adjustment — remove"),
+        ("correction","Record corrected"),
+    ]
     original=models.ForeignKey(Original,null=True,blank=True,on_delete=models.PROTECT,related_name="activities")
     print_option=models.ForeignKey(PrintOption,null=True,blank=True,on_delete=models.PROTECT,related_name="activities")
     kind=models.CharField(max_length=20,choices=KINDS)
@@ -93,8 +98,12 @@ class InventoryActivity(models.Model):
     source=models.CharField(max_length=100,blank=True)
     reference=models.CharField(max_length=100,blank=True)
     note=models.TextField(blank=True)
+    refund_issued=models.BooleanField(default=False)
     created_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL)
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering=["-activity_date","-created_at"]
-        constraints=[models.CheckConstraint(condition=Q(original__isnull=False,print_option__isnull=True)|Q(original__isnull=True,print_option__isnull=False),name="artinv_activity_one_item"),models.CheckConstraint(condition=Q(quantity__gte=1),name="artinv_activity_positive_qty")]
+        constraints=[
+            models.CheckConstraint(condition=Q(original__isnull=False,print_option__isnull=True)|Q(original__isnull=True,print_option__isnull=False),name="artinv_activity_one_item"),
+            models.CheckConstraint(condition=Q(quantity__gte=1),name="artinv_activity_positive_qty"),
+        ]

@@ -4,7 +4,7 @@ from django.utils import timezone
 from .models import InventoryActivity,Location,Original,PrintStock,PrintOption
 
 @transaction.atomic
-def record_activity(*,kind,quantity,activity_date=None,original_id=None,print_option_id=None,from_location_id=None,to_location_id=None,source="",reference="",note="",user=None):
+def record_activity(*,kind,quantity,activity_date=None,original_id=None,print_option_id=None,from_location_id=None,to_location_id=None,source="",reference="",note="",refund_issued=False,user=None):
     try: qty=int(quantity)
     except (TypeError,ValueError): raise ValidationError("Quantity must be a whole number.")
     if qty<1: raise ValidationError("Quantity must be at least 1.")
@@ -16,18 +16,25 @@ def record_activity(*,kind,quantity,activity_date=None,original_id=None,print_op
     src,dst=locs.get(from_location_id),locs.get(to_location_id)
     if original:
         if qty!=1: raise ValidationError("An original has a quantity of one.")
-        if kind not in ("transfer","original_sale","gift"): raise ValidationError("Choose an original activity.")
-        if original.status in ("sold","gifted"): raise ValidationError("This original is already sold or gifted.")
-        if kind=="transfer":
-            if not src or not dst or src==dst: raise ValidationError("Transfer needs two different locations.")
-            if original.location_id!=src.pk: raise ValidationError("Original is not at the selected starting location.")
+        if kind not in ("transfer","original_sale","original_return","gift"): raise ValidationError("Choose an original activity.")
+        if kind=="original_return":
+            if original.status!="sold": raise ValidationError("Only an original marked sold can be returned.")
+            if not dst: raise ValidationError("Choose the location receiving the returned original.")
+            original.status="available"
             original.location=dst
         else:
-            if src and original.location_id!=src.pk: raise ValidationError("Original is not at the selected location.")
-            original.status="sold" if kind=="original_sale" else "gifted"
-            original.location=None
+            if original.status in ("sold","gifted"): raise ValidationError("This original is already sold or gifted.")
+            if kind=="transfer":
+                if not src or not dst or src==dst: raise ValidationError("Transfer needs two different locations.")
+                if original.location_id!=src.pk: raise ValidationError("Original is not at the selected starting location.")
+                original.location=dst
+            else:
+                if src and original.location_id!=src.pk: raise ValidationError("Original is not at the selected location.")
+                original.status="sold" if kind=="original_sale" else "gifted"
+                original.location=None
         original.save(update_fields=["location","status"])
     else:
+        if refund_issued: raise ValidationError("Refund tracking applies only to an original return.")
         if kind not in ("purchase","return","transfer","local_sale","adjust_add","adjust_remove"): raise ValidationError("Choose a print activity.")
         if kind=="transfer":
             if not src or not dst or src==dst: raise ValidationError("Transfer needs two different locations.")
@@ -38,7 +45,7 @@ def record_activity(*,kind,quantity,activity_date=None,original_id=None,print_op
         else:
             if not src: raise ValidationError("Choose the location losing stock.")
             _stock(option,src,-qty)
-    return InventoryActivity.objects.create(kind=kind,quantity=qty,activity_date=activity_date or timezone.localdate(),original=original,print_option=option,from_location=src,to_location=dst,source=source,reference=reference,note=note,created_by=user if getattr(user,"is_authenticated",False) else None)
+    return InventoryActivity.objects.create(kind=kind,quantity=qty,activity_date=activity_date or timezone.localdate(),original=original,print_option=option,from_location=src,to_location=dst,source=source,reference=reference,note=note,refund_issued=refund_issued,created_by=user if getattr(user,"is_authenticated",False) else None)
 
 def _stock(option,location,delta):
     row,_=PrintStock.objects.get_or_create(print_option=option,location=location)

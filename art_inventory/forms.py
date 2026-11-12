@@ -20,6 +20,60 @@ class ArtworkForm(forms.ModelForm):
         if commit: Original.objects.create(artwork=art,location=self.cleaned_data.get("initial_location"),price=self.cleaned_data.get("price"),canvas_profile=self.cleaned_data.get("canvas_profile",""),framed=self.cleaned_data.get("framed",False),outside_width_inches=self.cleaned_data.get("outside_width_inches"),outside_height_inches=self.cleaned_data.get("outside_height_inches"))
         return art
 
+class ArtworkEditForm(forms.Form):
+    story=forms.CharField(required=False,widget=forms.Textarea(attrs={"rows":4}))
+    style=forms.CharField(max_length=100,required=False)
+    medium=forms.CharField(max_length=100,required=False)
+    width_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
+    height_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
+    support=forms.CharField(max_length=120,required=False,label="Painting surface",help_text="Canvas, paper, wood panel, or another painting surface.")
+    image_url=forms.URLField(required=False)
+    sku=forms.CharField(max_length=40,label="SKU")
+    status=forms.ChoiceField(choices=Original.STATUSES)
+    location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
+    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False)
+    canvas_profile=forms.ChoiceField(choices=[("", "Not recorded")]+CANVAS_PROFILES)
+    framed=forms.BooleanField(required=False)
+    outside_width_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
+    outside_height_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
+    listing_status=forms.ChoiceField(choices=Original.LISTINGS)
+    woo_product_id=forms.IntegerField(min_value=1,required=False)
+    woo_url=forms.URLField(required=False)
+    def __init__(self,*args,artwork,original,**kwargs):
+        self.artwork=artwork; self.original=original
+        super().__init__(*args,initial={
+            "story":artwork.story,"style":artwork.style,"medium":artwork.medium,"width_inches":artwork.width_inches,
+            "height_inches":artwork.height_inches,"support":artwork.support,"image_url":artwork.image_url,
+            "sku":original.sku,"status":original.status,"location":original.location_id,"price":original.price,
+            "canvas_profile":original.canvas_profile,"framed":original.framed,
+            "outside_width_inches":original.outside_width_inches,"outside_height_inches":original.outside_height_inches,
+            "listing_status":original.listing_status,"woo_product_id":original.woo_product_id,"woo_url":original.woo_url,
+        },**kwargs)
+    def clean(self):
+        d=super().clean()
+        if self.original.status=="sold" and d.get("status")=="available":
+            self.add_error("status","Use Record activity → Original returned so the return location and refund can be recorded.")
+        return d
+    @transaction.atomic
+    def save(self,user=None):
+        d=self.cleaned_data; original=self.original
+        old_location=original.location; old_values={"SKU":original.sku,"status":original.get_status_display(),"location":str(old_location or "None")}
+        for name in ("story","style","medium","width_inches","height_inches","support","image_url"):
+            setattr(self.artwork,name,d[name])
+        self.artwork.save()
+        for name in ("sku","status","location","price","canvas_profile","framed","outside_width_inches","outside_height_inches","listing_status","woo_product_id","woo_url"):
+            setattr(original,name,d[name])
+        original.save()
+        changes=[]
+        for label,old,new in [
+            ("SKU",old_values["SKU"],original.sku),("status",old_values["status"],original.get_status_display()),
+            ("location",str(old_location or "None"),str(original.location or "None")),
+        ]:
+            if old!=new: changes.append(f"{label}: {old} -> {new}")
+        if changes:
+            InventoryActivity.objects.create(kind="correction",quantity=1,activity_date=timezone.localdate(),original=original,from_location=old_location,to_location=original.location,note="Record edited. "+"; ".join(changes),created_by=user if getattr(user,"is_authenticated",False) else None)
+        return self.artwork
+
 class PrintOptionForm(forms.Form):
     artwork=forms.ModelChoiceField(queryset=Artwork.objects.all(),label="Artwork title")
     print_type=forms.ChoiceField(choices=[("", "Select print size / type")]+PrintOption.PRINT_TYPES,label="Print type you order")
@@ -28,10 +82,8 @@ class PrintOptionForm(forms.Form):
     location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="Where are these prints?")
     def clean(self):
         data=super().clean()
-        if data.get("quantity",0)>0 and not data.get("location"):
-            self.add_error("location","Choose where the prints are.")
-        if data.get("artwork") and data.get("print_type") and PrintOption.objects.filter(artwork=data["artwork"],print_type=data["print_type"]).exists():
-            self.add_error("print_type","This print size is already set up. Use Record activity to add stock.")
+        if data.get("quantity",0)>0 and not data.get("location"): self.add_error("location","Choose where the prints are.")
+        if data.get("artwork") and data.get("print_type") and PrintOption.objects.filter(artwork=data["artwork"],print_type=data["print_type"]).exists(): self.add_error("print_type","This print size is already set up. Use Record activity to add stock.")
         return data
     @transaction.atomic
     def save(self,user=None):
@@ -44,11 +96,12 @@ class ActivityForm(forms.Form):
     item_type=forms.ChoiceField(choices=[("original","Original"),("print","Print option")])
     original=forms.ModelChoiceField(queryset=Original.objects.select_related("artwork"),required=False)
     print_option=forms.ModelChoiceField(queryset=PrintOption.objects.select_related("artwork").filter(is_active=True),required=False)
-    kind=forms.ChoiceField(choices=InventoryActivity.KINDS)
+    kind=forms.ChoiceField(choices=[(k,v) for k,v in InventoryActivity.KINDS if k!="correction"])
     quantity=forms.IntegerField(min_value=1,initial=1)
     activity_date=forms.DateField(initial=timezone.localdate,widget=forms.DateInput(attrs={"type":"date"}))
     from_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
     to_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
+    refund_issued=forms.BooleanField(required=False,label="Refund issued")
     source=forms.CharField(max_length=100,required=False)
     reference=forms.CharField(max_length=100,required=False)
     note=forms.CharField(widget=forms.Textarea(attrs={"rows":3}),required=False)
@@ -56,7 +109,9 @@ class ActivityForm(forms.Form):
         d=super().clean()
         if d.get("item_type")=="original" and not d.get("original"): self.add_error("original","Choose an original.")
         if d.get("item_type")=="print" and not d.get("print_option"): self.add_error("print_option","Choose a print option.")
+        if d.get("kind")=="original_return" and not d.get("to_location"): self.add_error("to_location","Choose where the returned original is now.")
+        if d.get("item_type")=="print" and d.get("refund_issued"): self.add_error("refund_issued","Refund tracking is for original returns.")
         return d
     def save(self,user=None):
         d=self.cleaned_data; orig=d["original"] if d["item_type"]=="original" else None; opt=d["print_option"] if d["item_type"]=="print" else None
-        return record_activity(kind=d["kind"],quantity=d["quantity"],activity_date=d["activity_date"],original_id=orig.pk if orig else None,print_option_id=opt.pk if opt else None,from_location_id=d["from_location"].pk if d["from_location"] else None,to_location_id=d["to_location"].pk if d["to_location"] else None,source=d["source"],reference=d["reference"],note=d["note"],user=user)
+        return record_activity(kind=d["kind"],quantity=d["quantity"],activity_date=d["activity_date"],original_id=orig.pk if orig else None,print_option_id=opt.pk if opt else None,from_location_id=d["from_location"].pk if d["from_location"] else None,to_location_id=d["to_location"].pk if d["to_location"] else None,source=d["source"],reference=d["reference"],note=d["note"],refund_issued=d["refund_issued"],user=user)
