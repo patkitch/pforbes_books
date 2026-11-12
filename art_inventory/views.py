@@ -29,7 +29,7 @@ def detail(request,pk):
     history_query=Q(print_option__artwork=art)
     if original: history_query |= Q(original=original)
     history=InventoryActivity.objects.filter(history_query).select_related("from_location","to_location","original__artwork","print_option__artwork")[:40]
-    return render(request,"art_inventory/detail.html",{"art":art,"history":history})
+    return render(request,"art_inventory/detail.html",{"art":art,"original":original,"history":history})
 
 @login_required
 def print_add(request):
