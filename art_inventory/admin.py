@@ -5,13 +5,14 @@ admin.site.register(Location)
 admin.site.register(PrintStock)
 @admin.register(Original)
 class OriginalAdmin(admin.ModelAdmin):
-    list_display=("sku","artwork","status","location","price","listing_status")
-    list_filter=("status","listing_status","location")
+    list_display=("sku","artwork","status","location","price","canvas_profile")
+    list_filter=("status","location","canvas_profile")
     search_fields=("sku","artwork__title")
 @admin.register(PrintOption)
 class PrintOptionAdmin(admin.ModelAdmin):
-    list_display=("sku","artwork","label","is_active","listing_status")
-    search_fields=("sku","artwork__title","label")
+    list_display=("sku","artwork","print_type","price","is_active")
+    list_filter=("print_type","is_active")
+    search_fields=("sku","artwork__title")
 @admin.register(InventoryActivity)
 class ActivityAdmin(admin.ModelAdmin):
     list_display=("activity_date","kind","original","print_option","quantity","source")
