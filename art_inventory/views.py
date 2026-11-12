@@ -67,7 +67,7 @@ def activity_add(request):
             messages.success(request,"Inventory activity recorded.")
             art=activity.original.artwork if activity.original_id else activity.print_option.artwork
             return redirect("art_inventory:detail",pk=art.pk)
-    return render(request,"art_inventory/form.html",{"form":form,"title":"Record inventory activity"})
+    return render(request,"art_inventory/form.html",{"form":form,"title":"Record a sale or stock change"})
 
 @login_required
 def artwork_delete(request,pk):
