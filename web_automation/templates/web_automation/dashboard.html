@@ -72,14 +72,76 @@
             color: #9ca3af;
             margin-bottom: 0.75rem;
         }
+    
+        /* Match the Studio Inventory's light background and outlined cards. */
+        html, body {
+            background: #f5f7fa;
+            color: #182438;
+        }
+        h1, h2, h3, p {
+            color: #182438;
+        }
+        .subtitle, .section-note {
+            color: #64748b;
+        }
+        .panel {
+            background: #ffffff;
+            border: 1px solid #dfe5ec;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        a, .footer-nav a {
+            color: #1769d2;
+        }
+        a:hover, .footer-nav a:hover {
+            color: #0f55ad;
+        }
+        .pill {
+            background: #e8eef4;
+            color: #46647f;
+        }
+        .footer-nav {
+            border-top: 1px solid #dfe5ec;
+            color: #64748b;
+        }
+
+        .dashboard-header {
+            background: #173149;
+            color: #ffffff;
+            padding: 16px 22px;
+        }
+        .dashboard-header-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .dashboard-header h1 {
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.4rem;
+            font-weight: 650;
+            margin: 0 0 0.2rem;
+        }
+        .dashboard-header .subtitle {
+            color: #d5e1ec;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .wrapper .panel .link-list a {
+            color: #1769d2;
+        }
+        .wrapper .panel .link-list a:hover {
+            color: #0f55ad;
+        }
     </style>
 </head>
 <body>
-<div class="wrapper">
-    <h1>Website Automation Dashboard</h1>
-    <div class="subtitle">
-        Back-office tools for pforbesart.com — catalog automation, SEO assistance, and design/content helpers.
+<header class="dashboard-header">
+    <div class="dashboard-header-inner">
+        <h1>Website Automation Dashboard</h1>
+        <div class="subtitle">Back-office tools for pforbesart.com — catalog automation, SEO assistance, and design/content helpers.</div>
     </div>
+</header>
+<div class="wrapper">
 
     <div class="panel">
         <h2>Catalog Automation</h2>
@@ -95,6 +157,12 @@
             </li>
             <!-- later: more links here, like "View catalog status" -->
         </ul>
+    </div>
+
+    <div class="panel">
+        <h2>Artwork Inventory</h2>
+        <div class="section-note">Track originals, print formats, location counts, and inventory history.</div>
+        <ul class="link-list"><li><a href="/inventory/">Open Artwork Inventory</a></li></ul>
     </div>
 
     <div class="panel">

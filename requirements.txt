@@ -17,6 +17,7 @@ idna>=3.18,<4
 iniconfig==2.1.0
 Markdown==3.9
 ofxtools==0.9.5
+openpyxl==3.1.5
 packaging==25.0
 pillow==11.3.0
 pipenv==2025.0.4

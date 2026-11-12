@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
+    "art_inventory.apps.ArtInventoryConfig",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
