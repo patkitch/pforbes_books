@@ -5,9 +5,9 @@ This first version tracks P. Forbes Art originals and separately ordered, locall
 Before migrating, verify your local .env points to a local development database, not DigitalOcean or production.
 
 From the project folder:
-1. .venv\\Scripts\\python.exe manage.py migrate art_inventory
-2. .venv\\Scripts\\python.exe manage.py test art_inventory
-3. .venv\\Scripts\\python.exe manage.py runserver 8003
+1. .venv\Scripts\python.exe manage.py migrate art_inventory
+2. .venv\Scripts\python.exe manage.py test art_inventory
+3. .venv\Scripts\python.exe manage.py runserver 8003
 4. Open http://127.0.0.1:8003/admin/ and sign in, then open http://127.0.0.1:8003/inventory/.
 
 The inventory has two separate entry actions. Add an original when you finish a painting. When you later order prints, choose Add print, select the artwork title, then select one of the three print formats. You can record a starting quantity and location, or leave the count at zero and use Record activity when the prints arrive.
