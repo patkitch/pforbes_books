@@ -7,7 +7,7 @@ class InventoryTests(TestCase):
     def setUp(self):
         self.home=Location.objects.get(name="Home"); self.gallery=Location.objects.get(name="Images Art Gallery")
         self.art=Artwork.objects.create(title="Sample"); self.original=Original.objects.create(artwork=self.art,location=self.home)
-        self.print=PrintOption.objects.create(artwork=self.art,label="8 x 10 print")
+        self.print=PrintOption.objects.create(artwork=self.art,print_type="matted_8x10_4x6")
     def test_transfer_and_sale_counts(self):
         record_activity(kind="purchase",quantity=5,print_option_id=self.print.pk,to_location_id=self.home.pk)
         record_activity(kind="transfer",quantity=2,print_option_id=self.print.pk,from_location_id=self.home.pk,to_location_id=self.gallery.pk)
