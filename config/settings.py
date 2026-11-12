@@ -1,4 +1,3 @@
-from email.mime import base
 from pathlib import Path
 import os
 import environ
@@ -18,9 +17,6 @@ env = environ.Env(
 )
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR = env.bool("DJANGO_LEDGER_USE_DEPRECATED_BEHAVIOR", default=False)
-
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -30,51 +26,6 @@ DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost", "127.0.0.1", "0.0.0.0"]
 CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
 
-
-# ============================================================================
-# JOBBER API CONFIGURATION
-# ============================================================================
-# All Jobber credentials are read from environment variables for security.
-# Set these in DigitalOcean App Platform > Settings > App-Level Environment Variables
-# or in your local .env file for development.
-
-JOBBER_API_URL = os.getenv(
-    "JOBBER_API_URL", 
-    "https://api.getjobber.com/api/graphql"
-)
-
-JOBBER_API_VERSION = os.getenv(
-    "JOBBER_API_VERSION", 
-    "2025-04-16"
-)
-
-# OAuth credentials - MUST be set in environment variables
-JOBBER_CLIENT_ID = os.getenv("JOBBER_CLIENT_ID", "")
-JOBBER_CLIENT_SECRET = os.getenv("JOBBER_CLIENT_SECRET", "")
-
-# OAuth URLs
-JOBBER_OAUTH_REDIRECT_URI = os.getenv(
-    "JOBBER_OAUTH_REDIRECT_URI",
-    "https://pforbes-books-uuad7.ondigitalocean.app/jobber/oauth/callback/"
-)
-
-JOBBER_OAUTH_TOKEN_URL = os.getenv(
-    "JOBBER_OAUTH_TOKEN_URL", 
-    "https://api.getjobber.com/api/oauth/token"
-)
-
-JOBBER_OAUTH_AUTHORIZE_URL = os.getenv(
-    "JOBBER_OAUTH_AUTHORIZE_URL", 
-    "https://api.getjobber.com/api/oauth/authorize"
-)
-
-# Access token - obtained through OAuth flow and stored in database (JobberToken model)
-# This can be set temporarily for testing, but should be managed through OAuth in production
-JOBBER_ACCESS_TOKEN = os.getenv("JOBBER_ACCESS_TOKEN", "")
-
-# ============================================================================
-# END JOBBER CONFIGURATION
-# ============================================================================
 
 
 # Application definition
@@ -86,17 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_ledger',
-    'helpers.apps.HelpersConfig',
-    'books.apps.BooksConfig',  # not just 'books'
-    'reports.apps.ReportsConfig',
-    'stockops.apps.StockopsConfig',
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
-    "lawn_imports",
-    "forbes_lawn_dashboard",
-    "forbes_lawn_billing",
-    "forbes_lawn_accounting",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -126,7 +68,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'django_ledger.context.django_ledger_context'
             ],
         },
     },
