@@ -103,14 +103,38 @@
             border-top: 1px solid #dfe5ec;
             color: #64748b;
         }
+
+        .dashboard-header {
+            background: #173149;
+            color: #ffffff;
+            padding: 16px 22px;
+        }
+        .dashboard-header-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .dashboard-header h1 {
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.4rem;
+            font-weight: 650;
+            margin: 0 0 0.2rem;
+        }
+        .dashboard-header .subtitle {
+            color: #d5e1ec;
+            font-size: 0.9rem;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
-<div class="wrapper">
-    <h1>Website Automation Dashboard</h1>
-    <div class="subtitle">
-        Back-office tools for pforbesart.com — catalog automation, SEO assistance, and design/content helpers.
+<header class="dashboard-header">
+    <div class="dashboard-header-inner">
+        <h1>Website Automation Dashboard</h1>
+        <div class="subtitle">Back-office tools for pforbesart.com — catalog automation, SEO assistance, and design/content helpers.</div>
     </div>
+</header>
+<div class="wrapper">
 
     <div class="panel">
         <h2>Catalog Automation</h2>
@@ -129,9 +153,9 @@
     </div>
 
     <div class="panel">
-        <h2>Studio Inventory</h2>
+        <h2>Artwork Inventory</h2>
         <div class="section-note">Track originals, print formats, location counts, and inventory history.</div>
-        <ul class="link-list"><li><a href="/inventory/">Open P. Forbes Art Inventory</a></li></ul>
+        <ul class="link-list"><li><a href="/inventory/">Open Artwork Inventory</a></li></ul>
     </div>
 
     <div class="panel">
