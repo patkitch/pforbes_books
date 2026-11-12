@@ -70,14 +70,19 @@ def _inventory_pdf_response(originals, prints, activities):
     _pdf_text(pdf, "Generated " + timezone.localdate().isoformat(), size=8, color=(100, 116, 138))
     _pdf_rule(pdf)
 
+    original_on_hand = sum(original.on_hand for original in originals)
+    print_on_hand = sum(stock.quantity for option in prints for stock in option.stock.all())
+    _pdf_section(pdf, "INVENTORY SUMMARY")
+    _pdf_text(pdf, f"Originals on hand: {original_on_hand}  |  Print units on hand: {print_on_hand}  |  Total pieces on hand: {original_on_hand + print_on_hand}", bold=True, size=9, fill=True)
+
     _pdf_section(pdf, "ORIGINALS")
-    if not originals.exists():
+    if not originals:
         _pdf_text(pdf, "No original artworks recorded.", color=(100, 116, 138))
     for original in originals:
         art = original.artwork
         price = f"${original.price:,.2f}" if original.price is not None else "Not set"
         _pdf_text(pdf, art.title, bold=True, size=10, fill=True)
-        _pdf_text(pdf, f"SKU: {original.sku}  |  Status: {original.get_status_display()}  |  Location: {original.location or 'None'}  |  Price: {price}")
+        _pdf_text(pdf, f"SKU: {original.sku}  |  Status: {original.get_status_display()}  |  On hand: {original.on_hand}  |  Location: {original.location or 'None'}  |  Price: {price}")
         details = f"Medium: {art.medium or 'Not recorded'}  |  Style: {art.style or 'Not recorded'}  |  Surface: {art.support or 'Not recorded'}"
         _pdf_text(pdf, details)
         dimensions = f"Canvas: {original.get_canvas_profile_display() or 'Not recorded'}  |  {'Framed' if original.framed else 'Unframed'}"
@@ -87,19 +92,20 @@ def _inventory_pdf_response(originals, prints, activities):
         _pdf_rule(pdf)
 
     _pdf_section(pdf, "PRINT STOCK")
-    if not prints.exists():
+    if not prints:
         _pdf_text(pdf, "No print sizes recorded.", color=(100, 116, 138))
     for option in prints:
         price = f"${option.price:,.2f}" if option.price is not None else "Not set"
         _pdf_text(pdf, f"{option.artwork.title} - {option.get_print_type_display()}", bold=True, size=10, fill=True)
         _pdf_text(pdf, f"SKU: {option.sku}  |  Selling price: {price}")
         stock_rows = list(option.stock.select_related("location").all())
-        stock = "  |  ".join(f"{row.location}: {row.quantity} on hand" for row in stock_rows) or "No stock counted"
-        _pdf_text(pdf, "On hand: " + stock)
+        total = sum(row.quantity for row in stock_rows)
+        stock = "  |  ".join(f"{row.location}: {row.quantity}" for row in stock_rows) or "No stock counted"
+        _pdf_text(pdf, f"Total on hand: {total}  |  By location: {stock}")
         _pdf_rule(pdf)
 
     _pdf_section(pdf, "ACTIVITY HISTORY")
-    if not activities.exists():
+    if not activities:
         _pdf_text(pdf, "No inventory activity recorded.", color=(100, 116, 138))
     for activity in activities:
         item = activity.original.artwork.title if activity.original_id else activity.print_option.artwork.title
@@ -207,22 +213,45 @@ def inventory_report(request):
     originals=Original.objects.select_related("artwork","location").order_by("artwork__title")
     prints=PrintOption.objects.select_related("artwork").prefetch_related("stock__location").order_by("artwork__title","print_type")
     activities=InventoryActivity.objects.select_related("original__artwork","print_option__artwork","from_location","to_location","created_by").order_by("activity_date","created_at")
+    original_rows=list(originals)
+    print_rows=list(prints)
+    activity_rows=list(activities)
     if request.GET.get("format")=="pdf":
-        return _inventory_pdf_response(originals,prints,activities)
-    wb=Workbook(); ws=wb.active; ws.title="Originals"
-    ws.append(["Title","SKU","Status","Location","Price","Canvas profile","Framed","Outside size","Painting surface"])
-    for o in originals: ws.append([o.artwork.title,o.sku,o.get_status_display(),o.location.name if o.location else "",float(o.price) if o.price is not None else "",o.get_canvas_profile_display(), "Yes" if o.framed else "No",f"{o.outside_width_inches or ''} × {o.outside_height_inches or ''}",o.artwork.support])
-    ws2=wb.create_sheet("Print stock"); ws2.append(["Title","Print type","SKU","Location","Quantity","Selling price"])
-    for p in prints:
-        rows=list(p.stock.all())
-        if rows:
-            for s in rows: ws2.append([p.artwork.title,p.get_print_type_display(),p.sku,s.location.name,s.quantity,float(p.price) if p.price is not None else ""])
-        else: ws2.append([p.artwork.title,p.get_print_type_display(),p.sku,"",0,float(p.price) if p.price is not None else ""])
+        return _inventory_pdf_response(original_rows,print_rows,activity_rows)
+
+    locations=list(Location.objects.filter(print_stock__isnull=False).distinct().order_by("name"))
+    original_on_hand=sum(o.on_hand for o in original_rows)
+    print_on_hand=sum(s.quantity for p in print_rows for s in p.stock.all())
+    wb=Workbook()
+    summary=wb.active; summary.title="Inventory summary"
+    summary.append(["Inventory count","Quantity"])
+    summary.append(["Original artworks recorded",len(original_rows)])
+    summary.append(["Originals on hand",original_on_hand])
+    summary.append(["Originals available for sale",sum(o.status=="available" for o in original_rows)])
+    summary.append(["Originals not for sale",sum(o.status=="not_for_sale" for o in original_rows)])
+    summary.append(["Originals sold",sum(o.status=="sold" for o in original_rows)])
+    summary.append(["Originals gifted",sum(o.status=="gifted" for o in original_rows)])
+    summary.append(["Print units on hand",print_on_hand])
+    summary.append(["Total pieces on hand",original_on_hand+print_on_hand])
+    summary.append([])
+    summary.append(["Print type","Units on hand"])
+    for print_type,label in PrintOption.PRINT_TYPES:
+        total=sum(stock.quantity for option in print_rows if option.print_type==print_type for stock in option.stock.all())
+        summary.append([label,total])
+
+    ws=wb.create_sheet("Originals")
+    ws.append(["Title","SKU","Status","On hand","Location","Price","Canvas profile","Framed","Outside size","Painting surface"])
+    for o in original_rows: ws.append([o.artwork.title,o.sku,o.get_status_display(),o.on_hand,o.location.name if o.location else "",float(o.price) if o.price is not None else "",o.get_canvas_profile_display(), "Yes" if o.framed else "No",f"{o.outside_width_inches or ''} × {o.outside_height_inches or ''}",o.artwork.support])
+
+    ws2=wb.create_sheet("Print stock")
+    ws2.append(["Title","Print type","SKU","Total on hand","Selling price"]+[location.name for location in locations])
+    for p in print_rows:
+        stock_by_location={row.location_id:row.quantity for row in p.stock.all()}
+        total=sum(stock_by_location.values())
+        ws2.append([p.artwork.title,p.get_print_type_display(),p.sku,total,float(p.price) if p.price is not None else ""]+[stock_by_location.get(location.pk,0) for location in locations])
+
     ws3=wb.create_sheet("Activity"); ws3.append(["Date","Activity","Item","SKU","Quantity","From","To","Refund issued","Source","Reference","Note"])
-    for a in activities:
-        item=a.original.artwork if a.original_id else a.print_option.artwork
-        sku=a.original.sku if a.original_id else a.print_option.sku
-        ws3.append([a.activity_date.isoformat(),a.get_kind_display(),item.title,sku,a.quantity,a.from_location.name if a.from_location else "",a.to_location.name if a.to_location else "", "Yes" if a.refund_issued else "No",a.source,a.reference,a.note])
+    for a in activity_rows:
     for sheet in wb.worksheets:
         sheet.freeze_panes="A2"; sheet.auto_filter.ref=sheet.dimensions
         for cell in sheet[1]:
