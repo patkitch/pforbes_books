@@ -252,6 +252,9 @@ def inventory_report(request):
 
     ws3=wb.create_sheet("Activity"); ws3.append(["Date","Activity","Item","SKU","Quantity","From","To","Refund issued","Source","Reference","Note"])
     for a in activity_rows:
+        item=a.original.artwork if a.original_id else a.print_option.artwork
+        sku=a.original.sku if a.original_id else a.print_option.sku
+        ws3.append([a.activity_date.isoformat(),a.get_kind_display(),item.title,sku,a.quantity,a.from_location.name if a.from_location else "",a.to_location.name if a.to_location else "", "Yes" if a.refund_issued else "No",a.source,a.reference,a.note])
     for sheet in wb.worksheets:
         sheet.freeze_panes="A2"; sheet.auto_filter.ref=sheet.dimensions
         for cell in sheet[1]:
