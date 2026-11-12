@@ -34,6 +34,16 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=PRINT_CHOICES, max_length=32, default="matted_11x14_8x10"),
             preserve_default=False,
         ),
+        migrations.AlterField(
+            model_name="inventoryactivity",
+            name="kind",
+            field=models.CharField(max_length=20, choices=[
+                ("purchase", "Print stock added"), ("return", "Return to stock"),
+                ("transfer", "Transfer"), ("local_sale", "Local print sale"),
+                ("original_sale", "Original sold"), ("gift", "Gift"),
+                ("adjust_add", "Count adjustment — add"), ("adjust_remove", "Count adjustment — remove"),
+            ]),
+        ),
         migrations.AddConstraint(
             model_name="printoption",
             constraint=models.UniqueConstraint(fields=("artwork", "print_type"), name="artinv_unique_artwork_print_type"),
