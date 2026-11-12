@@ -57,19 +57,31 @@ class ArtworkEditForm(forms.Form):
     @transaction.atomic
     def save(self,user=None):
         d=self.cleaned_data; original=self.original
-        old_location=original.location; old_values={"SKU":original.sku,"status":original.get_status_display(),"location":str(old_location or "None")}
+        old_location=original.location
+        def snapshot():
+            return {
+                "Artist story": self.artwork.story, "Style": self.artwork.style, "Medium": self.artwork.medium,
+                "Width": self.artwork.width_inches, "Height": self.artwork.height_inches,
+                "Painting surface": self.artwork.support, "Image URL": self.artwork.image_url,
+                "SKU": original.sku, "Status": original.get_status_display(), "Location": str(original.location or ""),
+                "Price": original.price, "Canvas profile": original.get_canvas_profile_display(),
+                "Framed": original.framed, "Outside width": original.outside_width_inches,
+                "Outside height": original.outside_height_inches, "Listing status": original.get_listing_status_display(),
+                "Woo product ID": original.woo_product_id, "Woo URL": original.woo_url,
+            }
+        before=snapshot()
         for name in ("story","style","medium","width_inches","height_inches","support","image_url"):
             setattr(self.artwork,name,d[name])
         self.artwork.save()
         for name in ("sku","status","location","price","canvas_profile","framed","outside_width_inches","outside_height_inches","listing_status","woo_product_id","woo_url"):
             setattr(original,name,d[name])
         original.save()
-        changes=[]
-        for label,old,new in [
-            ("SKU",old_values["SKU"],original.sku),("status",old_values["status"],original.get_status_display()),
-            ("location",str(old_location or "None"),str(original.location or "None")),
-        ]:
-            if old!=new: changes.append(f"{label}: {old} -> {new}")
+        after=snapshot()
+        def shown(value):
+            if value in (None, ""): return "(blank)"
+            if isinstance(value, bool): return "Yes" if value else "No"
+            return str(value)
+        changes=[f"{label}: {shown(before[label])} -> {shown(after[label])}" for label in before if before[label]!=after[label]]
         if changes:
             InventoryActivity.objects.create(kind="correction",quantity=1,activity_date=timezone.localdate(),original=original,from_location=old_location,to_location=original.location,note="Record edited. "+"; ".join(changes),created_by=user if getattr(user,"is_authenticated",False) else None)
         return self.artwork
