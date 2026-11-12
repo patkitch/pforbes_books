@@ -12,6 +12,6 @@ From the project folder:
 
 The inventory has two separate entry actions. Add an original when you finish a painting. When you later order prints, choose Add print, select the artwork title, then select one of the three print formats. You can record a starting quantity and location, or leave the count at zero and use Record activity when the prints arrive.
 
-Try a sample original, add one print size, then record a transfer to Images Art Gallery and a local sale. Confirm the counts change. A made-to-order website sale must leave the local print count unchanged. An original sale marks it sold and clears its location.
+Try a sample original, add one print size, then record a transfer to Images Art Gallery and a local sale. Confirm the counts change. An original sale marks it sold and clears its location.
 
 The automated tests need PostgreSQL permission to create a temporary test database. If your local role does not have that permission, test through the browser or ask for a temporary local test-database role grant. No production database is involved.
