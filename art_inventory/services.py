@@ -28,10 +28,8 @@ def record_activity(*,kind,quantity,activity_date=None,original_id=None,print_op
             original.location=None
         original.save(update_fields=["location","status"])
     else:
-        if kind not in ("purchase","return","transfer","local_sale","made_to_order","adjust_add","adjust_remove"): raise ValidationError("Choose a print activity.")
-        if kind=="made_to_order":
-            if src or dst: raise ValidationError("Made-to-order sales do not change local stock.")
-        elif kind=="transfer":
+        if kind not in ("purchase","return","transfer","local_sale","adjust_add","adjust_remove"): raise ValidationError("Choose a print activity.")
+        if kind=="transfer":
             if not src or not dst or src==dst: raise ValidationError("Transfer needs two different locations.")
             _stock(option,src,-qty); _stock(option,dst,qty)
         elif kind in ("purchase","return","adjust_add"):
