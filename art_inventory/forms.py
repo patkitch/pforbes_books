@@ -5,12 +5,12 @@ from .models import Artwork,CANVAS_PROFILES,InventoryActivity,Location,Original,
 from .services import record_activity
 
 class ArtworkForm(forms.ModelForm):
-    initial_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
-    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False)
-    canvas_profile=forms.ChoiceField(choices=[("", "Select canvas type / profile")]+CANVAS_PROFILES,required=True)
+    initial_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,help_text="Where the original is right now.")
+    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False,help_text="Optional asking price.")
+    canvas_profile=forms.ChoiceField(choices=[("", "Select canvas type / profile")]+CANVAS_PROFILES,required=True,help_text="Choose the canvas edge depth or panel type.")
     framed=forms.BooleanField(required=False)
-    outside_width_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
-    outside_height_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
+    outside_width_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False,help_text="Include the frame, if there is one.")
+    outside_height_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False,help_text="Include the frame, if there is one.")
     class Meta:
         model=Artwork
         fields=["title","story","style","medium","width_inches","height_inches","support","image_url"]
@@ -88,10 +88,10 @@ class ArtworkEditForm(forms.Form):
 
 class PrintOptionForm(forms.Form):
     artwork=forms.ModelChoiceField(queryset=Artwork.objects.all(),label="Artwork title")
-    print_type=forms.ChoiceField(choices=[("", "Select print size / type")]+PrintOption.PRINT_TYPES,label="Print type you order")
-    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False,label="Your selling price")
-    quantity=forms.IntegerField(min_value=0,initial=0,label="Prints currently on hand")
-    location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="Where are these prints?")
+    print_type=forms.ChoiceField(choices=[("", "Select print size / type")]+PrintOption.PRINT_TYPES,label="Print type you order",help_text="Choose the exact format you ordered.")
+    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False,label="Your selling price",help_text="Optional; this does not change the stock count.")
+    quantity=forms.IntegerField(min_value=0,initial=0,label="Prints currently on hand",help_text="Enter the number you have now.")
+    location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="Where are these prints?",help_text="Choose where this starting quantity is stored.")
     def clean(self):
         data=super().clean()
         if data.get("quantity",0)>0 and not data.get("location"): self.add_error("location","Choose where the prints are.")
@@ -105,17 +105,17 @@ class PrintOptionForm(forms.Form):
         return option
 
 class ActivityForm(forms.Form):
-    item_type=forms.ChoiceField(choices=[("original","Original"),("print","Print option")])
-    original=forms.ModelChoiceField(queryset=Original.objects.select_related("artwork"),required=False)
-    print_option=forms.ModelChoiceField(queryset=PrintOption.objects.select_related("artwork").filter(is_active=True),required=False)
-    kind=forms.ChoiceField(choices=[(k,{"local_sale":"Print sold","adjust_remove":"Reduce print stock (other reason)"}.get(k,v)) for k,v in InventoryActivity.KINDS if k!="correction"])
-    quantity=forms.IntegerField(min_value=1,initial=1)
+    item_type=forms.ChoiceField(choices=[("original","Original"),("print","Print option")],help_text="Choose whether this activity is for a painting or print stock.")
+    original=forms.ModelChoiceField(queryset=Original.objects.select_related("artwork"),required=False,label="Original artwork",help_text="Select the painting affected by this activity.")
+    print_option=forms.ModelChoiceField(queryset=PrintOption.objects.select_related("artwork").filter(is_active=True),required=False,label="Print size",help_text="Select the specific print format affected.")
+    kind=forms.ChoiceField(choices=[(k,{"local_sale":"Print sold","adjust_remove":"Reduce print stock (other reason)"}.get(k,v)) for k,v in InventoryActivity.KINDS if k!="correction"],help_text="Choose what happened: sale, return, transfer, or count correction.")
+    quantity=forms.IntegerField(min_value=1,initial=1,help_text="Number of prints, or 1 for an original.")
     activity_date=forms.DateField(label="Date of sale or inventory change",initial=timezone.localdate,widget=forms.DateInput(attrs={"type":"date"}))
-    from_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
-    to_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
-    refund_issued=forms.BooleanField(required=False,label="Refund issued")
-    source=forms.CharField(max_length=100,required=False)
-    reference=forms.CharField(max_length=100,required=False)
+    from_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="From location",help_text="Where the item was sold or moved from.")
+    to_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="To location",help_text="Where the item was returned or moved to.")
+    refund_issued=forms.BooleanField(required=False,label="Refund issued",help_text="Check this if you returned the buyer’s money.")
+    source=forms.CharField(max_length=100,required=False,help_text="Where it happened, such as the gallery, a show, or the website.")
+    reference=forms.CharField(max_length=100,required=False,help_text="Optional receipt or order number; leave blank if there is none.")
     note=forms.CharField(label="Reason / notes",help_text="For a print sale or stock reduction, say why (for example: sold at gallery).",widget=forms.Textarea(attrs={"rows":3}),required=False)
     def clean(self):
         d=super().clean()
