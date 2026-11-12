@@ -59,7 +59,7 @@ def print_add(request):
 
 @login_required
 def activity_add(request):
-    form=ActivityForm(request.POST or None)
+    form=ActivityForm(request.POST or None,initial={"item_type":request.GET.get("item_type") or None,"print_option":request.GET.get("print_option") or None,"kind":request.GET.get("kind") or None})
     if request.method=="POST" and form.is_valid():
         try: activity=form.save(request.user)
         except (ValidationError,Original.DoesNotExist,PrintOption.DoesNotExist) as exc: form.add_error(None,exc)
@@ -106,7 +106,7 @@ def inventory_report(request):
         pdf.set_font("Helvetica","",9); pdf.cell(0,7,"Generated "+timezone.localdate().isoformat(),ln=1)
         def line(text):
             clean=str(text).encode("latin-1","replace").decode("latin-1")
-            pdf.multi_cell(0,5,clean)
+            pdf.multi_cell(w=pdf.epw,h=5,text=clean,wrapmode="CHAR")
         pdf.set_font("Helvetica","B",12); pdf.cell(0,8,"Originals",ln=1); pdf.set_font("Helvetica","",9)
         for o in originals: line(f'{o.artwork.title} | {o.sku} | {o.get_status_display()} | {o.location or "No location"} | {o.get_canvas_profile_display()} | {o.price or ""}')
         pdf.ln(3); pdf.set_font("Helvetica","B",12); pdf.cell(0,8,"Print stock",ln=1); pdf.set_font("Helvetica","",9)
