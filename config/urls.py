@@ -7,4 +7,5 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/automation/", permanent=False)),
     path("admin/", admin.site.urls),
     path("automation/", include("web_automation.urls")),
+    path("inventory/", include("art_inventory.urls")),
 ]
