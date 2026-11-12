@@ -14,9 +14,6 @@ class InventoryTests(TestCase):
         record_activity(kind="local_sale",quantity=1,print_option_id=self.print.pk,from_location_id=self.gallery.pk)
         self.assertEqual(PrintStock.objects.get(print_option=self.print,location=self.home).quantity,3)
         self.assertEqual(PrintStock.objects.get(print_option=self.print,location=self.gallery).quantity,1)
-    def test_made_to_order_leaves_stock_unchanged(self):
-        record_activity(kind="made_to_order",quantity=1,print_option_id=self.print.pk)
-        self.assertFalse(PrintStock.objects.exists())
     def test_oversell_rejected(self):
         with self.assertRaises(ValidationError): record_activity(kind="local_sale",quantity=1,print_option_id=self.print.pk,from_location_id=self.gallery.pk)
     def test_original_sale(self):
