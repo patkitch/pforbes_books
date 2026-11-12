@@ -1,12 +1,13 @@
 from django import forms
+from django.db import transaction
 from django.utils import timezone
-from .models import Artwork,InventoryActivity,Location,Original,PrintOption
+from .models import Artwork,CANVAS_PROFILES,InventoryActivity,Location,Original,PrintOption
 from .services import record_activity
 
 class ArtworkForm(forms.ModelForm):
     initial_location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False)
     price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False)
-    canvas_profile=forms.CharField(max_length=80,required=False)
+    canvas_profile=forms.ChoiceField(choices=[("", "Select canvas type / profile")]+CANVAS_PROFILES,required=True)
     framed=forms.BooleanField(required=False)
     outside_width_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
     outside_height_inches=forms.DecimalField(max_digits=7,decimal_places=2,min_value=0,required=False)
@@ -19,10 +20,25 @@ class ArtworkForm(forms.ModelForm):
         if commit: Original.objects.create(artwork=art,location=self.cleaned_data.get("initial_location"),price=self.cleaned_data.get("price"),canvas_profile=self.cleaned_data.get("canvas_profile",""),framed=self.cleaned_data.get("framed",False),outside_width_inches=self.cleaned_data.get("outside_width_inches"),outside_height_inches=self.cleaned_data.get("outside_height_inches"))
         return art
 
-class PrintOptionForm(forms.ModelForm):
-    class Meta:
-        model=PrintOption
-        fields=["artwork","label","width_inches","height_inches","format","finish_details","price","is_active","listing_status","woo_product_id","woo_url"]
+class PrintOptionForm(forms.Form):
+    artwork=forms.ModelChoiceField(queryset=Artwork.objects.all(),label="Artwork title")
+    print_type=forms.ChoiceField(choices=[("", "Select print size / type")]+PrintOption.PRINT_TYPES,label="Print type you order")
+    price=forms.DecimalField(max_digits=10,decimal_places=2,min_value=0,required=False,label="Your selling price")
+    quantity=forms.IntegerField(min_value=0,initial=0,label="Prints currently on hand")
+    location=forms.ModelChoiceField(queryset=Location.objects.filter(is_active=True),required=False,label="Where are these prints?")
+    def clean(self):
+        data=super().clean()
+        if data.get("quantity",0)>0 and not data.get("location"):
+            self.add_error("location","Choose where the prints are.")
+        if data.get("artwork") and data.get("print_type") and PrintOption.objects.filter(artwork=data["artwork"],print_type=data["print_type"]).exists():
+            self.add_error("print_type","This print size is already set up. Use Record activity to add stock.")
+        return data
+    @transaction.atomic
+    def save(self,user=None):
+        option=PrintOption.objects.create(artwork=self.cleaned_data["artwork"],print_type=self.cleaned_data["print_type"],price=self.cleaned_data.get("price"))
+        if self.cleaned_data.get("quantity",0):
+            record_activity(kind="purchase",quantity=self.cleaned_data["quantity"],activity_date=timezone.localdate(),print_option_id=option.pk,to_location_id=self.cleaned_data["location"].pk,source="Initial count",note="Starting on-hand quantity",user=user)
+        return option
 
 class ActivityForm(forms.Form):
     item_type=forms.ChoiceField(choices=[("original","Original"),("print","Print option")])
