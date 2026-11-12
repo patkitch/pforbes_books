@@ -25,17 +25,20 @@ def artwork_add(request):
 @login_required
 def detail(request,pk):
     art=get_object_or_404(Artwork.objects.select_related("original__location").prefetch_related("print_options__stock__location"),pk=pk)
-    history=InventoryActivity.objects.filter(Q(original=art.original)|Q(print_option__artwork=art)).select_related("from_location","to_location","original__artwork","print_option__artwork")[:40]
+    original=getattr(art,"original",None)
+    history=InventoryActivity.objects.filter(Q(original=original)|Q(print_option__artwork=art)).select_related("from_location","to_location","original__artwork","print_option__artwork")[:40]
     return render(request,"art_inventory/detail.html",{"art":art,"history":history})
 
 @login_required
-def print_add(request,pk):
-    art=get_object_or_404(Artwork,pk=pk); form=PrintOptionForm(request.POST or None,initial={"artwork":art})
-    form.fields["artwork"].queryset=Artwork.objects.filter(pk=pk)
+def print_add(request):
+    form=PrintOptionForm(request.POST or None,initial={"artwork":request.GET.get("artwork") or None})
     if request.method=="POST" and form.is_valid():
-        option=form.save(); messages.success(request,"Print option added.")
-        return redirect("art_inventory:detail",pk=option.artwork_id)
-    return render(request,"art_inventory/form.html",{"form":form,"title":"Add print option"})
+        try: option=form.save(request.user)
+        except (ValidationError,Original.DoesNotExist,PrintOption.DoesNotExist) as exc: form.add_error(None,exc)
+        else:
+            messages.success(request,"Print size added to local inventory.")
+            return redirect("art_inventory:detail",pk=option.artwork_id)
+    return render(request,"art_inventory/form.html",{"form":form,"title":"Add print inventory"})
 
 @login_required
 def activity_add(request):
