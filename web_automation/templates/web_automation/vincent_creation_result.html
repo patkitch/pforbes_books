@@ -42,9 +42,15 @@
       {% endif %}
 
       <div class="actions">
-        <a href="{% url 'web_automation:vincent_confirm_draft' %}">
-          Back to Final Confirmation
-        </a>
+        {% if status == "completed" %}
+          <a href="{% url 'web_automation:vincent_intake' %}">
+            Add another original
+          </a>
+        {% else %}
+          <a href="{% url 'web_automation:vincent_confirm_draft' %}">
+            Back to Final Confirmation
+          </a>
+        {% endif %}
       </div>
     </section>
   </main>
