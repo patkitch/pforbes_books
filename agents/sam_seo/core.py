@@ -57,22 +57,77 @@ def _guess_mood_from_text(text: str) -> str:
     return "neutral"
 
 
+def _product_taxonomy_text(product: Dict[str, Any]) -> str:
+    """Return WooCommerce category and tag names as one searchable string."""
+    labels = []
+    for field in ("categories", "tags"):
+        labels.extend(
+            item.get("name", "")
+            for item in product.get(field, [])
+            if isinstance(item, dict)
+        )
+    return " ".join(labels).lower()
+
+
+def _is_print_product(product: Dict[str, Any]) -> bool:
+    """Identify products that are prints, even when they depict an original."""
+    name = (product.get("name") or "").lower()
+    taxonomy = _product_taxonomy_text(product)
+    product_type = (product.get("type") or "").lower()
+    return (
+        "giclée" in name
+        or "giclee" in name
+        or bool(re.search(r"\\bprints?\\b", name))
+        or "giclée" in taxonomy
+        or "giclee" in taxonomy
+        or bool(re.search(r"\\bprints?\\b", taxonomy))
+        or product_type == "variable"
+    )
+
+
+def _is_original_artwork(product: Dict[str, Any]) -> bool:
+    """Recognize a painting for sale, without confusing it with its prints."""
+    if _is_print_product(product):
+        return False
+    taxonomy = _product_taxonomy_text(product)
+    if "original artwork" in taxonomy:
+        return True
+    details = " ".join(
+        (product.get(field) or "")
+        for field in ("name", "short_description", "description")
+    ).lower()
+    return bool(
+        re.search(r"\\boriginal\\b.{0,60}\\b(painting|artwork)\\b", details)
+    )
+
+
 def _build_focus_keyphrase(product: Dict[str, Any]) -> str:
-    """
-    Build a Yoast-style focus keyphrase:
-    - 2–5 words
-    - includes 'print'
-    - natural and subject-specific where possible
-    """
+    """Build a subject-specific phrase appropriate to the product being sold."""
     name = (product.get("name") or "").strip()
     artwork_title = _derive_artwork_title(name)
-
     lower_name = name.lower()
 
-    # Base subject words
-    subject_bits = []
+    if _is_original_artwork(product):
+        details = " ".join(
+            (product.get(field) or "")
+            for field in ("short_description", "description")
+        ).lower()
+        medium = next(
+            (
+                word for word in ("acrylic", "oil", "watercolor", "watercolour", "gouache")
+                if re.search(rf"\\b{word}\\b", details)
+            ),
+            "",
+        )
+        title_words = artwork_title.split()[:2]
+        phrase_parts = title_words + ["original"]
+        if medium:
+            phrase_parts.extend([medium, "painting"])
+        else:
+            phrase_parts.append("painting")
+        return " ".join(phrase_parts).lower()
 
-    # Try to add key subject from title
+    subject_bits = []
     if "windmill" in lower_name:
         subject_bits.append("windmill")
     if "silo" in lower_name:
@@ -85,32 +140,22 @@ def _build_focus_keyphrase(product: Dict[str, Any]) -> str:
         subject_bits.append("prairie")
     if "kansas" in lower_name:
         subject_bits.append("kansas")
-    if "ocean" in lower_name or "sea" in lower_name or "coast" in lower_name or "bay" in lower_name:
+    if any(word in lower_name for word in ("ocean", "sea", "coast", "bay")):
         subject_bits.append("seascape")
-    if "dog" in lower_name or "australian shepherd" in lower_name or "quill" in lower_name or "evie" in lower_name:
+    if any(word in lower_name for word in ("dog", "australian shepherd", "quill", "evie")):
         subject_bits.append("dog portrait")
 
-    # If we didn't find anything, fall back to artwork title
     if not subject_bits and artwork_title:
         subject_bits.append(artwork_title)
 
-    # Decide print type
-    if "giclée" in lower_name or "giclee" in lower_name:
-        print_term = "giclée print"
-    else:
-        print_term = "art print"
-
-    # Build phrase
-    # Example: "Kansas windmill giclée print"
-    if subject_bits:
-        phrase = " ".join(subject_bits[:3]) + f" {print_term}"
-    else:
-        phrase = print_term
-
-    # Clean extra spaces
-    phrase = " ".join(phrase.split())
-
-    return phrase.lower()
+    taxonomy = _product_taxonomy_text(product)
+    is_giclee = any(
+        term in lower_name + " " + taxonomy
+        for term in ("giclée", "giclee")
+    )
+    print_term = "giclée print" if is_giclee else "art print"
+    phrase = " ".join(subject_bits[:3]) + f" {print_term}" if subject_bits else print_term
+    return " ".join(phrase.split()).lower()
 
 
 def _truncate_to_length(text: str, max_len: int) -> str:
@@ -134,16 +179,19 @@ def _build_meta_description(
     product: Dict[str, Any],
     focus_keyphrase: str
 ) -> str:
-    """
-    Build a Yoast-style meta description.
-    Supports both matted and unmatted fine art prints.
-    Maximum length: 155 characters.
-    """
+    """Build a concise, product-specific meta description within 155 characters."""
     name = (product.get("name") or "").strip()
-    description = _strip_html(
-        product.get("description") or ""
-    )
+    short_description = _strip_html(product.get("short_description") or "")
+    long_description = _strip_html(product.get("description") or "")
 
+    if _is_original_artwork(product):
+        # Original listings need their own title and artist story, not print copy.
+        source = long_description or short_description or name
+        if name and name.lower() not in source.lower():
+            source = f"{name}. {source}"
+        return _truncate_to_length(" ".join(source.split()), MAX_META_LENGTH)
+
+    description = long_description
     mood = _guess_mood_from_text(name + " " + description)
 
     if mood == "dramatic":
@@ -173,12 +221,7 @@ def _build_meta_description(
         )
 
     base = f"{focus_keyphrase.capitalize()}. {ending}"
-
-    return _truncate_to_length(
-        base,
-        MAX_META_LENGTH
-    )
-
+    return _truncate_to_length(base, MAX_META_LENGTH)
 
 
 def build_sam_seo_suggestion(product: Dict[str, Any]) -> Dict[str, str]:
@@ -219,62 +262,48 @@ def _strip_html(text: str) -> str:
 
 
 def suggest_seo_for_product(product: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Given a WooCommerce product dict, return SEO suggestions:
-      - focus_keyphrase
-      - meta_description  (<= 155 chars)
-      - seo_ok            (bool, simple heuristic)
-      - reasoning         (short explanation)
-    """
+    """Return a focus keyphrase and product-specific meta description."""
     name = (product.get("name") or "").strip()
     short_desc = _strip_html(product.get("short_description") or "")
     long_desc = _strip_html(product.get("description") or "")
+    tags = [
+        t.get("name", "")
+        for t in product.get("tags", [])
+        if isinstance(t, dict)
+    ]
 
-    categories = [c.get("name", "") for c in product.get("categories", [])]
-    tags = [t.get("name", "") for t in product.get("tags", [])]
-
-    
-    # Use the shared focus keyphrase generator.
-    # Avoid references to matted-only prints.
     focus_keyphrase = _build_focus_keyphrase(product)
+    is_original = _is_original_artwork(product)
+    source = (long_desc or short_desc or name) if is_original else (short_desc or long_desc or name)
+    source = " ".join(source.replace("\\n", " ").split()).strip()
 
+    if is_original and name and name.lower() not in source.lower():
+        source = f"{name}. {source}"
 
-    # Meta description: short summary from short_desc or long_desc, fallback to name
-    source = short_desc or long_desc or name
-    source = source.replace("\n", " ").strip()
-
-    
     if not source:
         source = (
             f"{name} is an open edition Giclée fine art print "
-            f"by P. Forbes, available with or without a mat."
-    )
+            "by P. Forbes, available with or without a mat."
+        )
 
+    meta_description = _truncate_to_length(source, MAX_META_LENGTH)
+    seo_ok = 100 <= len(meta_description) <= MAX_META_LENGTH
 
-    # Ideal length: <= 155 chars (Yoast guideline)
-    ideal_length = 155
-    if len(source) > ideal_length:
-        meta_description = source[:ideal_length].rstrip(" .,;:") + "…"
-    else:
-        meta_description = source
-
-    # Simple heuristic: "ok" if length between 100 and 155
-    seo_ok = 100 <= len(meta_description) <= 155
-
-    reasoning_parts = []
-    reasoning_parts.append("Meta description trimmed to ~155 characters for Yoast.")
+    reasoning_parts = [
+        "Meta description trimmed to ~155 characters for Yoast."
+    ]
     if not seo_ok:
-        reasoning_parts.append("Length is outside the ideal 100–155 range; you may want to tweak it.")
+        reasoning_parts.append(
+            "Length is outside the ideal 100–155 range; you may want to tweak it."
+        )
     if tags:
         reasoning_parts.append(f"Existing tags considered: {', '.join(tags[:5])}")
-
-    reasoning = " ".join(reasoning_parts)
 
     return {
         "focus_keyphrase": focus_keyphrase,
         "meta_description": meta_description,
         "seo_ok": seo_ok,
-        "reasoning": reasoning,
+        "reasoning": " ".join(reasoning_parts),
     }
 
 
