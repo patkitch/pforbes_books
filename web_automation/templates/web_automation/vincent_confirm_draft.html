@@ -33,8 +33,7 @@
 <body>
   <main>
     <h1>Vincent — Confirm Original Artwork Draft</h1>
-    <p class="sub">Final confirmation screen design (not yet connected to product creation).</p>
-    <div class="notice"><strong>Creation is disabled during development.</strong> This page cannot submit a WooCommerce request.</div>
+    <p class="sub">Review the product details before creating the WooCommerce draft.</p>
 
     {% if error %}
       <section class="panel warning" role="alert"><h2>Review unavailable</h2><p>{{ error }}</p></section>
@@ -84,7 +83,6 @@
       <a href="{% url 'web_automation:vincent_draft_review' %}">Back to Draft Review</a>
       <a href="{% url 'web_automation:vincent_intake' %}">Edit Artwork Details</a>
     </div>
-    <p class="muted">Before enabling creation, we'll add a POST-only view, authentication checks, a one-time submission guard, and duplicate checks immediately before the write.</p>
   </main>
 </body>
 </html>
