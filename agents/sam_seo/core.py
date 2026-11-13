@@ -77,10 +77,10 @@ def _is_print_product(product: Dict[str, Any]) -> bool:
     return (
         "giclée" in name
         or "giclee" in name
-        or bool(re.search(r"\\bprints?\\b", name))
+        or bool(re.search(r"\bprints?\b", name))
         or "giclée" in taxonomy
         or "giclee" in taxonomy
-        or bool(re.search(r"\\bprints?\\b", taxonomy))
+        or bool(re.search(r"\bprints?\b", taxonomy))
         or product_type == "variable"
     )
 
@@ -97,7 +97,7 @@ def _is_original_artwork(product: Dict[str, Any]) -> bool:
         for field in ("name", "short_description", "description")
     ).lower()
     return bool(
-        re.search(r"\\boriginal\\b.{0,60}\\b(painting|artwork)\\b", details)
+        re.search(r"\boriginal\b.{0,60}\b(painting|artwork)\b", details)
     )
 
 
@@ -115,7 +115,7 @@ def _build_focus_keyphrase(product: Dict[str, Any]) -> str:
         medium = next(
             (
                 word for word in ("acrylic", "oil", "watercolor", "watercolour", "gouache")
-                if re.search(rf"\\b{word}\\b", details)
+                if re.search(rf"\b{word}\b", details)
             ),
             "",
         )
