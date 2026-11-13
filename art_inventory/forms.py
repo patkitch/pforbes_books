@@ -106,7 +106,7 @@ class PrintOptionForm(forms.Form):
 
 class ActivityForm(forms.Form):
     item_type=forms.ChoiceField(choices=[("original","Original"),("print","Print option")],help_text="Choose whether this activity is for a painting or print stock.")
-    original=forms.ModelChoiceField(queryset=Original.objects.select_related("artwork"),required=False,label="Original artwork",help_text="Select the painting affected by this activity.")
+    original=forms.ModelChoiceField(queryset=Original.objects.select_related("artwork").order_by("artwork__title","sku"),required=False,label="Original artwork",help_text="Select the painting affected by this activity.")
     print_option=forms.ModelChoiceField(queryset=PrintOption.objects.select_related("artwork").filter(is_active=True),required=False,label="Print size",help_text="Select the specific print format affected.")
     kind=forms.ChoiceField(choices=[(k,{"local_sale":"Print sold","adjust_remove":"Reduce print stock (other reason)"}.get(k,v)) for k,v in InventoryActivity.KINDS if k!="correction"],label="Status",help_text="Choose what happened: sale, return, transfer, or count correction.")
     quantity=forms.IntegerField(min_value=1,initial=1,help_text="Number of prints, or 1 for an original.")
