@@ -27,6 +27,7 @@
     .status { color: #93c5fd; font-weight: 600; }
     a { color: #93c5fd; }
     .actions { margin-top: 24px; }
+    .actions a { display: inline-block; margin: 0 20px 8px 0; }
   </style>
 </head>
 <body>
@@ -51,6 +52,9 @@
             Back to Final Confirmation
           </a>
         {% endif %}
+        <a href="{% url 'web_automation:dashboard' %}">
+          Back to Website Automation Dashboard
+        </a>
       </div>
     </section>
   </main>
