@@ -1,0 +1,14 @@
+{% extends "art_inventory/base.html" %}
+{% block title %}Packaging supplies{% endblock %}
+{% block content %}
+<div class="heading"><div><small>REORDER TRACKING</small><h1>Packaging supplies</h1><p>Track bags, backing boards, and mats you keep on hand. Update counts manually as you use supplies.</p></div></div>
+<article>
+<h2>Supplies on hand</h2>
+<div class="table-wrap"><table><thead><tr><th>Size</th><th>Supply</th><th>On hand</th><th></th></tr></thead><tbody>
+{% for item in supplies %}<tr><td>{{ item.get_size_display }}</td><td>{{ item.get_supply_type_display }}</td><td><strong>{{ item.quantity_on_hand }}</strong></td><td><a class="button secondary" href="{% url 'art_inventory:supply_change' item.pk %}">Update count</a></td></tr>{% empty %}<tr><td colspan="4">No supply records found.</td></tr>{% endfor %}
+</tbody></table></div>
+</article>
+<article><h2>Recent supply changes</h2>
+{% for activity in recent %}<div class="row"><span>{{ activity.activity_date }} · {{ activity.supply.get_size_display }} {{ activity.supply.get_supply_type_display }} · {{ activity.get_action_display }}: {{ activity.quantity }}{% if activity.action == "count" %} on hand{% endif %}{% if activity.note %} · {{ activity.note }}{% endif %}</span></div>{% empty %}<p>No supply changes recorded yet.</p>{% endfor %}
+</article>
+{% endblock %}
