@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Artwork,InventoryActivity,Location,Original,PrintOption,PrintStock
+from .models import Artwork,InventoryActivity,Location,Original,PrintOption,PrintStock,StudioSupply,StudioSupplyActivity
 admin.site.register(Artwork)
 admin.site.register(Location)
 admin.site.register(PrintStock)
@@ -18,3 +18,6 @@ class ActivityAdmin(admin.ModelAdmin):
     list_display=("activity_date","kind","original","print_option","quantity","source")
     list_filter=("kind","activity_date")
     readonly_fields=("created_at",)
+
+admin.site.register(StudioSupply)
+admin.site.register(StudioSupplyActivity)

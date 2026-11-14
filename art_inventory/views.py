@@ -2,6 +2,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404,redirect,render
@@ -10,8 +11,8 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .forms import ActivityForm,ArtworkEditForm,ArtworkForm,PrintOptionForm
-from .models import Artwork,InventoryActivity,Location,Original,PrintOption
+from .forms import ActivityForm,ArtworkEditForm,ArtworkForm,PrintOptionForm,StudioSupplyActivityForm
+from .models import Artwork,InventoryActivity,Location,Original,PrintOption,StudioSupply,StudioSupplyActivity
 
 
 class InventoryReportPDF(FPDF):
@@ -59,7 +60,7 @@ def _pdf_section(pdf, title):
     pdf.cell(pdf.epw, 8, title, border=0, fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(1)
 
-def _inventory_pdf_response(originals, prints, activities):
+def _inventory_pdf_response(originals, prints, activities, supplies, supply_activities):
     pdf = InventoryReportPDF(format="Letter")
     pdf.set_margins(15, 12, 15)
     pdf.set_auto_page_break(auto=True, margin=17)
@@ -72,8 +73,10 @@ def _inventory_pdf_response(originals, prints, activities):
 
     original_on_hand = sum(original.on_hand for original in originals)
     print_on_hand = sum(stock.quantity for option in prints for stock in option.stock.all())
+    supply_units = sum(supply.quantity_on_hand for supply in supplies)
     _pdf_section(pdf, "INVENTORY SUMMARY")
     _pdf_text(pdf, f"Originals on hand: {original_on_hand}  |  Print units on hand: {print_on_hand}  |  Total pieces on hand: {original_on_hand + print_on_hand}", bold=True, size=9, fill=True)
+    _pdf_text(pdf, f"Packaging supplies on hand: {supply_units}", size=9)
 
     _pdf_section(pdf, "ORIGINALS")
     if not originals:
@@ -102,6 +105,20 @@ def _inventory_pdf_response(originals, prints, activities):
         total = sum(row.quantity for row in stock_rows)
         stock = "  |  ".join(f"{row.location}: {row.quantity}" for row in stock_rows) or "No stock counted"
         _pdf_text(pdf, f"Total on hand: {total}  |  By location: {stock}")
+        _pdf_rule(pdf)
+
+    _pdf_section(pdf, "PACKAGING SUPPLIES")
+    if not supplies:
+        _pdf_text(pdf, "No packaging supply records.", color=(100, 116, 138))
+    for supply in supplies:
+        _pdf_text(pdf, f"{supply.get_size_display()} - {supply.get_supply_type_display()}  |  On hand: {supply.quantity_on_hand}")
+    _pdf_section(pdf, "SUPPLY ACTIVITY")
+    if not supply_activities:
+        _pdf_text(pdf, "No supply changes recorded.", color=(100, 116, 138))
+    for activity in supply_activities:
+        _pdf_text(pdf, f"{activity.activity_date.isoformat()}  |  {activity.supply}  |  {activity.get_action_display()}  |  {activity.quantity}" + (" on hand" if activity.action == "count" else ""), bold=True, size=9, fill=True)
+        if activity.note:
+            _pdf_text(pdf, activity.note, size=8, color=(100, 116, 138))
         _pdf_rule(pdf)
 
     _pdf_section(pdf, "ACTIVITY HISTORY")
@@ -216,6 +233,38 @@ def print_delete(request,pk):
         confirmation_error="The SKU did not match. Enter the code shown above; you may include or leave off “SKU:”."
     return render(request,"art_inventory/confirm_delete.html",{"art":option.artwork,"print_option":option,"history_count":history_count,"delete_url":request.path,"kind":"print","confirmation_value":confirmation_value,"confirmation_error":confirmation_error})
 
+
+@login_required
+def supplies_home(request):
+    supplies=StudioSupply.objects.all()
+    recent=StudioSupplyActivity.objects.select_related("supply").order_by("-activity_date","-created_at")[:40]
+    return render(request,"art_inventory/supplies.html",{"supplies":supplies,"recent":recent})
+
+
+@login_required
+def supply_change(request,pk):
+    supply=get_object_or_404(StudioSupply,pk=pk)
+    form=StudioSupplyActivityForm(request.POST or None)
+    if request.method=="POST" and form.is_valid():
+        data=form.cleaned_data
+        with transaction.atomic():
+            locked=StudioSupply.objects.select_for_update().get(pk=supply.pk)
+            quantity=data["quantity"]
+            if data["action"]=="used" and quantity>locked.quantity_on_hand:
+                form.add_error("quantity",f"Only {locked.quantity_on_hand} units are currently on hand.")
+            else:
+                if data["action"]=="received":
+                    locked.quantity_on_hand += quantity
+                elif data["action"]=="used":
+                    locked.quantity_on_hand -= quantity
+                else:
+                    locked.quantity_on_hand = quantity
+                locked.save(update_fields=["quantity_on_hand"])
+                StudioSupplyActivity.objects.create(supply=locked,action=data["action"],quantity=quantity,activity_date=data["activity_date"],note=data["note"],created_by=request.user)
+                messages.success(request,f"{locked} count updated. On hand: {locked.quantity_on_hand}.")
+                return redirect("art_inventory:supplies")
+    return render(request,"art_inventory/supply_change.html",{"supply":supply,"form":form})
+
 @login_required
 def inventory_report(request):
     originals=Original.objects.select_related("artwork","location").order_by("artwork__title")
@@ -224,8 +273,10 @@ def inventory_report(request):
     original_rows=list(originals)
     print_rows=list(prints)
     activity_rows=list(activities)
+    supply_rows=list(StudioSupply.objects.all())
+    supply_activity_rows=list(StudioSupplyActivity.objects.select_related("supply").order_by("-activity_date","-created_at"))
     if request.GET.get("format")=="pdf":
-        return _inventory_pdf_response(original_rows,print_rows,activity_rows)
+        return _inventory_pdf_response(original_rows,print_rows,activity_rows,supply_rows,supply_activity_rows)
 
     locations=list(Location.objects.filter(print_stock__isnull=False).distinct().order_by("name"))
     original_on_hand=sum(o.on_hand for o in original_rows)
@@ -241,6 +292,7 @@ def inventory_report(request):
     summary.append(["Originals gifted",sum(o.status=="gifted" for o in original_rows)])
     summary.append(["Print units on hand",print_on_hand])
     summary.append(["Total pieces on hand",original_on_hand+print_on_hand])
+    summary.append(["Packaging supply units on hand",sum(s.quantity_on_hand for s in supply_rows)])
     summary.append([])
     summary.append(["Print type","Units on hand"])
     for print_type,label in PrintOption.PRINT_TYPES:
@@ -257,6 +309,12 @@ def inventory_report(request):
         stock_by_location={row.location_id:row.quantity for row in p.stock.all()}
         total=sum(stock_by_location.values())
         ws2.append([p.artwork.title,p.get_print_type_display(),p.sku,total,float(p.price) if p.price is not None else ""]+[stock_by_location.get(location.pk,0) for location in locations])
+
+    ws4=wb.create_sheet("Packaging supplies"); ws4.append(["Size","Supply","On hand"])
+    for supply in supply_rows: ws4.append([supply.get_size_display(),supply.get_supply_type_display(),supply.quantity_on_hand])
+
+    ws5=wb.create_sheet("Supply activity"); ws5.append(["Date","Size","Supply","Change","Quantity","Note"])
+    for a in supply_activity_rows: ws5.append([a.activity_date.isoformat(),a.supply.get_size_display(),a.supply.get_supply_type_display(),a.get_action_display(),a.quantity,a.note])
 
     ws3=wb.create_sheet("Activity"); ws3.append(["Date","Activity","Item","SKU","Quantity","From","To","Refund issued","Source","Reference","Note"])
     for a in activity_rows:

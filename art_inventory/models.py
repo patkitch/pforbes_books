@@ -107,3 +107,43 @@ class InventoryActivity(models.Model):
             models.CheckConstraint(condition=Q(original__isnull=False,print_option__isnull=True)|Q(original__isnull=True,print_option__isnull=False),name="artinv_activity_one_item"),
             models.CheckConstraint(condition=Q(quantity__gte=1),name="artinv_activity_positive_qty"),
         ]
+
+class StudioSupply(models.Model):
+    SIZES=[
+        ("8x10","8 × 10 in"),
+        ("11x14","11 × 14 in"),
+    ]
+    SUPPLY_TYPES=[
+        ("bag","Bag"),
+        ("backing_board","Backing board"),
+        ("mat","Mat"),
+    ]
+    size=models.CharField(max_length=8,choices=SIZES)
+    supply_type=models.CharField(max_length=20,choices=SUPPLY_TYPES)
+    quantity_on_hand=models.PositiveIntegerField(default=0)
+    class Meta:
+        ordering=["size","supply_type"]
+        constraints=[
+            models.UniqueConstraint(fields=["size","supply_type"],name="artinv_unique_supply_size_type")
+        ]
+    def __str__(self):
+        return f"{self.get_size_display()} — {self.get_supply_type_display()}"
+
+
+class StudioSupplyActivity(models.Model):
+    ACTIONS=[
+        ("received","Supplies received"),
+        ("used","Supplies used"),
+        ("count","Count corrected"),
+    ]
+    supply=models.ForeignKey(StudioSupply,on_delete=models.CASCADE,related_name="activities")
+    action=models.CharField(max_length=12,choices=ACTIONS)
+    quantity=models.PositiveIntegerField()
+    activity_date=models.DateField()
+    note=models.CharField(max_length=240,blank=True)
+    created_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL)
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering=["-activity_date","-created_at"]
+    def __str__(self):
+        return f"{self.get_action_display()}: {self.supply} ({self.quantity})"

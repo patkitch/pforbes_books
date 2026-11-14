@@ -1,7 +1,7 @@
 from django import forms
 from django.db import transaction
 from django.utils import timezone
-from .models import Artwork,CANVAS_PROFILES,InventoryActivity,Location,Original,PrintOption
+from .models import Artwork,CANVAS_PROFILES,InventoryActivity,Location,Original,PrintOption,StudioSupplyActivity
 from .services import record_activity
 
 class ArtworkForm(forms.ModelForm):
@@ -128,3 +128,33 @@ class ActivityForm(forms.Form):
     def save(self,user=None):
         d=self.cleaned_data; orig=d["original"] if d["item_type"]=="original" else None; opt=d["print_option"] if d["item_type"]=="print" else None
         return record_activity(kind=d["kind"],quantity=d["quantity"],activity_date=d["activity_date"],original_id=orig.pk if orig else None,print_option_id=opt.pk if opt else None,from_location_id=d["from_location"].pk if d["from_location"] else None,to_location_id=d["to_location"].pk if d["to_location"] else None,source=d["source"],reference=d["reference"],note=d["note"],refund_issued=d["refund_issued"],user=user)
+
+
+class StudioSupplyActivityForm(forms.Form):
+    action=forms.ChoiceField(
+        choices=StudioSupplyActivity.ACTIONS,
+        label="What changed",
+        help_text="Choose whether supplies arrived, were used, or you are correcting the count.",
+    )
+    quantity=forms.IntegerField(
+        min_value=0,
+        label="Quantity",
+        help_text="Enter units. For count correction, enter the exact quantity now on hand.",
+    )
+    activity_date=forms.DateField(
+        label="Date",
+        initial=timezone.localdate,
+        widget=forms.DateInput(attrs={"type":"date"}),
+    )
+    note=forms.CharField(
+        max_length=240,
+        required=False,
+        label="Note",
+        help_text="Optional note, such as a purchase or why the count changed.",
+    )
+
+    def clean(self):
+        data=super().clean()
+        if data.get("action") in ("received","used") and data.get("quantity",0)<1:
+            self.add_error("quantity","Enter at least one unit received or used.")
+        return data
