@@ -1,0 +1,10 @@
+{% extends "art_inventory/base.html" %}
+{% block title %}Update {{ supply }}{% endblock %}
+{% block content %}
+<article class="form">
+<h1>Update supply count</h1><h2>{{ supply }}</h2>
+<p>Currently on hand: <strong>{{ supply.quantity_on_hand }}</strong></p>
+<p>Enter units received or used, or correct the count to the exact number you have now. This only tracks supplies for reordering; it does not change print inventory or sales.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Save count</button> <a href="{% url 'art_inventory:supplies' %}">Cancel</a></form>
+</article>
+{% endblock %}
