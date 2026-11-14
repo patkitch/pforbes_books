@@ -200,13 +200,21 @@ def artwork_delete(request,pk):
 def print_delete(request,pk):
     option=get_object_or_404(PrintOption.objects.select_related("artwork"),pk=pk)
     history_count=InventoryActivity.objects.filter(print_option=option).count()
-    if request.method=="POST" and request.POST.get("confirm_title","").strip()==option.sku:
-        InventoryActivity.objects.filter(print_option=option).delete()
-        art_id=option.artwork_id
-        option.delete()
-        messages.success(request,"Print option, stock, and its activity history were deleted.")
-        return redirect("art_inventory:detail",pk=art_id)
-    return render(request,"art_inventory/confirm_delete.html",{"art":option.artwork,"print_option":option,"history_count":history_count,"delete_url":request.path,"kind":"print"})
+    confirmation_value=""
+    confirmation_error=""
+    if request.method=="POST":
+        confirmation_value=request.POST.get("confirm_title","").strip()
+        entered_sku=confirmation_value
+        if entered_sku[:4].lower()=="sku:":
+            entered_sku=entered_sku[4:].strip()
+        if entered_sku==option.sku:
+            InventoryActivity.objects.filter(print_option=option).delete()
+            art_id=option.artwork_id
+            option.delete()
+            messages.success(request,"Print option, stock, and its activity history were deleted.")
+            return redirect("art_inventory:detail",pk=art_id)
+        confirmation_error="The SKU did not match. Enter the code shown above; you may include or leave off “SKU:”."
+    return render(request,"art_inventory/confirm_delete.html",{"art":option.artwork,"print_option":option,"history_count":history_count,"delete_url":request.path,"kind":"print","confirmation_value":confirmation_value,"confirmation_error":confirmation_error})
 
 @login_required
 def inventory_report(request):
