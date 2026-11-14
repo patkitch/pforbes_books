@@ -11,4 +11,6 @@ urlpatterns=[
     path("print/<int:pk>/delete/",views.print_delete,name="print_delete"),
     path("activity/add/",views.activity_add,name="activity_add"),
     path("reports/",views.inventory_report,name="report"),
+    path("supplies/",views.supplies_home,name="supplies"),
+    path("supplies/<int:pk>/change/",views.supply_change,name="supply_change"),
 ]
