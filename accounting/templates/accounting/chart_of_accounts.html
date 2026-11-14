@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chart of Accounts | P. Forbes Art</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, sans-serif; background: #f6f7f9; color: #202939; margin: 0; }
+    main { max-width: 1060px; margin: 36px auto; padding: 0 18px; }
+    h1 { margin-bottom: 6px; font-size: 1.9rem; }
+    .subtitle { color: #526174; margin-top: 0; }
+    form { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 20px 0; }
+    input[type=search] { flex: 1; min-width: 220px; padding: 11px; border: 1px solid #cbd5df; border-radius: 7px; }
+    button { padding: 11px 18px; border: 0; background: #1e4762; color: white; border-radius: 7px; cursor: pointer; }
+    .table-wrap { overflow-x: auto; background: white; border-radius: 10px; border: 1px solid #e2e6eb; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; border-bottom: 1px solid #e8ebef; padding: 13px 15px; }
+    th { background: #edf1f5; color: #344458; font-size: .88rem; }
+    td:first-child { font-variant-numeric: tabular-nums; font-weight: 650; }
+    .inactive { color: #8c4b4b; }
+    .empty { padding: 25px; color: #526174; }
+    .note { font-size: .88rem; color: #526174; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Chart of Accounts</h1>
+    <p class="subtitle">P. Forbes Art — 2027 accounting test · Read-only preview</p>
+    <form method="get" action="">
+      <input type="search" name="q" value="{{ search }}" placeholder="Search account number or name" aria-label="Search accounts">
+      <label><input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}> Show inactive</label>
+      <button type="submit">Search</button>
+    </form>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for account in accounts %}
+            <tr>
+              <td>{{ account.number }}</td>
+              <td>{{ account.name }}</td>
+              <td>{{ account.get_account_type_display }}</td>
+              <td>{% if account.parent %}{{ account.parent.number }} — {{ account.parent.name }}{% else %}—{% endif %}</td>
+              <td>{% if account.is_active %}Active{% else %}<span class="inactive">Inactive</span>{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty">No accounts to display yet. Our approved Chart of Accounts will be loaded after the seed file is reviewed.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="note">This first screen only displays accounts. Adding, editing, and deactivating accounts will come after validation and audit safeguards.</p>
+  </main>
+</body>
+</html>
