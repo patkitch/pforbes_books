@@ -2,6 +2,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404,redirect,render
@@ -10,8 +11,8 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .forms import ActivityForm,ArtworkEditForm,ArtworkForm,PrintOptionForm
-from .models import Artwork,InventoryActivity,Location,Original,PrintOption
+from .forms import ActivityForm,ArtworkEditForm,ArtworkForm,PrintOptionForm,StudioSupplyActivityForm
+from .models import Artwork,InventoryActivity,Location,Original,PrintOption,StudioSupply,StudioSupplyActivity
 
 
 class InventoryReportPDF(FPDF):
@@ -215,6 +216,38 @@ def print_delete(request,pk):
             return redirect("art_inventory:detail",pk=art_id)
         confirmation_error="The SKU did not match. Enter the code shown above; you may include or leave off “SKU:”."
     return render(request,"art_inventory/confirm_delete.html",{"art":option.artwork,"print_option":option,"history_count":history_count,"delete_url":request.path,"kind":"print","confirmation_value":confirmation_value,"confirmation_error":confirmation_error})
+
+
+@login_required
+def supplies_home(request):
+    supplies=StudioSupply.objects.all()
+    recent=StudioSupplyActivity.objects.select_related("supply").order_by("-activity_date","-created_at")[:40]
+    return render(request,"art_inventory/supplies.html",{"supplies":supplies,"recent":recent})
+
+
+@login_required
+def supply_change(request,pk):
+    supply=get_object_or_404(StudioSupply,pk=pk)
+    form=StudioSupplyActivityForm(request.POST or None)
+    if request.method=="POST" and form.is_valid():
+        data=form.cleaned_data
+        with transaction.atomic():
+            locked=StudioSupply.objects.select_for_update().get(pk=supply.pk)
+            quantity=data["quantity"]
+            if data["action"]=="used" and quantity>locked.quantity_on_hand:
+                form.add_error("quantity",f"Only {locked.quantity_on_hand} units are currently on hand.")
+            else:
+                if data["action"]=="received":
+                    locked.quantity_on_hand += quantity
+                elif data["action"]=="used":
+                    locked.quantity_on_hand -= quantity
+                else:
+                    locked.quantity_on_hand = quantity
+                locked.save(update_fields=["quantity_on_hand"])
+                StudioSupplyActivity.objects.create(supply=locked,action=data["action"],quantity=quantity,activity_date=data["activity_date"],note=data["note"],created_by=request.user)
+                messages.success(request,f"{locked} count updated. On hand: {locked.quantity_on_hand}.")
+                return redirect("art_inventory:supplies")
+    return render(request,"art_inventory/supply_change.html",{"supply":supply,"form":form})
 
 @login_required
 def inventory_report(request):
