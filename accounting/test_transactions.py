@@ -138,3 +138,14 @@ class SimpleTransactionScreenTests(TestCase):
         entry.refresh_from_db()
         self.assertEqual(entry.status, "draft")
         self.assertEqual(entry.lines.get(account=self.expense).debit, Decimal("45.50"))
+
+    def test_register_shows_only_nonzero_side_and_searchable_fields(self):
+        self.client.post(self.url, self.payload())
+        response = self.client.get(reverse("accounting:transaction_list"))
+        self.assertContains(response, "Debit $45.50")
+        self.assertContains(response, "Credit $45.50")
+        self.assertNotContains(response, "Debit $0.00")
+        self.assertNotContains(response, "Credit $0.00")
+        form_response = self.client.get(self.url)
+        self.assertContains(form_response, "account-filter")
+        self.assertContains(form_response, "Type account number or name")
