@@ -11,7 +11,8 @@ body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}
 <label><input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}> Show inactive</label>
 <button type="submit">Filter</button><a href="{% url 'accounting:chart_of_accounts' %}">Clear</a>
 </form>
-<div class="card"><table><thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th><th>Manage</th></tr></thead><tbody>
+<p><button type="button" class="subtle" id="toggle-children" aria-pressed="false">Collapse subaccounts</button></p>
+<div class="card" id="account-table"><table><thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th><th>Manage</th></tr></thead><tbody>
 {% for row in rows %}<tr class="{% if row.depth %}child-row{% endif %}">
 <td class="num">{{ row.account.number }}</td>
 <td>{% if row.depth %}<span class="child" aria-label="Subaccount">↳ </span>{% endif %}{{ row.account.name }}</td>
@@ -24,4 +25,12 @@ body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}
 {% empty %}<tr><td colspan="6" class="table-note">No accounts match these filters.</td></tr>{% endfor %}
 </tbody></table></div>
 <p class="small">Accounts with transaction history are not deleted. Changes to a posting account's type or parent are restricted. Account numbers may be edited, but remain unique.</p>
-</main></body></html>
+<script>
+const button = document.getElementById("toggle-children");
+const table = document.getElementById("account-table");
+button.addEventListener("click", () => {
+  const collapsed = table.classList.toggle("hide-children");
+  button.textContent = collapsed ? "Expand subaccounts" : "Collapse subaccounts";
+  button.setAttribute("aria-pressed", String(collapsed));
+});
+</script></main></body></html>
