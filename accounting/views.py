@@ -72,3 +72,37 @@ def account_status(request, pk):
         account.is_active = not account.is_active
         account.save(update_fields=["is_active"])
     return redirect(reverse("accounting:chart_of_accounts") + "?inactive=1")
+
+
+@staff_member_required(login_url="/admin/login/")
+def transaction_list(request):
+    from .models import JournalEntry
+    entries = JournalEntry.objects.prefetch_related("lines__account").order_by("-date", "-pk")[:100]
+    return render(request, "accounting/transaction_list.html", {"entries": entries})
+
+
+@staff_member_required(login_url="/admin/login/")
+def transaction_new(request):
+    from django.core.exceptions import ValidationError
+    from .models import JournalEntry, JournalLine
+    from .services import post_entry
+    from .transaction_forms import SimpleTransactionForm
+
+    form = SimpleTransactionForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        with transaction.atomic():
+            entry = JournalEntry.objects.create(
+                date=d["date"], payee=d["payee"], description=d["description"],
+                memo=d["memo"], source="manual", created_by=request.user,
+            )
+            if d["kind"] == "expense":
+                debit_account, credit_account = d["category_account"], d["payment_account"]
+            else:
+                debit_account, credit_account = d["payment_account"], d["category_account"]
+            JournalLine.objects.create(entry=entry, account=debit_account, debit=d["amount"])
+            JournalLine.objects.create(entry=entry, account=credit_account, credit=d["amount"])
+            if d["save_action"] == "post":
+                post_entry(entry.pk, actor=request.user)
+        return redirect("accounting:transaction_list")
+    return render(request, "accounting/transaction_form.html", {"form": form})
