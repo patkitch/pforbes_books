@@ -46,13 +46,13 @@ class BalanceSheetDate(forms.Form):
 
 @staff_member_required(login_url="/admin/login/")
 def profit_loss_view(request):
-    form = ProfitLossDates(request.GET or None)
+    form = ProfitLossDates(request.GET if request.GET else {"start": "2027-01-01", "end": "2027-12-31"})
     data = profit_and_loss(**form.cleaned_data) if form.is_valid() else None
     return render(request, "accounting/profit_loss.html", {"form": form, "report": data})
 
 
 @staff_member_required(login_url="/admin/login/")
 def balance_sheet_view(request):
-    form = BalanceSheetDate(request.GET or None)
+    form = BalanceSheetDate(request.GET if request.GET else {"as_of": "2027-12-31"})
     data = balance_sheet(form.cleaned_data["as_of"]) if form.is_valid() else None
     return render(request, "accounting/balance_sheet.html", {"form": form, "report": data})
