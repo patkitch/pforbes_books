@@ -98,3 +98,9 @@ class SplitTransactionTests(TestCase):
         response = self.client.post(self.url, self.payload())
         self.assertEqual(response.status_code, 302)
         self.assertFalse(JournalEntry.objects.exists())
+
+    def test_split_form_has_account_search_controls(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "account-filter")
+        self.assertContains(response, "Type account number or name")
