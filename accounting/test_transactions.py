@@ -86,3 +86,55 @@ class SimpleTransactionScreenTests(TestCase):
         response = self.client.get(reverse("accounting:transaction_list"))
         self.assertContains(response, "Test purchase")
         self.assertContains(response, "Posted")
+
+    def test_existing_draft_can_be_posted_without_duplicate(self):
+        self.client.post(self.url, self.payload(action="draft"))
+        entry = JournalEntry.objects.get()
+        edit_url = reverse("accounting:transaction_edit", args=[entry.pk])
+        response = self.client.get(edit_url)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(edit_url, self.payload(action="post", description="Updated purchase"))
+        self.assertRedirects(response, reverse("accounting:transaction_list"))
+        self.assertEqual(JournalEntry.objects.count(), 1)
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, "posted")
+        self.assertEqual(entry.description, "Updated purchase")
+        self.assertEqual(entry.lines.count(), 2)
+        self.assertEqual(entry.audit_events.filter(action="posted").count(), 1)
+
+    def test_existing_draft_can_be_edited_without_posting(self):
+        self.client.post(self.url, self.payload(action="draft"))
+        entry = JournalEntry.objects.get()
+        response = self.client.post(
+            reverse("accounting:transaction_edit", args=[entry.pk]),
+            self.payload(action="draft", amount="19.75"),
+        )
+        self.assertEqual(response.status_code, 302)
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, "draft")
+        self.assertEqual(entry.lines.get(account=self.expense).debit, Decimal("19.75"))
+        self.assertEqual(entry.audit_events.count(), 0)
+
+    def test_posted_entry_cannot_be_edited(self):
+        self.client.post(self.url, self.payload(action="post"))
+        entry = JournalEntry.objects.get()
+        edit_url = reverse("accounting:transaction_edit", args=[entry.pk])
+        self.assertEqual(self.client.get(edit_url).status_code, 404)
+        self.assertEqual(
+            self.client.post(edit_url, self.payload(action="draft", amount="1.00")).status_code,
+            404,
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.lines.get(account=self.expense).debit, Decimal("45.50"))
+
+    def test_invalid_draft_edit_does_not_change_entry(self):
+        self.client.post(self.url, self.payload(action="draft"))
+        entry = JournalEntry.objects.get()
+        response = self.client.post(
+            reverse("accounting:transaction_edit", args=[entry.pk]),
+            self.payload(action="post", amount="0"),
+        )
+        self.assertEqual(response.status_code, 200)
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, "draft")
+        self.assertEqual(entry.lines.get(account=self.expense).debit, Decimal("45.50"))
