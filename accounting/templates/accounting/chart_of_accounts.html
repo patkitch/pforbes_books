@@ -15,7 +15,7 @@ body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}
 <p><button type="button" class="subtle" id="toggle-children" aria-pressed="false">Collapse subaccounts</button></p>
 <div class="card" id="account-table"><table><thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th><th>Manage</th></tr></thead><tbody>
 {% for row in rows %}<tr class="{% if row.depth %}child-row{% endif %}">
-<td class="num">{{ row.account.number }}</td>
+<td class="num"><a href="{% url 'accounting:account_ledger' row.account.pk %}" title="View account transaction detail">{{ row.account.number }}</a></td>
 <td>{% if row.depth %}<span class="child" aria-label="Subaccount">↳ </span>{% endif %}{{ row.account.name }}</td>
 <td>{{ row.account.get_account_type_display }}</td>
 <td>{% if row.account.parent %}{{ row.account.parent.number }} — {{ row.account.parent.name }}{% else %}—{% endif %}</td>
