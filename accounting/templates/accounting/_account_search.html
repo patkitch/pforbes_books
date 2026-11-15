@@ -1,0 +1,45 @@
+<script>
+/* Search account choices locally without changing the submitted Django account ID. */
+document.querySelectorAll('select[name="category_account"], select[name="payment_account"], select[name^="category_"]').forEach((select) => {
+  const original = Array.from(select.options).map((option) => option.cloneNode(true));
+  const fieldLabel = document.querySelector('label[for="' + select.id + '"]');
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'account-filter';
+  search.placeholder = 'Type account number or name';
+  search.setAttribute('aria-label', 'Search ' + (fieldLabel ? fieldLabel.textContent.trim() : 'account choices'));
+  search.setAttribute('autocomplete', 'off');
+  search.style.margin = '6px 0';
+  search.style.width = '100%';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'account-picker';
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(search);
+  wrapper.appendChild(select);
+
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLocaleLowerCase();
+    const chosen = select.value;
+    select.replaceChildren();
+    original.forEach((option) => {
+      if (!option.value || option.value === chosen || option.textContent.toLocaleLowerCase().includes(q)) {
+        select.appendChild(option.cloneNode(true));
+      }
+    });
+    if (!select.options.length) {
+      const noMatch = document.createElement('option');
+      noMatch.textContent = 'No matching accounts';
+      noMatch.value = '';
+      noMatch.disabled = true;
+      select.appendChild(noMatch);
+    }
+    select.value = chosen;
+  });
+  select.addEventListener('change', () => {
+    search.value = '';
+    const chosen = select.value;
+    select.replaceChildren(...original.map((option) => option.cloneNode(true)));
+    select.value = chosen;
+  });
+});
+</script>
