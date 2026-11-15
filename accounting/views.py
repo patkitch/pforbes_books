@@ -106,3 +106,59 @@ def transaction_new(request):
                 post_entry(entry.pk, actor=request.user)
         return redirect("accounting:transaction_list")
     return render(request, "accounting/transaction_form.html", {"form": form})
+
+
+@staff_member_required(login_url="/admin/login/")
+def transaction_edit(request, pk):
+    """Edit or post a manually entered two-line draft; never edit posted entries."""
+    from django.core.exceptions import ValidationError
+    from django.http import Http404
+    from .models import JournalEntry, JournalLine
+    from .services import post_entry
+    from .transaction_forms import SimpleTransactionForm
+
+    entry = get_object_or_404(JournalEntry.objects.prefetch_related("lines__account"), pk=pk)
+    lines = list(entry.lines.all())
+    if entry.status != "draft" or entry.source != "manual" or len(lines) != 2:
+        raise Http404("Only simple manual drafts may be edited.")
+    debit_line = next((line for line in lines if line.debit > 0), None)
+    credit_line = next((line for line in lines if line.credit > 0), None)
+    if not debit_line or not credit_line or debit_line.debit != credit_line.credit:
+        raise Http404("Draft needs a balanced two-line entry.")
+    if debit_line.account.account_type in ("expense", "cogs", "other_expense"):
+        kind, category, payment = "expense", debit_line.account, credit_line.account
+    elif credit_line.account.account_type in ("income", "other_income"):
+        kind, category, payment = "income", credit_line.account, debit_line.account
+    else:
+        raise Http404("This draft cannot be edited through the simple form.")
+
+    initial = {
+        "kind": kind, "date": entry.date, "payee": entry.payee,
+        "description": entry.description, "amount": debit_line.debit,
+        "category_account": category.pk, "payment_account": payment.pk,
+        "memo": entry.memo, "save_action": "draft",
+    }
+    form = SimpleTransactionForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        with transaction.atomic():
+            locked = JournalEntry.objects.select_for_update().get(pk=pk)
+            if locked.status != "draft":
+                return HttpResponseForbidden("This transaction is no longer a draft.")
+            # Save both sides atomically and keep the original journal entry ID.
+            locked.date = d["date"]
+            locked.payee = d["payee"]
+            locked.description = d["description"]
+            locked.memo = d["memo"]
+            locked.save(update_fields=["date", "payee", "description", "memo"])
+            locked.lines.all().delete()
+            if d["kind"] == "expense":
+                debit_account, credit_account = d["category_account"], d["payment_account"]
+            else:
+                debit_account, credit_account = d["payment_account"], d["category_account"]
+            JournalLine.objects.create(entry=locked, account=debit_account, debit=d["amount"])
+            JournalLine.objects.create(entry=locked, account=credit_account, credit=d["amount"])
+            if d["save_action"] == "post":
+                post_entry(locked.pk, actor=request.user)
+        return redirect("accounting:transaction_list")
+    return render(request, "accounting/transaction_form.html", {"form": form, "entry": entry})
