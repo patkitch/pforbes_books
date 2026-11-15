@@ -1,8 +1,10 @@
 from django.urls import path
-from . import views, split_views
+from . import views, split_views, report_views
 
 app_name = "accounting"
 urlpatterns = [
+    path("reports/profit-loss/", report_views.profit_loss_view, name="profit_loss"),
+    path("reports/balance-sheet/", report_views.balance_sheet_view, name="balance_sheet"),
     path("transactions/", views.transaction_list, name="transaction_list"),
     path("transactions/split/new/", split_views.split_new, name="split_new"),
     path("transactions/split/<int:pk>/edit/", split_views.split_edit, name="split_edit"),
