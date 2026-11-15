@@ -6,6 +6,7 @@ body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}
 </style></head><body><main>
 <div class="toolbar"><div><h1>Chart of Accounts</h1><p>2027 accounting test · {{ account_count }} accounts displayed</p></div>
 <a class="button" href="{% url 'accounting:account_new' %}">+ Add account</a></div>
+<p><a href="{% url 'accounting:transaction_list' %}">View transactions</a></p>
 <form method="get" class="filters">
 <input type="search" name="q" value="{{ search }}" placeholder="Search number or name" aria-label="Search accounts">
 <label><input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}> Show inactive</label>
