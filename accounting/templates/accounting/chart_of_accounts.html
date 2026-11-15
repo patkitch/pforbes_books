@@ -1,56 +1,27 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chart of Accounts | P. Forbes Art</title>
-  <style>
-    :root { color-scheme: light; }
-    body { font-family: system-ui, sans-serif; background: #f6f7f9; color: #202939; margin: 0; }
-    main { max-width: 1060px; margin: 36px auto; padding: 0 18px; }
-    h1 { margin-bottom: 6px; font-size: 1.9rem; }
-    .subtitle { color: #526174; margin-top: 0; }
-    form { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 20px 0; }
-    input[type=search] { flex: 1; min-width: 220px; padding: 11px; border: 1px solid #cbd5df; border-radius: 7px; }
-    button { padding: 11px 18px; border: 0; background: #1e4762; color: white; border-radius: 7px; cursor: pointer; }
-    .table-wrap { overflow-x: auto; background: white; border-radius: 10px; border: 1px solid #e2e6eb; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { text-align: left; border-bottom: 1px solid #e8ebef; padding: 13px 15px; }
-    th { background: #edf1f5; color: #344458; font-size: .88rem; }
-    td:first-child { font-variant-numeric: tabular-nums; font-weight: 650; }
-    .inactive { color: #8c4b4b; }
-    .empty { padding: 25px; color: #526174; }
-    .note { font-size: .88rem; color: #526174; margin: 16px 0; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Chart of Accounts</h1>
-    <p class="subtitle">P. Forbes Art — 2027 accounting test · Read-only preview</p>
-    <form method="get" action="">
-      <input type="search" name="q" value="{{ search }}" placeholder="Search account number or name" aria-label="Search accounts">
-      <label><input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}> Show inactive</label>
-      <button type="submit">Search</button>
-    </form>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th></tr></thead>
-        <tbody>
-          {% for account in accounts %}
-            <tr>
-              <td>{{ account.number }}</td>
-              <td>{{ account.name }}</td>
-              <td>{{ account.get_account_type_display }}</td>
-              <td>{% if account.parent %}{{ account.parent.number }} — {{ account.parent.name }}{% else %}—{% endif %}</td>
-              <td>{% if account.is_active %}Active{% else %}<span class="inactive">Inactive</span>{% endif %}</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="5" class="empty">No accounts to display yet. Our approved Chart of Accounts will be loaded after the seed file is reviewed.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <p class="note">This first screen only displays accounts. Adding, editing, and deactivating accounts will come after validation and audit safeguards.</p>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart of Accounts | P. Forbes Art</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}main{max-width:1100px;margin:32px auto;padding:0 18px}h1{margin-bottom:4px}p{color:#59687a}a{color:#19516d}button,.button{background:#19516d;color:white;padding:10px 16px;border:0;border-radius:7px;text-decoration:none;cursor:pointer}button.subtle{background:#eef2f5;color:#234}form.filters{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:24px 0}input[type=search]{padding:11px;min-width:220px;flex:1;border:1px solid #cbd5df;border-radius:7px}.card{background:white;border-radius:10px;border:1px solid #dfe5ec;overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #e7ecf1;padding:12px;text-align:left}th{background:#edf2f5;font-size:.87rem}td.num{font-weight:700;font-variant-numeric:tabular-nums}td.actions{white-space:nowrap}td.actions form{display:inline}td.actions button{font-size:.84rem;padding:6px 9px}.inactive{color:#994b4b}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.child{padding-left:24px}.small{font-size:.86rem}.table-note{padding:12px}.group-label{font-weight:600}.hide-children .child-row{display:none}
+</style></head><body><main>
+<div class="toolbar"><div><h1>Chart of Accounts</h1><p>2027 accounting test · {{ account_count }} accounts displayed</p></div>
+<a class="button" href="{% url 'accounting:account_new' %}">+ Add account</a></div>
+<form method="get" class="filters">
+<input type="search" name="q" value="{{ search }}" placeholder="Search number or name" aria-label="Search accounts">
+<label><input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}> Show inactive</label>
+<button type="submit">Filter</button><a href="{% url 'accounting:chart_of_accounts' %}">Clear</a>
+</form>
+<div class="card"><table><thead><tr><th>Number</th><th>Account</th><th>Type</th><th>Parent account</th><th>Status</th><th>Manage</th></tr></thead><tbody>
+{% for row in rows %}<tr class="{% if row.depth %}child-row{% endif %}">
+<td class="num">{{ row.account.number }}</td>
+<td>{% if row.depth %}<span class="child" aria-label="Subaccount">↳ </span>{% endif %}{{ row.account.name }}</td>
+<td>{{ row.account.get_account_type_display }}</td>
+<td>{% if row.account.parent %}{{ row.account.parent.number }} — {{ row.account.parent.name }}{% else %}—{% endif %}</td>
+<td>{% if row.account.is_active %}Active{% else %}<span class="inactive">Inactive</span>{% endif %}</td>
+<td class="actions"><a href="{% url 'accounting:account_edit' row.account.pk %}">Edit</a>
+<form method="post" action="{% url 'accounting:account_status' row.account.pk %}">{% csrf_token %}
+<button class="subtle" type="submit" aria-label="{% if row.account.is_active %}Deactivate{% else %}Reactivate{% endif %} {{ row.account.name }}">{% if row.account.is_active %}Deactivate{% else %}Reactivate{% endif %}</button></form></td></tr>
+{% empty %}<tr><td colspan="6" class="table-note">No accounts match these filters.</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="small">Accounts with transaction history are not deleted. Changes to a posting account's type or parent are restricted. Account numbers may be edited, but remain unique.</p>
+</main></body></html>
