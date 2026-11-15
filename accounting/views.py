@@ -162,3 +162,39 @@ def transaction_edit(request, pk):
                 post_entry(locked.pk, actor=request.user)
         return redirect("accounting:transaction_list")
     return render(request, "accounting/transaction_form.html", {"form": form, "entry": entry})
+
+
+@staff_member_required(login_url="/admin/login/")
+def account_ledger(request, pk):
+    """Posted-only general ledger for one account, chronological running balance.
+
+    This is a direct-account register, not a consolidated parent/subaccount report.
+    Draft entries cannot affect a ledger balance.
+    """
+    from decimal import Decimal
+    from .models import JournalLine
+
+    account = get_object_or_404(Account, pk=pk)
+    normal_debit = account.account_type in ("asset", "expense", "cogs", "other_expense")
+    lines = (
+        JournalLine.objects.filter(account=account, entry__status="posted")
+        .select_related("entry")
+        .order_by("entry__date", "entry_id", "pk")
+    )
+    running = Decimal("0.00")
+    rows = []
+    total_debits = Decimal("0.00")
+    total_credits = Decimal("0.00")
+    for line in lines:
+        total_debits += line.debit
+        total_credits += line.credit
+        running += line.debit - line.credit if normal_debit else line.credit - line.debit
+        rows.append({"line": line, "balance": running})
+    return render(request, "accounting/account_ledger.html", {
+        "account": account,
+        "rows": rows,
+        "total_debits": total_debits,
+        "total_credits": total_credits,
+        "balance": running,
+        "normal_side": "Debit" if normal_debit else "Credit",
+    })
