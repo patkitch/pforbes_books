@@ -16,6 +16,7 @@ MOVEMENT_TYPES = (
     ("transfer", "Transfer between business bank/cash accounts"),
     ("card_payment", "Pay a business credit card from a business bank account"),
     ("owner_draw", "Owner withdrawal / distribution"),
+    ("owner_card_payment", "Pay a business credit card with personal funds"),
     ("purchase_refund", "Refund received for a business purchase"),
     ("sales_refund", "Refund paid to a customer"),
 )
@@ -27,6 +28,7 @@ def valid_account_types(kind):
         "transfer": ({"asset"}, {"asset"}),
         "card_payment": ({"liability"}, {"asset"}),
         "owner_draw": ({"equity"}, {"asset"}),
+        "owner_card_payment": ({"liability"}, {"equity"}),
         "purchase_refund": ({"asset", "liability"}, {"cogs", "expense", "other_expense"}),
         "sales_refund": ({"income", "other_income"}, {"asset", "liability"}),
     }
