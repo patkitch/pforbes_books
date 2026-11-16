@@ -3,6 +3,8 @@ from . import views, split_views, report_views, report_exports, owner_views
 
 app_name = "accounting"
 urlpatterns = [
+    path("transactions/owner/new/", owner_views.owner_new, name="owner_new"),
+    path("transactions/owner/<int:pk>/edit/", owner_views.owner_edit, name="owner_edit"),
     path("reports/download/<str:kind>/<str:format>/", report_exports.report_download, name="report_download"),
     path("reports/profit-loss/", report_views.profit_loss_view, name="profit_loss"),
     path("reports/balance-sheet/", report_views.balance_sheet_view, name="balance_sheet"),
