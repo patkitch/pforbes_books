@@ -9,6 +9,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
+from .period_controls import period_is_locked
 
 
 class SplitTransactionForm(forms.Form):
@@ -48,6 +49,8 @@ class SplitTransactionForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("date") and period_is_locked(cleaned["date"]):
+            self.add_error("date", "This accounting period is locked.")
         kind = cleaned.get("kind")
         if kind not in ("expense", "income"):
             return cleaned
