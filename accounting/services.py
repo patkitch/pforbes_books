@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import AuditEvent, JournalEntry, JournalLine
+from .period_controls import ensure_open_period
 
 
 @transaction.atomic
@@ -19,6 +20,7 @@ def post_entry(entry_id, *, actor=None):
     entry = JournalEntry.objects.select_for_update().get(pk=entry_id)
     if entry.status != "draft":
         raise ValidationError("Only draft entries can be posted.")
+    ensure_open_period(entry.date)
     lines = list(entry.lines.select_related("account").order_by("pk"))
     if len(lines) < 2:
         raise ValidationError("A journal entry needs at least two lines.")
