@@ -1,6 +1,6 @@
 <script>
 /* Search account choices locally without changing the submitted Django account ID. */
-document.querySelectorAll('select[name="category_account"], select[name="payment_account"], select[name^="category_"]').forEach((select) => {
+document.querySelectorAll('select[name="category_account"], select[name="payment_account"], select[name^="category_"], select[name^="account_"], select[name="debit_account"], select[name="credit_account"], select[name="destination_account"], select[name="contribution_account"]').forEach((select) => {
   const original = Array.from(select.options).map((option) => option.cloneNode(true));
   const fieldLabel = document.querySelector('label[for="' + select.id + '"]');
   const search = document.createElement('input');
