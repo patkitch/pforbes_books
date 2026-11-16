@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, split_views, report_views, report_exports
+from . import views, split_views, report_views, report_exports, owner_views
 
 app_name = "accounting"
 urlpatterns = [
