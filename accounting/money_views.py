@@ -20,6 +20,8 @@ def _write_lines(entry, values):
 
 def _infer_kind(debit, credit):
     # Owner draws use equity debit; card payments use liability debit.
+    if debit.account_type == "liability" and credit.account_type == "equity":
+        return "owner_card_payment"
     if debit.account_type == "equity" and credit.account_type == "asset":
         return "owner_draw"
     if debit.account_type == "liability" and credit.account_type == "asset":
