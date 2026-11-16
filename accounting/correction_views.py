@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import AuditEvent, JournalEntry, JournalLine
 from .services import post_entry
+from .period_controls import period_is_locked
 
 
 class ReversalForm(forms.Form):
@@ -21,6 +22,8 @@ class ReversalForm(forms.Form):
 
     def clean_date(self):
         value = self.cleaned_data["date"]
+        if period_is_locked(value):
+            raise forms.ValidationError("This accounting period is locked.")
         if value < date(2027, 1, 1):
             raise forms.ValidationError("This new ledger begins January 1, 2027.")
         return value
