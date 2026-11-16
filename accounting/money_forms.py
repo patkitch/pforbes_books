@@ -10,6 +10,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
+from .period_controls import period_is_locked
 
 
 MOVEMENT_TYPES = (
@@ -64,6 +65,8 @@ class MoneyMovementForm(forms.Form):
 
     def clean(self):
         result = super().clean()
+        if result.get("date") and period_is_locked(result["date"]):
+            self.add_error("date", "This accounting period is locked.")
         kind = result.get("kind")
         debit = result.get("debit_account")
         credit = result.get("credit_account")
