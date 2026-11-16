@@ -63,7 +63,7 @@ def make_xlsx(rows):
     for idx, (label, amount) in enumerate(rows, start=1):
         ref = f"A{idx}"
         safe = escape(str(label), {'"': "&quot;", "'": "&apos;"})
-        cells.append(f'<row r="{idx}"><c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{safe}</t></is>')
+        cells.append(f'<row r="{idx}"><c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{safe}</t></is></c>')
         if amount is not None:
             cells.append(f'<c r="B{idx}" s="1"><v>{Decimal(amount):.2f}</v></c>')
         cells.append("</row>")
@@ -131,6 +131,9 @@ def make_pdf(rows):
     doc.add_page()
     doc.set_margins(18, 18, 18)
     for index, (label, amount) in enumerate(rows):
+        # fpdf2's multi_cell may leave the cursor at the right edge.
+        # Always begin the next report row at the left page margin.
+        doc.set_x(doc.l_margin)
         if not label and amount is None:
             doc.ln(4)
             continue
