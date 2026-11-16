@@ -33,7 +33,8 @@ Deployment: **development branch only**. Production Django settings/routes and D
 12. General journal: minimum two lines, equal positive debit and credit totals.
 
 ## Test and release gates — still required
-- GitHub branch code has been committed, but **all newly added tests have not yet been confirmed to pass** in the user's Windows environment.
+- **GitHub Actions isolated accounting CI passed all 94 tests** on the development branch (run 43783999820, 2026-11-15/16). Local Windows/PostgreSQL test acceptance is still required.
+- For one backed-up installation, extract the complete feature branch ZIP and run `powershell -ExecutionPolicy Bypass -File .\\scripts\\install_accounting_test.ps1` from the extracted folder. The script copies the accounting app only, preserves local migrations/config/data, relocates unexpected nested package copies and a stray project-root `__init__.py` into the backup, then runs the tests. It does not deploy.
 - Run consolidated accounting suite using the existing working local settings:
   `python manage.py test accounting --settings=config.settings_accounting_test`
 - If a local test is discovered under `pforbes_books_accounting_test.accounting.*` rather than `accounting.*`, investigate local top-level `__init__.py`, nested copies, current working directory and test discovery; avoid replacing local config/migrations.
