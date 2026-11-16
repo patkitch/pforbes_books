@@ -5,6 +5,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
+from .period_controls import period_is_locked
 
 
 class GeneralJournalForm(forms.Form):
@@ -40,6 +41,8 @@ class GeneralJournalForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("date") and period_is_locked(cleaned["date"]):
+            self.add_error("date", "This accounting period is locked.")
         if cleaned.get("date") and cleaned["date"] < date(2027, 1, 1):
             self.add_error("date", "This ledger begins January 1, 2027.")
         lines = []
