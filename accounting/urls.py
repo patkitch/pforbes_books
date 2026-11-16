@@ -1,8 +1,11 @@
 from django.urls import path
-from . import views, split_views, report_views, report_exports, owner_views
+from . import views, split_views, report_views, report_exports, owner_views, money_views, correction_views
 
 app_name = "accounting"
 urlpatterns = [
+    path("transactions/movement/new/", money_views.movement_new, name="movement_new"),
+    path("transactions/movement/<int:pk>/edit/", money_views.movement_edit, name="movement_edit"),
+    path("transactions/<int:pk>/reverse/", correction_views.reverse_transaction, name="transaction_reverse"),
     path("transactions/owner/new/", owner_views.owner_new, name="owner_new"),
     path("transactions/owner/<int:pk>/edit/", owner_views.owner_edit, name="owner_edit"),
     path("reports/download/<str:kind>/<str:format>/", report_exports.report_download, name="report_download"),
