@@ -6,6 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import Account
+from .period_controls import period_is_locked
 
 
 class SimpleTransactionForm(forms.Form):
@@ -32,6 +33,8 @@ class SimpleTransactionForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("date") and period_is_locked(cleaned["date"]):
+            self.add_error("date", "This accounting period is locked.")
         kind = cleaned.get("kind")
         category = cleaned.get("category_account")
         payment = cleaned.get("payment_account")
