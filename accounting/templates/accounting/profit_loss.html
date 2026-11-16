@@ -9,7 +9,7 @@ section{background:white;border:1px solid #dee5ec;border-radius:9px;padding:8px 
 table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px solid #e9edf1;text-align:left}.money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .total{font-weight:700;background:#f1f5f8}.summary{font-size:1.07rem}.errorlist{color:#a22a2a}
 </style></head><body><main>
-<p><a href="{% url 'accounting:transaction_list' %}">Transactions</a> · <a href="{% url 'accounting:balance_sheet' %}">Balance Sheet</a> · <a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a></p>
+<p><a href="{% url 'accounting:transaction_list' %}">Transactions</a> · <a href="{% url 'accounting:balance_sheet' %}">Balance Sheet</a> · <a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a> · <a href="{% url 'accounting:trial_balance' %}">Trial Balance</a></p>
 <h1>Profit &amp; Loss</h1><p class="muted">P. Forbes Art · Cash-basis bookkeeping test · Posted entries only</p>
 <form method="get"><div><label for="{{ form.start.id_for_label }}">From</label>{{ form.start }}{{ form.start.errors }}</div>
 <div><label for="{{ form.end.id_for_label }}">Through</label>{{ form.end }}{{ form.end.errors }}</div><button type="submit">Run report</button></form>
