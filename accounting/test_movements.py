@@ -67,6 +67,15 @@ class ManualCoreMovementTests(TestCase):
         self.assertEqual(pl["net_profit"], Decimal("0.00"))
         self.assertEqual(bs["totals"]["equity"], Decimal("-100.00"))
 
+    def test_personal_funds_pay_card_as_owner_equity_not_expense(self):
+        entry = self.make("owner_card_payment", self.card, self.equity)
+        self.assertEqual(entry.lines.get(account=self.card).debit, Decimal("100.00"))
+        self.assertEqual(entry.lines.get(account=self.equity).credit, Decimal("100.00"))
+        pl, bs = self.statements()
+        self.assertEqual(pl["net_profit"], Decimal("0.00"))
+        self.assertEqual(bs["totals"]["liability"], Decimal("-100.00"))
+        self.assertEqual(bs["totals"]["equity"], Decimal("100.00"))
+
     def test_purchase_refund_reverses_expense_and_reduces_card_debt(self):
         self.make("purchase_refund", self.card, self.cogs)
         pl, bs = self.statements()
