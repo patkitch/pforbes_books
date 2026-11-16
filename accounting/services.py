@@ -1,5 +1,6 @@
 """Transaction-level posting controls. No bank or WooCommerce imports yet."""
 from decimal import Decimal
+from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -20,6 +21,8 @@ def post_entry(entry_id, *, actor=None):
     entry = JournalEntry.objects.select_for_update().get(pk=entry_id)
     if entry.status != "draft":
         raise ValidationError("Only draft entries can be posted.")
+    if entry.date < date(2027, 1, 1):
+        raise ValidationError("This ledger begins January 1, 2027.")
     ensure_open_period(entry.date)
     lines = list(entry.lines.select_related("account").order_by("pk"))
     if len(lines) < 2:
