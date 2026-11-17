@@ -10,6 +10,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
+from accounting_contacts.models import Customer, Vendor
 from .period_controls import period_is_locked
 
 
@@ -51,6 +52,8 @@ class MoneyMovementForm(forms.Form):
     credit_account = forms.ModelChoiceField(
         queryset=Account.objects.none(), label="Paying / credit account"
     )
+    vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False, label="Vendor (optional)")
+    customer = forms.ModelChoiceField(queryset=Customer.objects.none(), required=False, label="Customer (optional)")
     memo = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
     save_action = forms.ChoiceField(
         choices=(("draft", "Save draft"), ("post", "Post transaction")),
@@ -60,6 +63,8 @@ class MoneyMovementForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         eligible = Account.objects.filter(is_active=True).order_by("number")
+        self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
+        self.fields["customer"].queryset = Customer.objects.filter(is_active=True)
         self.fields["debit_account"].queryset = eligible
         self.fields["credit_account"].queryset = eligible
 
@@ -68,6 +73,12 @@ class MoneyMovementForm(forms.Form):
         if result.get("date") and period_is_locked(result["date"]):
             self.add_error("date", "This accounting period is locked.")
         kind = result.get("kind")
+        if result.get("vendor") and result.get("customer"):
+            self.add_error("customer", "Choose a vendor or customer, not both.")
+        if result.get("vendor") and kind != "purchase_refund":
+            self.add_error("vendor", "Vendor applies to purchase refunds.")
+        if result.get("customer") and kind != "sales_refund":
+            self.add_error("customer", "Customer applies to sales refunds.")
         debit = result.get("debit_account")
         credit = result.get("credit_account")
         debit_types, credit_types = valid_account_types(kind)
