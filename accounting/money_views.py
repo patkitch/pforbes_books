@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .models import AuditEvent, JournalEntry, JournalLine
 from .money_forms import MoneyMovementForm, valid_account_types
 from .services import post_entry
+from accounting_contacts.models import TransactionParty
+from accounting_contacts.services import link_contact
 
 
 def _write_lines(entry, values):
@@ -47,6 +49,8 @@ def movement_new(request):
                 source="manual_movement", created_by=request.user,
             )
             _write_lines(entry, values)
+            if values.get("vendor") or values.get("customer"):
+                link_contact(entry, vendor=values.get("vendor"), customer=values.get("customer"), actor=request.user)
             if values["save_action"] == "post":
                 post_entry(entry.pk, actor=request.user)
         return redirect("accounting:transaction_list")
@@ -76,6 +80,9 @@ def movement_edit(request, pk):
         "debit_account": debit.account_id, "credit_account": credit.account_id,
         "memo": entry.memo, "save_action": "draft",
     }
+    party = TransactionParty.objects.filter(journal_entry_id=entry.pk).first()
+    if party:
+        initial["vendor"], initial["customer"] = party.vendor_id, party.customer_id
     form = MoneyMovementForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         values = form.cleaned_data
@@ -90,6 +97,8 @@ def movement_edit(request, pk):
             locked.save(update_fields=["date", "payee", "description", "memo"])
             locked.lines.all().delete()
             _write_lines(locked, values)
+            if values.get("vendor") or values.get("customer"):
+                link_contact(locked, vendor=values.get("vendor"), customer=values.get("customer"), actor=request.user)
             if values["save_action"] == "post":
                 post_entry(locked.pk, actor=request.user)
         return redirect("accounting:transaction_list")
