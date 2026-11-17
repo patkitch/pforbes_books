@@ -13,7 +13,7 @@ ul#id_save_action{list-style:none;padding:0}ul#id_save_action label{display:inli
 </style></head><body><main>
 <h1>{% if entry %}Edit split draft{% else %}Record split transaction{% endif %}</h1>
 <p class="muted">Record one payment across two to five categories. Complete at least two category/amount pairs. Blank pairs are ignored. The payment account receives the combined total.</p>
-<form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<p class="muted"><a href="{% url 'accounting:vendor_new' %}" target="_blank" rel="noopener">+ Create vendor</a> · <a href="{% url 'accounting:customer_new' %}" target="_blank" rel="noopener">+ Create customer</a> (then refresh to select)</p><form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for field in form.visible_fields %}
 {% if field.name != "save_action" and field.name|slice:":9" != "category_" and field.name|slice:":7" != "amount_" %}
 <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}
