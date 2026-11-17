@@ -1,4 +1,5 @@
 from django.urls import path
+from accounting_contacts import views as contact_views
 from . import views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views
 
 app_name = "accounting"
