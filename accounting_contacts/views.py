@@ -164,8 +164,25 @@ def receipt_edit(request, pk=None):
             initial["journal_entry_id"] = entry.pk
     form = ReceiptForm(request.POST or None, request.FILES or None, instance=receipt, initial=initial)
     if request.method == "POST" and form.is_valid():
-        obj = form.save()
-        return redirect("accounting:receipt_detail", pk=obj.pk)
+        obj = form.save(commit=False)
+        if obj.journal_entry_id and (obj.vendor_id or obj.customer_id):
+            existing = TransactionParty.objects.filter(journal_entry_id=obj.journal_entry_id).first()
+            if existing and (
+                existing.vendor_id != obj.vendor_id or existing.customer_id != obj.customer_id
+            ):
+                form.add_error(
+                    "journal_entry_id",
+                    "This journal transaction is already linked to a different contact. Review its contact link first.",
+                )
+        if not form.errors:
+            with transaction.atomic():
+                obj.save()
+                if obj.journal_entry_id and (obj.vendor_id or obj.customer_id):
+                    entry = JournalEntry.objects.get(pk=obj.journal_entry_id)
+                    existing = TransactionParty.objects.filter(journal_entry_id=entry.pk).first()
+                    if existing is None:
+                        link_contact(entry, vendor=obj.vendor, customer=obj.customer, actor=request.user)
+            return redirect("accounting:receipt_detail", pk=obj.pk)
     return render(request, "accounting_contacts/form.html", {
         "title": "Edit receipt" if receipt else "Add receipt",
         "form": form, "back": reverse("accounting:receipts"),
