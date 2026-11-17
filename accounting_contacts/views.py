@@ -10,6 +10,7 @@ from django.urls import reverse
 from accounting.models import AuditEvent, JournalEntry, JournalLine
 from .forms import CustomerForm, ReceiptForm, TransactionPartyForm, VendorForm
 from .models import Customer, Receipt, TransactionParty, Vendor
+from .services import link_contact
 
 
 @staff_member_required(login_url="/admin/login/")
@@ -126,20 +127,7 @@ def party_link(request, pk):
         data = form.cleaned_data
         vendor = data["vendor"] if data["party_type"] == "vendor" else None
         customer = data["customer"] if data["party_type"] == "customer" else None
-        with transaction.atomic():
-            link, created = TransactionParty.objects.select_for_update().get_or_create(
-                journal_entry_id=entry.pk,
-                defaults={"vendor": vendor, "customer": customer},
-            )
-            if not created:
-                link.vendor, link.customer = vendor, customer
-                link.full_clean()
-                link.save(update_fields=["vendor", "customer"])
-            AuditEvent.objects.create(
-                entry=entry, actor=request.user,
-                action="contact_linked",
-                note=f"Linked {'vendor' if vendor else 'customer'} #{vendor.pk if vendor else customer.pk}",
-            )
+        link_contact(entry, vendor=vendor, customer=customer, actor=request.user)
         return redirect("accounting:transaction_list")
     return render(request, "accounting_contacts/link.html", {
         "entry": entry, "form": form, "linked": current,
