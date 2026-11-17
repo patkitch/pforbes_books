@@ -4,6 +4,21 @@ from . import views, split_views, report_views, report_exports, owner_views, mon
 
 app_name = "accounting"
 urlpatterns = [
+    path("vendors/", contact_views.vendors, name="vendors"),
+    path("vendors/new/", contact_views.vendor_edit, name="vendor_new"),
+    path("vendors/<int:pk>/", contact_views.vendor_detail, name="vendor_detail"),
+    path("vendors/<int:pk>/edit/", contact_views.vendor_edit, name="vendor_edit"),
+    path("customers/", contact_views.customers, name="customers"),
+    path("customers/new/", contact_views.customer_edit, name="customer_new"),
+    path("customers/<int:pk>/", contact_views.customer_detail, name="customer_detail"),
+    path("customers/<int:pk>/edit/", contact_views.customer_edit, name="customer_edit"),
+    path("receipts/", contact_views.receipts, name="receipts"),
+    path("receipts/new/", contact_views.receipt_edit, name="receipt_new"),
+    path("receipts/<int:pk>/", contact_views.receipt_detail, name="receipt_detail"),
+    path("receipts/<int:pk>/edit/", contact_views.receipt_edit, name="receipt_edit"),
+    path("receipts/<int:pk>/download/", contact_views.receipt_download, name="receipt_download"),
+    path("transactions/<int:pk>/contact/", contact_views.party_link, name="transaction_party"),
+
     path("reports/trial-balance/", trial_views.trial_balance_view, name="trial_balance"),
     path("reports/trial-balance.csv", trial_views.trial_balance_csv, name="trial_balance_csv"),
     path("transactions/journal/new/", journal_views.journal_new, name="journal_new"),
