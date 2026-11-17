@@ -1,4 +1,4 @@
-# Installs only the accounting app from this extracted development-branch ZIP.
+# Installs the accounting and contacts/receipts apps from this extracted test ZIP.
 # Preserves local accounting migrations, test settings and PostgreSQL data.
 # Run from the extracted ZIP: powershell -ExecutionPolicy Bypass -File .\scripts\install_accounting_test.ps1
 $ErrorActionPreference = "Stop"
@@ -17,7 +17,7 @@ if (!(Test-Path (Join-Path $source "test_end_to_end.py"))) {
 if (!(Test-Path $target) -or !(Test-Path $python) -or !(Test-Path $settings)) {
     throw "The local accounting test installation is not at the expected path. No files were changed."
 }
-if (!(Test-Path (Join-Path $contactSource "migrations\\0001_initial.py"))) {
+if (!(Test-Path (Join-Path $contactSource "migrations\0001_initial.py"))) {
     throw "Contacts package or its migration is missing from this ZIP; no files were changed."
 }
 if ($sourceRoot -eq $targetRoot) {
@@ -38,10 +38,16 @@ Push-Location $targetRoot
 try {
     & $python manage.py dumpdata accounting --settings=config.settings_accounting_test --indent 2 --output (Join-Path $backupDir "accounting_data.json")
     if ($LASTEXITCODE -ne 0) { throw "Cannot back up local accounting data. No code was updated." }
+    if (Test-Path $contactTarget) {
+        $settingsTextBefore = Get-Content -LiteralPath $settings -Raw
+        if ($settingsTextBefore -match "accounting_contacts[.]apps[.]AccountingContactsConfig") {
+            & $python manage.py dumpdata accounting_contacts --settings=config.settings_accounting_test --indent 2 --output (Join-Path $backupDir "contacts_and_receipts_data.json")
+            if ($LASTEXITCODE -ne 0) { throw "Cannot back up existing contacts and receipts. No code was updated." }
+        }
+    }
 } finally {
     Pop-Location
 }
-
 
 # Moving accidental duplicate package directories out of Python discovery fixes
 # the 7 import errors caused by nested copies or a root package marker.
