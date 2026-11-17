@@ -143,6 +143,29 @@ class ContactsAndReceiptsTests(TestCase):
         self.assertContains(self.client.get(reverse("accounting:receipts")), "MPix January")
         self.assertContains(self.client.get(reverse("accounting:receipt_detail", args=[receipt.pk])), "MPix")
 
+    def test_receipt_auto_links_vendor_to_existing_journal(self):
+        response = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "MPix receipt", "receipt_type": "purchase",
+            "date": "2027-01-05", "amount": "45.50",
+            "vendor": str(self.vendor.pk), "journal_entry_id": str(self.entry.pk),
+        })
+        self.assertEqual(response.status_code, 302)
+        link = TransactionParty.objects.get(journal_entry_id=self.entry.pk)
+        self.assertEqual(link.vendor_id, self.vendor.pk)
+        self.assertEqual(self.entry.audit_events.filter(action="contact_linked").count(), 1)
+
+    def test_receipt_does_not_silently_replace_existing_contact(self):
+        other = Vendor.objects.create(name="Another vendor")
+        TransactionParty.objects.create(journal_entry_id=self.entry.pk, vendor=other)
+        response = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "Conflicting receipt", "receipt_type": "purchase",
+            "date": "2027-01-05", "amount": "45.50",
+            "vendor": str(self.vendor.pk), "journal_entry_id": str(self.entry.pk),
+        })
+        self.assertContains(response, "already linked to a different contact")
+        self.assertFalse(Receipt.objects.filter(title="Conflicting receipt").exists())
+        self.assertEqual(TransactionParty.objects.get(journal_entry_id=self.entry.pk).vendor_id, other.pk)
+
     def test_receipt_rejects_nonexistent_journal(self):
         response = self.client.post(reverse("accounting:receipt_new"), {
             "title": "Invalid", "receipt_type": "purchase", "date": "2027-01-05",
