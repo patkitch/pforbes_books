@@ -74,7 +74,7 @@ Get-ChildItem -LiteralPath $contactSource -Force | Where-Object { $_.Name -ne "_
 }
 $settingsText = Get-Content -LiteralPath $settings -Raw
 if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
-    Add-Content -LiteralPath $settings -Value "`r`n# Local accounting test contacts/receipts app — no production changes`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+    Add-Content -LiteralPath $settings -Encoding UTF8 -Value "`r`n# Local accounting test contacts/receipts app (no production changes)`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
 }
 Push-Location $targetRoot
 try {
