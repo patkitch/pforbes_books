@@ -6,6 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import Account
+from accounting_contacts.models import Customer, Vendor
 from .period_controls import period_is_locked
 
 
@@ -18,6 +19,8 @@ class SimpleTransactionForm(forms.Form):
     amount = forms.DecimalField(min_value=Decimal("0.01"), max_digits=14, decimal_places=2)
     category_account = forms.ModelChoiceField(queryset=Account.objects.none(), label="Income / expense category")
     payment_account = forms.ModelChoiceField(queryset=Account.objects.none(), label="Bank / credit card account")
+    vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False, label="Vendor (optional)")
+    customer = forms.ModelChoiceField(queryset=Customer.objects.none(), required=False, label="Customer (optional)")
     memo = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
     save_action = forms.ChoiceField(choices=(("draft", "Save draft"), ("post", "Post transaction")), widget=forms.RadioSelect, initial="draft")
 
@@ -27,6 +30,8 @@ class SimpleTransactionForm(forms.Form):
         self.fields["category_account"].queryset = Account.objects.filter(
             is_active=True, account_type__in=["expense", "cogs", "income", "other_income", "other_expense"]
         ).order_by("number")
+        self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
+        self.fields["customer"].queryset = Customer.objects.filter(is_active=True)
         self.fields["payment_account"].queryset = Account.objects.filter(
             is_active=True, account_type__in=["asset", "liability"]
         ).order_by("number")
@@ -36,6 +41,12 @@ class SimpleTransactionForm(forms.Form):
         if cleaned.get("date") and period_is_locked(cleaned["date"]):
             self.add_error("date", "This accounting period is locked.")
         kind = cleaned.get("kind")
+        if cleaned.get("vendor") and cleaned.get("customer"):
+            self.add_error("customer", "Choose a vendor or customer, not both.")
+        if cleaned.get("vendor") and kind != "expense":
+            self.add_error("vendor", "Choose a vendor for purchases.")
+        if cleaned.get("customer") and kind != "income":
+            self.add_error("customer", "Choose a customer for sales.")
         category = cleaned.get("category_account")
         payment = cleaned.get("payment_account")
         if category:
