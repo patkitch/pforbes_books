@@ -9,6 +9,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
+from accounting_contacts.models import Customer, Vendor
 from .period_controls import period_is_locked
 
 
@@ -18,6 +19,8 @@ class SplitTransactionForm(forms.Form):
     payee = forms.CharField(max_length=200, required=False, label="Payee / customer")
     description = forms.CharField(max_length=255)
     payment_account = forms.ModelChoiceField(queryset=Account.objects.none(), label="Bank / credit card account")
+    vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False, label="Vendor (optional)")
+    customer = forms.ModelChoiceField(queryset=Customer.objects.none(), required=False, label="Customer (optional)")
     memo = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
     save_action = forms.ChoiceField(
         choices=(("draft", "Save draft"), ("post", "Post transaction")),
@@ -27,6 +30,8 @@ class SplitTransactionForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
+        self.fields["customer"].queryset = Customer.objects.filter(is_active=True)
         self.fields["payment_account"].queryset = Account.objects.filter(
             is_active=True, account_type__in=["asset", "liability"]
         ).order_by("number")
@@ -52,6 +57,12 @@ class SplitTransactionForm(forms.Form):
         if cleaned.get("date") and period_is_locked(cleaned["date"]):
             self.add_error("date", "This accounting period is locked.")
         kind = cleaned.get("kind")
+        if cleaned.get("vendor") and cleaned.get("customer"):
+            self.add_error("customer", "Choose a vendor or customer, not both.")
+        if cleaned.get("vendor") and kind != "expense":
+            self.add_error("vendor", "Choose a vendor for purchases.")
+        if cleaned.get("customer") and kind != "income":
+            self.add_error("customer", "Choose a customer for sales.")
         if kind not in ("expense", "income"):
             return cleaned
         if cleaned.get("date") and cleaned["date"].year < 2027:
