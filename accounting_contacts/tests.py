@@ -77,6 +77,51 @@ class ContactsAndReceiptsTests(TestCase):
         self.assertEqual(link.customer, self.customer)
         self.assertEqual(self.entry.audit_events.filter(action="contact_linked").count(), 2)
 
+    def test_manual_purchase_selects_vendor_as_it_posts(self):
+        response = self.client.post(reverse("accounting:transaction_new"), {
+            "kind": "expense", "date": "2027-01-12", "payee": "MPix",
+            "description": "New print order", "amount": "25.00",
+            "category_account": str(self.expense.pk),
+            "payment_account": str(self.bank.pk),
+            "vendor": str(self.vendor.pk),
+            "save_action": "post",
+        })
+        self.assertEqual(response.status_code, 302)
+        entry = JournalEntry.objects.get(description="New print order")
+        party = TransactionParty.objects.get(journal_entry_id=entry.pk)
+        self.assertEqual(party.vendor_id, self.vendor.pk)
+        self.assertEqual(entry.status, "posted")
+
+    def test_manual_income_selects_customer_as_it_posts(self):
+        sales = Account.objects.create(number="4001", name="Artwork", account_type="income")
+        response = self.client.post(reverse("accounting:transaction_new"), {
+            "kind": "income", "date": "2027-01-12", "payee": "Jane Collector",
+            "description": "Original sold", "amount": "250.00",
+            "category_account": str(sales.pk),
+            "payment_account": str(self.bank.pk),
+            "customer": str(self.customer.pk),
+            "save_action": "post",
+        })
+        self.assertEqual(response.status_code, 302)
+        entry = JournalEntry.objects.get(description="Original sold")
+        party = TransactionParty.objects.get(journal_entry_id=entry.pk)
+        self.assertEqual(party.customer_id, self.customer.pk)
+        self.assertEqual(entry.status, "posted")
+        response = self.client.get(reverse("accounting:customer_detail", args=[self.customer.pk]))
+        self.assertContains(response, "Original sold")
+        self.assertContains(response, "250.00")
+
+    def test_wrong_contact_type_is_rejected_for_sales(self):
+        sales = Account.objects.create(number="4001", name="Artwork", account_type="income")
+        response = self.client.post(reverse("accounting:transaction_new"), {
+            "kind": "income", "date": "2027-01-12", "description": "Wrong contact",
+            "amount": "75.00", "category_account": str(sales.pk),
+            "payment_account": str(self.bank.pk),
+            "vendor": str(self.vendor.pk), "save_action": "post",
+        })
+        self.assertContains(response, "Choose a vendor for purchases")
+        self.assertFalse(JournalEntry.objects.filter(description="Wrong contact").exists())
+
     def test_invalid_contact_combination_rejected(self):
         response = self.client.post(
             reverse("accounting:transaction_party", args=[self.entry.pk]),
