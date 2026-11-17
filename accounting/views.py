@@ -87,6 +87,7 @@ def transaction_new(request):
     from .models import JournalEntry, JournalLine
     from .services import post_entry
     from .transaction_forms import SimpleTransactionForm
+    from accounting_contacts.services import link_contact
 
     form = SimpleTransactionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -102,6 +103,8 @@ def transaction_new(request):
                 debit_account, credit_account = d["payment_account"], d["category_account"]
             JournalLine.objects.create(entry=entry, account=debit_account, debit=d["amount"])
             JournalLine.objects.create(entry=entry, account=credit_account, credit=d["amount"])
+            if d.get("vendor") or d.get("customer"):
+                link_contact(entry, vendor=d.get("vendor"), customer=d.get("customer"), actor=request.user)
             if d["save_action"] == "post":
                 post_entry(entry.pk, actor=request.user)
         return redirect("accounting:transaction_list")
@@ -116,6 +119,7 @@ def transaction_edit(request, pk):
     from .models import JournalEntry, JournalLine
     from .services import post_entry
     from .transaction_forms import SimpleTransactionForm
+    from accounting_contacts.services import link_contact
 
     entry = get_object_or_404(JournalEntry.objects.prefetch_related("lines__account"), pk=pk)
     lines = list(entry.lines.all())
@@ -138,6 +142,11 @@ def transaction_edit(request, pk):
         "category_account": category.pk, "payment_account": payment.pk,
         "memo": entry.memo, "save_action": "draft",
     }
+    from accounting_contacts.models import TransactionParty
+    party = TransactionParty.objects.filter(journal_entry_id=entry.pk).first()
+    if party:
+        initial["vendor"] = party.vendor_id
+        initial["customer"] = party.customer_id
     form = SimpleTransactionForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
@@ -158,6 +167,8 @@ def transaction_edit(request, pk):
                 debit_account, credit_account = d["payment_account"], d["category_account"]
             JournalLine.objects.create(entry=locked, account=debit_account, debit=d["amount"])
             JournalLine.objects.create(entry=locked, account=credit_account, credit=d["amount"])
+            if d.get("vendor") or d.get("customer"):
+                link_contact(locked, vendor=d.get("vendor"), customer=d.get("customer"), actor=request.user)
             if d["save_action"] == "post":
                 post_entry(locked.pk, actor=request.user)
         return redirect("accounting:transaction_list")
