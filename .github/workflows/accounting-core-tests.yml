@@ -6,6 +6,7 @@ on:
       - feature/accounting-foundation
     paths:
       - 'accounting/**'
+      - 'accounting_contacts/**'
       - 'config/settings_accounting_ci.py'
       - 'config/urls_accounting_ci.py'
       - '.github/workflows/accounting-core-tests.yml'
@@ -15,6 +16,7 @@ on:
       - main
     paths:
       - 'accounting/**'
+      - 'accounting_contacts/**'
       - 'config/settings_accounting_ci.py'
       - 'config/urls_accounting_ci.py'
       - '.github/workflows/accounting-core-tests.yml'
@@ -39,4 +41,4 @@ jobs:
       - name: Check accounting configuration
         run: python manage.py check --settings=config.settings_accounting_ci
       - name: Run complete accounting test suite
-        run: python manage.py test accounting --settings=config.settings_accounting_ci --verbosity 2
+        run: python manage.py test accounting accounting_contacts --settings=config.settings_accounting_ci --verbosity 2
