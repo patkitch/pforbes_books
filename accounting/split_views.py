@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import JournalEntry, JournalLine
 from .services import post_entry
+from accounting_contacts.models import TransactionParty
+from accounting_contacts.services import link_contact
 from .split_forms import SplitTransactionForm
 
 
@@ -40,6 +42,8 @@ def split_new(request):
                 memo=d["memo"], source="manual_split", created_by=request.user,
             )
             _save_lines(entry, d)
+            if d.get("vendor") or d.get("customer"):
+                link_contact(entry, vendor=d.get("vendor"), customer=d.get("customer"), actor=request.user)
             if d["save_action"] == "post":
                 post_entry(entry.pk, actor=request.user)
         return redirect("accounting:transaction_list")
@@ -77,6 +81,9 @@ def split_edit(request, pk):
     for index, (line, amount) in enumerate(zip(category_lines, amounts), start=1):
         initial[f"category_{index}"] = line.account_id
         initial[f"amount_{index}"] = amount
+    party = TransactionParty.objects.filter(journal_entry_id=entry.pk).first()
+    if party:
+        initial["vendor"], initial["customer"] = party.vendor_id, party.customer_id
     form = SplitTransactionForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
@@ -91,6 +98,8 @@ def split_edit(request, pk):
             locked.save(update_fields=["date", "payee", "description", "memo"])
             locked.lines.all().delete()
             _save_lines(locked, d)
+            if d.get("vendor") or d.get("customer"):
+                link_contact(locked, vendor=d.get("vendor"), customer=d.get("customer"), actor=request.user)
             if d["save_action"] == "post":
                 post_entry(locked.pk, actor=request.user)
         return redirect("accounting:transaction_list")
