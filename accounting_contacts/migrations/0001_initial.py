@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Vendor",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("name", models.CharField(max_length=200)),
                 ("email", models.EmailField(blank=True, max_length=254)),
                 ("phone", models.CharField(blank=True, max_length=40)),
@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Customer",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("name", models.CharField(max_length=200)),
                 ("email", models.EmailField(blank=True, max_length=254)),
                 ("phone", models.CharField(blank=True, max_length=40)),
@@ -61,7 +61,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="TransactionParty",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("journal_entry_id", models.PositiveBigIntegerField(db_index=True, unique=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("vendor", models.ForeignKey(
@@ -78,7 +78,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Receipt",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("title", models.CharField(max_length=200)),
                 ("receipt_type", models.CharField(
                     choices=[("purchase", "Purchase receipt"), ("sale", "Sales receipt"), ("refund", "Refund documentation"), ("other", "Other document")], max_length=20
