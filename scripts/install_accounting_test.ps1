@@ -4,8 +4,10 @@
 $ErrorActionPreference = "Stop"
 $sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $source = Join-Path $sourceRoot "accounting"
+$contactSource = Join-Path $sourceRoot "accounting_contacts"
 $targetRoot = "C:\pforbes_books_accounting_test"
 $target = Join-Path $targetRoot "accounting"
+$contactTarget = Join-Path $targetRoot "accounting_contacts"
 $python = Join-Path $targetRoot ".venv\Scripts\python.exe"
 $settings = Join-Path $targetRoot "config\settings_accounting_test.py"
 
@@ -14,6 +16,9 @@ if (!(Test-Path (Join-Path $source "test_end_to_end.py"))) {
 }
 if (!(Test-Path $target) -or !(Test-Path $python) -or !(Test-Path $settings)) {
     throw "The local accounting test installation is not at the expected path. No files were changed."
+}
+if (!(Test-Path (Join-Path $contactSource "migrations\\0001_initial.py"))) {
+    throw "Contacts package or its migration is missing from this ZIP; no files were changed."
 }
 if ($sourceRoot -eq $targetRoot) {
     throw "Do not run the installer from inside the live local test project."
@@ -24,6 +29,19 @@ $backupDir = Join-Path $env:LOCALAPPDATA "PforbesBooksAccountingBackups\$stamp"
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 Write-Host "Backing up accounting folder to: $backupDir"
 Copy-Item -LiteralPath $target -Destination (Join-Path $backupDir "accounting") -Recurse -Force
+Copy-Item -LiteralPath $settings -Destination (Join-Path $backupDir "settings_accounting_test.py") -Force
+if (Test-Path $contactTarget) {
+    Copy-Item -LiteralPath $contactTarget -Destination (Join-Path $backupDir "accounting_contacts") -Recurse -Force
+}
+Write-Host "Backing up current accounting records as JSON (separate from the database)..."
+Push-Location $targetRoot
+try {
+    & $python manage.py dumpdata accounting --settings=config.settings_accounting_test --indent 2 --output (Join-Path $backupDir "accounting_data.json")
+    if ($LASTEXITCODE -ne 0) { throw "Cannot back up local accounting data. No code was updated." }
+} finally {
+    Pop-Location
+}
+
 
 # Moving accidental duplicate package directories out of Python discovery fixes
 # the 7 import errors caused by nested copies or a root package marker.
@@ -43,10 +61,26 @@ Get-ChildItem -LiteralPath $source -Force | Where-Object { $_.Name -notin @("mig
     Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force
 }
 
+Write-Host "Installing vendor, customer, and receipt modules."
+if (!(Test-Path $contactTarget)) { New-Item -ItemType Directory -Path $contactTarget | Out-Null }
+Get-ChildItem -LiteralPath $contactSource -Force | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $contactTarget -Recurse -Force
+}
+$settingsText = Get-Content -LiteralPath $settings -Raw
+if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
+    Add-Content -LiteralPath $settings -Value "`r`n# Local accounting test contacts/receipts app — no production changes`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+}
 Push-Location $targetRoot
 try {
-    Write-Host "Running accounting tests using the existing local settings..."
-    & $python manage.py test accounting --settings=config.settings_accounting_test
+    Write-Host "Checking contact migration against the models..."
+    & $python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings_accounting_test
+    if ($LASTEXITCODE -ne 0) { throw "Migration check failed. Do not apply changes or deploy." }
+    Write-Host "Creating only the new contacts and receipts tables..."
+    & $python manage.py migrate accounting_contacts --noinput --settings=config.settings_accounting_test
+    if ($LASTEXITCODE -ne 0) { throw "Contacts migration failed. Do not deploy." }
+    Write-Host "Running both accounting and contacts tests..."
+
+    & $python manage.py test accounting accounting_contacts --settings=config.settings_accounting_test
     $code = $LASTEXITCODE
 } finally {
     Pop-Location
