@@ -1,13 +1,13 @@
 """Staff-only contact directory, transaction linking, and receipt handling."""
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
-from django.db.models import Q, Sum, Value
-from django.db.models.functions import Coalesce
+from decimal import Decimal
+from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from accounting.models import AuditEvent, JournalEntry
+from accounting.models import AuditEvent, JournalEntry, JournalLine
 from .forms import CustomerForm, ReceiptForm, TransactionPartyForm, VendorForm
 from .models import Customer, Receipt, TransactionParty, Vendor
 
@@ -76,9 +76,15 @@ def vendor_detail(request, pk):
     record = get_object_or_404(Vendor, pk=pk)
     entries = list(_linked_entries(record, "vendor"))
     receipts = Receipt.objects.filter(vendor=record)
+    posted_ids = [entry.pk for entry in entries if entry.status == "posted"]
+    lines = JournalLine.objects.filter(
+        entry_id__in=posted_ids,
+        account__account_type__in=("expense", "cogs", "other_expense"),
+    )
+    activity_total = sum((line.debit - line.credit for line in lines), Decimal("0.00"))
     return render(request, "accounting_contacts/detail.html", {
         "title": "Vendor", "record": record, "kind": "vendor",
-        "entries": entries, "receipts": receipts,
+        "activity_total": activity_total, "entries": entries, "receipts": receipts,
         "edit_url": reverse("accounting:vendor_edit", args=[record.pk]),
         "list_url": reverse("accounting:vendors"),
         "receipt_url": reverse("accounting:receipt_new") + f"?vendor={record.pk}",
@@ -90,9 +96,15 @@ def customer_detail(request, pk):
     record = get_object_or_404(Customer, pk=pk)
     entries = list(_linked_entries(record, "customer"))
     receipts = Receipt.objects.filter(customer=record)
+    posted_ids = [entry.pk for entry in entries if entry.status == "posted"]
+    lines = JournalLine.objects.filter(
+        entry_id__in=posted_ids,
+        account__account_type__in=("income", "other_income"),
+    )
+    activity_total = sum((line.credit - line.debit for line in lines), Decimal("0.00"))
     return render(request, "accounting_contacts/detail.html", {
         "title": "Customer", "record": record, "kind": "customer",
-        "entries": entries, "receipts": receipts,
+        "activity_total": activity_total, "entries": entries, "receipts": receipts,
         "edit_url": reverse("accounting:customer_edit", args=[record.pk]),
         "list_url": reverse("accounting:customers"),
         "receipt_url": reverse("accounting:receipt_new") + f"?customer={record.pk}",
