@@ -9,12 +9,13 @@ $targetRoot = "C:\pforbes_books_accounting_test"
 $target = Join-Path $targetRoot "accounting"
 $contactTarget = Join-Path $targetRoot "accounting_contacts"
 $python = Join-Path $targetRoot ".venv\Scripts\python.exe"
-$settings = Join-Path $targetRoot "config\settings_accounting_test.py"
+$liveSettings = Join-Path $targetRoot "config\settings.py"
+$testSettings = Join-Path $targetRoot "config\settings_accounting_test.py"
 
 if (!(Test-Path (Join-Path $source "test_end_to_end.py"))) {
     throw "This ZIP does not contain the integrated accounting core. Download the latest feature/accounting-foundation ZIP."
 }
-if (!(Test-Path $target) -or !(Test-Path $python) -or !(Test-Path $settings)) {
+if (!(Test-Path $target) -or !(Test-Path $python) -or !(Test-Path $liveSettings) -or !(Test-Path $testSettings)) {
     throw "The local accounting test installation is not at the expected path. No files were changed."
 }
 if (!(Test-Path (Join-Path $contactSource "migrations\0001_initial.py"))) {
@@ -29,19 +30,22 @@ $backupDir = Join-Path $env:LOCALAPPDATA "PforbesBooksAccountingBackups\$stamp"
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 Write-Host "Backing up accounting folder to: $backupDir"
 Copy-Item -LiteralPath $target -Destination (Join-Path $backupDir "accounting") -Recurse -Force
-Copy-Item -LiteralPath $settings -Destination (Join-Path $backupDir "settings_accounting_test.py") -Force
+Copy-Item -LiteralPath $liveSettings -Destination (Join-Path $backupDir "settings.py") -Force
+Copy-Item -LiteralPath $testSettings -Destination (Join-Path $backupDir "settings_accounting_test.py") -Force
 if (Test-Path $contactTarget) {
     Copy-Item -LiteralPath $contactTarget -Destination (Join-Path $backupDir "accounting_contacts") -Recurse -Force
 }
-Write-Host "Backing up current accounting records as JSON (separate from the database)..."
+Write-Host "Backing up current PostgreSQL accounting records as JSON (separate from the database)..."
 Push-Location $targetRoot
 try {
-    & $python manage.py dumpdata accounting --settings=config.settings_accounting_test --indent 2 --output (Join-Path $backupDir "accounting_data.json")
-    if ($LASTEXITCODE -ne 0) { throw "Cannot back up local accounting data. No code was updated." }
+    & $python manage.py dumpdata accounting --settings=config.settings --indent 2 --output (Join-Path $backupDir "accounting_data.json")
+    if ($LASTEXITCODE -ne 0) { throw "Cannot back up PostgreSQL accounting data. No code was updated." }
+    $backupFile = Join-Path $backupDir "accounting_data.json"
+    if (!(Test-Path $backupFile) -or (Get-Item -LiteralPath $backupFile).Length -lt 10) { throw "PostgreSQL accounting backup is missing or empty; no code was updated." }
     if (Test-Path $contactTarget) {
-        $settingsTextBefore = Get-Content -LiteralPath $settings -Raw
+        $settingsTextBefore = Get-Content -LiteralPath $liveSettings -Raw
         if ($settingsTextBefore -match "accounting_contacts[.]apps[.]AccountingContactsConfig") {
-            & $python manage.py dumpdata accounting_contacts --settings=config.settings_accounting_test --indent 2 --output (Join-Path $backupDir "contacts_and_receipts_data.json")
+            & $python manage.py dumpdata accounting_contacts --settings=config.settings --indent 2 --output (Join-Path $backupDir "contacts_and_receipts_data.json")
             if ($LASTEXITCODE -ne 0) { throw "Cannot back up existing contacts and receipts. No code was updated." }
         }
     }
@@ -72,17 +76,22 @@ if (!(Test-Path $contactTarget)) { New-Item -ItemType Directory -Path $contactTa
 Get-ChildItem -LiteralPath $contactSource -Force | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $contactTarget -Recurse -Force
 }
-$settingsText = Get-Content -LiteralPath $settings -Raw
-if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
-    Add-Content -LiteralPath $settings -Encoding UTF8 -Value "`r`n# Local accounting test contacts/receipts app (no production changes)`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+# Register the new module in both settings files, but point migrations at the
+# persistent local PostgreSQL database via config.settings.  The separate
+# config.settings_accounting_test uses SQLite :memory: only for unit tests.
+foreach ($settingsPath in @($liveSettings, $testSettings)) {
+    $settingsText = Get-Content -LiteralPath $settingsPath -Raw
+    if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
+        Add-Content -LiteralPath $settingsPath -Encoding UTF8 -Value "`r`n# Accounting contacts module — local test installation only`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+    }
 }
 Push-Location $targetRoot
 try {
     Write-Host "Checking contact migration against the models..."
-    & $python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings_accounting_test
+    & $python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings
     if ($LASTEXITCODE -ne 0) { throw "Migration check failed. Do not apply changes or deploy." }
-    Write-Host "Creating only the new contacts and receipts tables..."
-    & $python manage.py migrate accounting_contacts --noinput --settings=config.settings_accounting_test
+    Write-Host "Creating only the new contacts and receipts tables in local PostgreSQL..."
+    & $python manage.py migrate accounting_contacts --noinput --settings=config.settings
     if ($LASTEXITCODE -ne 0) { throw "Contacts migration failed. Do not deploy." }
     Write-Host "Running both accounting and contacts tests..."
 
@@ -95,4 +104,4 @@ if ($code -ne 0) {
     Write-Warning "Accounting tests did not pass. Your previous accounting folder is backed up at $backupDir. Do not deploy."
     exit $code
 }
-Write-Host "Accounting core tests passed. Backup retained at $backupDir"
+Write-Host "Combined accounting and contacts tests passed. PostgreSQL backup retained at $backupDir"
