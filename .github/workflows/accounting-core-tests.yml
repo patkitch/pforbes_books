@@ -40,5 +40,7 @@ jobs:
           python -m pip install 'Django==5.2.5' 'fpdf2==2.8.4'
       - name: Check accounting configuration
         run: python manage.py check --settings=config.settings_accounting_ci
+      - name: Verify receipt/contact migrations match models
+        run: python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings_accounting_ci
       - name: Run complete accounting test suite
         run: python manage.py test accounting accounting_contacts --settings=config.settings_accounting_ci --verbosity 2
