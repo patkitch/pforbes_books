@@ -34,6 +34,10 @@ class Migration(migrations.Migration):
             model_name="featuredartistslot",
             name="gallery_unique_event_slot",
         ),
+        migrations.AlterModelOptions(
+            name="featuredartistslot",
+            options={"ordering": ["event__event_date", "slot_type", "position"]},
+        ),
         migrations.RemoveConstraint(
             model_name="featuredartistslot",
             name="gallery_slot_position_1_2",
