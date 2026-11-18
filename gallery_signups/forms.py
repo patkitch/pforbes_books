@@ -16,7 +16,7 @@ class AdminLoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput, max_length=128)
 
 class SlotEditForm(forms.Form):
-    artist_name = forms.CharField(required=False, max_length=120)
+    artist_name = forms.CharField(required=False, max_length=120, label="Name")
     reservation_label = forms.CharField(required=False, max_length=120)
 
 class EventEditForm(forms.Form):
