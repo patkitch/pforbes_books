@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'automation_logs.apps.AutomationLogsConfig',
     "web_automation",
     "art_inventory.apps.ArtInventoryConfig",
+    "gallery_signups.apps.GallerySignupsConfig",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
