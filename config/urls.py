@@ -1,4 +1,4 @@
-"""URL configuration for the remaining admin and product-automation site."""
+"""URL configuration for automation, inventory, and gallery sign-ups."""
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
@@ -8,4 +8,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("automation/", include("web_automation.urls")),
     path("inventory/", include("art_inventory.urls")),
+    path("gallery-signups/", include("gallery_signups.urls")),
 ]
