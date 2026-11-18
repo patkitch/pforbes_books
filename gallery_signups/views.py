@@ -51,7 +51,7 @@ def claim_slot(request, slot_id):
             if slot.is_open:
                 slot.artist_name = form.cleaned_data["name"]
                 slot.save(update_fields=["artist_name", "updated_at"])
-    return redirect("gallery_signups:calendar", year=2027)
+    return redirect("gallery_signups:calendar")
 
 def admin_login(request):
     form = AdminLoginForm(request.POST or None)
