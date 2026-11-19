@@ -10,14 +10,14 @@ from .models import Customer, TransactionParty, Vendor
 
 
 @transaction.atomic
-def link_contact(entry, *, vendor=None, customer=None, actor=None):
+def link_contact(entry, *, vendor=None, customer=None, actor=None, allow_inactive=False):
     if bool(vendor) == bool(customer):
         raise ValidationError("Specify exactly one vendor or customer.")
     if not JournalEntry.objects.filter(pk=entry.pk).exists():
         raise ValidationError("Journal transaction does not exist.")
-    if vendor is not None and (not isinstance(vendor, Vendor) or not vendor.is_active):
+    if vendor is not None and (not isinstance(vendor, Vendor) or (not allow_inactive and not vendor.is_active)):
         raise ValidationError("Choose an active vendor.")
-    if customer is not None and (not isinstance(customer, Customer) or not customer.is_active):
+    if customer is not None and (not isinstance(customer, Customer) or (not allow_inactive and not customer.is_active)):
         raise ValidationError("Choose an active customer.")
 
     link, created = TransactionParty.objects.select_for_update().get_or_create(
