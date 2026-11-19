@@ -7,13 +7,13 @@ from django.core.exceptions import ValidationError
 
 from .models import Account
 from accounting_contacts.models import Customer, Vendor
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 class SimpleTransactionForm(forms.Form):
     KIND_CHOICES = (("expense", "Expense / purchase"), ("income", "Income / receipt"))
     kind = forms.ChoiceField(choices=KIND_CHOICES)
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), initial=date(2027, 1, 1))
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), initial=LEDGER_START)
     payee = forms.CharField(max_length=200, required=False, label="Payee / customer")
     description = forms.CharField(max_length=255, label="Description")
     amount = forms.DecimalField(min_value=Decimal("0.01"), max_digits=14, decimal_places=2)
@@ -73,6 +73,6 @@ class SimpleTransactionForm(forms.Form):
                 self.add_error("category_account", "Choose a category that matches the transaction type.")
         if payment and payment.account_type not in ("asset", "liability"):
             self.add_error("payment_account", "Choose an active bank, cash, or credit card account.")
-        if cleaned.get("date") and cleaned["date"].year < 2027:
-            self.add_error("date", "This new ledger begins January 1, 2027.")
+        if cleaned.get("date") and cleaned["date"] < LEDGER_START:
+            self.add_error("date", "This new ledger begins January 1, 2026.")
         return cleaned
