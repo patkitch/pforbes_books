@@ -119,12 +119,12 @@ class ManualCoreMovementTests(TestCase):
                 self.assertEqual(resp.status_code, 200)
         self.assertEqual(JournalEntry.objects.count(), 0)
 
-    def test_dates_earlier_than_2027_rejected(self):
+    def test_dates_earlier_than_2026_rejected(self):
         resp = self.client.post(
             reverse("accounting:movement_new"),
-            self.payload("transfer", self.savings, self.checking, date="2026-12-31"),
+            self.payload("transfer", self.savings, self.checking, date="2025-12-31"),
         )
-        self.assertContains(resp, "begins January 1, 2027")
+        self.assertContains(resp, "begins January 1, 2026")
         self.assertFalse(JournalEntry.objects.exists())
 
     def test_nonstaff_cannot_create_movement(self):
