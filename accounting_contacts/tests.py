@@ -235,6 +235,23 @@ class ContactsAndReceiptsTests(TestCase):
         self.assertContains(detail, "0.00")
         self.assertContains(detail, reversal.description)
 
+    def test_reversal_preserves_inactive_historical_vendor(self):
+        from .services import link_contact
+        link_contact(self.entry, vendor=self.vendor, actor=self.user)
+        self.vendor.is_active = False
+        self.vendor.save(update_fields=["is_active"])
+        result = self.client.post(
+            reverse("accounting:transaction_reverse", args=[self.entry.pk]),
+            {"date": "2027-01-06", "reason": "Test closed supplier reversal"},
+        )
+        self.assertEqual(result.status_code, 302)
+        self.entry.refresh_from_db()
+        self.assertEqual(
+            TransactionParty.objects.get(
+                journal_entry_id=self.entry.reversed_by_entry_id
+            ).vendor_id, self.vendor.pk,
+        )
+
     def test_artwork_items_save_and_show_in_customer_history(self):
         payload = {
             "title": "Gallery painting sale", "receipt_type": "sale",
