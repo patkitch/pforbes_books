@@ -149,7 +149,7 @@ if ($code -ne 0) {
 # Apply the explicitly approved Sales Income layout only AFTER all automated tests pass.
 # The organizer is transactional, checks for unexpected name/number conflicts,
 # preserves existing account PKs and journal links, and is safe to rerun.
-Write-Host "Organizing Sales Income accounts 4010–4015 (no other account categories)..."
+Write-Host "Organizing Sales Income accounts 4010-4015 (no other account categories)..."
 Push-Location $targetRoot
 try {
     & $python manage.py shell --settings=config.settings -c "from accounting.sales_setup import organize_sales_income; print(organize_sales_income())"
