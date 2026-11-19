@@ -6,7 +6,7 @@ section{background:white;border:1px solid #dee5ec;border-radius:9px;padding:8px 
 .money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.total{font-weight:700;background:#f1f5f8}.summary{font-size:1.08rem}.errorlist{color:#a22a2a}
 </style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
 <p><a href="{% url 'accounting:transaction_list' %}">Transactions</a> · <a href="{% url 'accounting:profit_loss' %}">Profit &amp; Loss</a> · <a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a> · <a href="{% url 'accounting:trial_balance' %}">Trial Balance</a></p>
-<h1>Balance Sheet</h1><p class="muted">P. Forbes Art · 2027 zero-opening-balance test · Posted entries only</p>
+<h1>Balance Sheet</h1><p class="muted">P. Forbes Art · 2026-start zero-opening-balance test · Posted entries only</p>
 <form method="get"><div><label for="{{ form.as_of.id_for_label }}">As of</label>{{ form.as_of }}{{ form.as_of.errors }}</div><button type="submit">Run report</button></form>
 {% if report %}<p><a href="{% url 'accounting:report_download' 'bs' 'xlsx' %}?as_of={{ report.as_of|date:'Y-m-d' }}">Download Excel</a> · <a href="{% url 'accounting:report_download' 'bs' 'pdf' %}?as_of={{ report.as_of|date:'Y-m-d' }}">Download PDF</a></p><p class="muted">Balances through {{ report.as_of|date:"M j, Y" }}</p>
 {% for group in report.groups %}
