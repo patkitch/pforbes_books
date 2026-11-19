@@ -42,7 +42,13 @@ class NormalBalanceTests(TestCase):
         self.assertContains(response, "Asset — Debit")
         self.assertContains(response, "Normal Balance")
         self.assertContains(response, "id_normal_balance")
-        self.assertEqual(response.context["form"].fields["normal_balance"].initial, "credit")
+        self.assertEqual(response.context["form"].initial["normal_balance"], "credit")
+        self.assertContains(
+            response, '<option value="credit" selected>Credit</option>', html=False
+        )
+        self.assertNotContains(
+            response, '<option value="debit" selected>Debit</option>', html=False
+        )
         response = self.client.post(reverse("accounting:account_edit", args=[account.pk]), {
             "number": "4010", "name": "Sales Income",
             "account_type": "income", "normal_balance": "debit",
@@ -50,6 +56,24 @@ class NormalBalanceTests(TestCase):
         self.assertEqual(response.status_code, 302)
         account.refresh_from_db()
         self.assertEqual(account.normal_balance, "debit")
+
+    def test_existing_accounts_default_to_correct_normal_balance_in_html(self):
+        for index, (kind, expected_side) in enumerate(Account.DEFAULT_BALANCES.items(), start=1):
+            with self.subTest(kind=kind):
+                account = Account.objects.create(
+                    number=f"{index}001", name=f"Existing {kind}", account_type=kind
+                )
+                response = self.client.get(
+                    reverse("accounting:account_edit", args=[account.pk])
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.context["form"].initial["normal_balance"], expected_side
+                )
+                self.assertContains(
+                    response,
+                    f'<option value="{expected_side}" selected>{expected_side.title()}</option>',
+                )
 
     def test_new_account_defaults_to_standard_side_without_field(self):
         form = AccountForm(data={
