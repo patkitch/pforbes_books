@@ -69,7 +69,7 @@ class TrialBalanceTests(TestCase):
     def test_invalid_as_of_rejected(self):
         url = reverse("accounting:trial_balance_csv")
         self.assertEqual(
-            self.client.get(url, {"as_of": "2026-12-31"}).status_code, 400
+            self.client.get(url, {"as_of": "2025-12-31"}).status_code, 400
         )
 
     def test_unapproved_user_cannot_export(self):
