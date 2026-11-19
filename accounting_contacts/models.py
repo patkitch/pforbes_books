@@ -148,3 +148,34 @@ class Receipt(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ReceiptItem(models.Model):
+    """Itemized artwork on a sales receipt; does not create journal lines."""
+    ITEM_TYPES = (("original", "Original artwork"), ("print", "Fine art print"), ("other", "Other item"))
+    receipt = models.ForeignKey(Receipt, related_name="items", on_delete=models.CASCADE)
+    position = models.PositiveSmallIntegerField(default=1)
+    artwork_title = models.CharField(max_length=200)
+    item_type = models.CharField(max_length=16, choices=ITEM_TYPES)
+    size = models.CharField(max_length=80, blank=True, help_text="For example, 11x14 print or 24x36 original.")
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ("position", "pk")
+
+    def clean(self):
+        super().clean()
+        if self.quantity is not None and self.quantity < 1:
+            raise ValidationError({"quantity": "Quantity must be at least one."})
+        if self.unit_price is not None and self.unit_price < 0:
+            raise ValidationError({"unit_price": "Unit price cannot be negative."})
+        if self.receipt_id and self.receipt.receipt_type != "sale":
+            raise ValidationError("Artwork line items are available on sales receipts only.")
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit_price
+
+    def __str__(self):
+        return self.artwork_title
