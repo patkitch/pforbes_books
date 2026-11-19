@@ -9,12 +9,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import AuditEvent, JournalEntry, JournalLine
 from .services import post_entry
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 class ReversalForm(forms.Form):
     date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}), initial=date(2027, 1, 1)
+        widget=forms.DateInput(attrs={"type": "date"}), initial=LEDGER_START
     )
     reason = forms.CharField(
         max_length=255, label="Reason for reversing the transaction"
@@ -24,8 +24,8 @@ class ReversalForm(forms.Form):
         value = self.cleaned_data["date"]
         if period_is_locked(value):
             raise forms.ValidationError("This accounting period is locked.")
-        if value < date(2027, 1, 1):
-            raise forms.ValidationError("This new ledger begins January 1, 2027.")
+        if value < LEDGER_START:
+            raise forms.ValidationError("This new ledger begins January 1, 2026.")
         return value
 
 
@@ -40,7 +40,7 @@ def reverse_transaction(request, pk):
         raise Http404("This entry has already been reversed or is a reversal.")
     form = ReversalForm(
         request.POST or None,
-        initial={"date": max(date(2027, 1, 1), original.date)},
+        initial={"date": max(LEDGER_START, original.date)},
     )
     if request.method == "POST" and form.is_valid():
         values = form.cleaned_data
