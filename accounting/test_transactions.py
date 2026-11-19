@@ -68,10 +68,10 @@ class SimpleTransactionScreenTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(JournalEntry.objects.exists())
 
-    def test_pre_2027_transaction_rejected(self):
-        response = self.client.post(self.url, self.payload(date="2026-12-31"))
+    def test_pre_2026_transaction_rejected(self):
+        response = self.client.post(self.url, self.payload(date="2025-12-31"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "begins January 1, 2027")
+        self.assertContains(response, "begins January 1, 2026")
         self.assertFalse(JournalEntry.objects.exists())
 
     def test_non_staff_cannot_enter_transaction(self):
