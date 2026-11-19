@@ -63,10 +63,14 @@ class SalesAccountSetupTests(TestCase):
         self.assertEqual(line.account_id, self.gallery.pk)
         self.assertEqual(Account.objects.get(number="4001").pk, self.unrelated.pk)
         self.assertEqual(Account.objects.get(number="4002").normal_side, "debit")
-        self.assertEqual(
-            profit_and_loss(date(2026, 1, 1), date(2026, 12, 31))["totals"]["income"],
-            before["totals"]["income"],
-        )
+        after = profit_and_loss(date(2026, 1, 1), date(2026, 12, 31))
+        self.assertEqual(after["totals"]["income"], before["totals"]["income"])
+        income_group = next(g for g in after["groups"] if g["key"] == "income")
+        subtotals = [row for row in income_group["rows"] if row.get("is_subtotal")]
+        self.assertEqual(len(subtotals), 1)
+        self.assertEqual(subtotals[0]["account"].number, "4010")
+        self.assertEqual(subtotals[0]["amount"], Decimal("250.00"))
+        self.assertEqual(after["net_profit"], Decimal("250.00"))
 
     def test_new_sales_channels_are_individual_subaccounts(self):
         organize_sales_income()
@@ -85,6 +89,19 @@ class SalesAccountSetupTests(TestCase):
         self.assertContains(page, "Sales Income")
         self.assertContains(page, "Website Sales")
         self.assertContains(page, "Commissioned Artwork Sales")
+
+    def test_sales_parent_cannot_be_posted_to_directly(self):
+        from django.core.exceptions import ValidationError
+        from .services import post_entry
+        organize_sales_income()
+        parent = Account.objects.get(number="4010")
+        entry = JournalEntry.objects.create(date=date(2026, 8, 5))
+        JournalLine.objects.create(entry=entry, account=self.bank, debit=Decimal("10"))
+        JournalLine.objects.create(entry=entry, account=parent, credit=Decimal("10"))
+        with self.assertRaisesMessage(ValidationError, "Post sales to a 4011-4015 subaccount"):
+            post_entry(entry.pk)
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, "draft")
 
     def test_unrelated_number_collision_aborts_everything(self):
         Account.objects.create(
