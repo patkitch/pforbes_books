@@ -90,6 +90,61 @@ class AccountingInterfaceTests(TestCase):
         self.assertContains(result, 'data-journal-row="8"')
         self.assertContains(result, 'id="total-debits"')
 
+    def test_chart_sections_are_grouped_and_preserve_subaccounts(self):
+        parent = Account.objects.create(
+            number="5001", name="Cost of sales", account_type="cogs"
+        )
+        self.expense.parent = parent
+        self.expense.save(update_fields=["parent"])
+        Account.objects.create(
+            number="2001", name="Credit Card", account_type="liability"
+        )
+        result = self.client.get(reverse("accounting:chart_of_accounts"))
+        self.assertEqual(result.status_code, 200)
+        for section in ("Assets", "Liabilities", "Income", "Cost of Goods Sold"):
+            self.assertContains(result, section)
+        self.assertContains(result, "child-row")
+        self.assertContains(result, "Collapse subaccounts")
+        body = result.content.decode()
+        self.assertLess(body.index("Assets"), body.index("Liabilities"))
+        self.assertLess(body.index("Liabilities"), body.index("Cost of Goods Sold"))
+        self.assertLess(body.index("Cost of sales"), body.index("Art Supplies"))
+        self.assertContains(
+            self.client.get(reverse("accounting:chart_of_accounts"), {"q": "Art Supplies"}),
+            "Cost of Goods Sold",
+        )
+
+    def test_2026_income_and_expense_can_post_and_are_reported_by_year(self):
+        for kind, account, name in (
+            ("income", self.sales, "2026 sale"),
+            ("expense", self.expense, "2026 supplies"),
+        ):
+            response = self.client.post(reverse("accounting:transaction_new"), {
+                "kind": kind, "date": "2026-09-14", "description": name,
+                "amount": "30.00", "category_account": str(account.pk),
+                "payment_account": str(self.bank.pk), "save_action": "post",
+            })
+            self.assertEqual(response.status_code, 302)
+        report = profit_and_loss(date(2026, 1, 1), date(2026, 12, 31))
+        self.assertEqual(report["totals"]["income"], Decimal("30.00"))
+        self.assertEqual(report["totals"]["cogs"], Decimal("30.00"))
+        self.assertEqual(report["net_profit"], Decimal("0.00"))
+        response = self.client.get(
+            reverse("accounting:profit_loss"),
+            {"start": "2026-01-01", "end": "2026-12-31"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2026")
+
+    def test_2025_dates_still_rejected(self):
+        response = self.client.post(reverse("accounting:income_new"), {
+            "date": "2025-12-31", "description": "Too early",
+            "amount": "10.00", "category_account": str(self.sales.pk),
+            "payment_account": str(self.bank.pk), "save_action": "post",
+        })
+        self.assertContains(response, "begins January 1, 2026")
+        self.assertFalse(JournalEntry.objects.exists())
+
     def test_accounting_routes_require_staff_login(self):
         self.client.logout()
         for name in ("dashboard", "reports_index", "income_new", "expense_new"):
