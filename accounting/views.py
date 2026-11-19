@@ -237,7 +237,7 @@ def account_ledger(request, pk):
     from .models import JournalLine
 
     account = get_object_or_404(Account, pk=pk)
-    normal_debit = account.account_type in ("asset", "expense", "cogs", "other_expense")
+    normal_debit = account.normal_side == "debit"
     lines = (
         JournalLine.objects.filter(account=account, entry__status="posted")
         .select_related("entry")
