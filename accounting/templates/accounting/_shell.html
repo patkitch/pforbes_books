@@ -1,0 +1,41 @@
+<style>
+:root{--navy:#1e344a;--blue:#19516d;--muted:#647386;--edge:#dfe7ed;--page:#f5f7f9}
+.accounting-nav{position:fixed;inset:0 auto 0 0;width:228px;background:#fff;border-right:1px solid var(--edge);z-index:40;overflow-y:auto;padding:18px 14px;box-sizing:border-box;font:14px system-ui,sans-serif}
+.accounting-nav .brand{display:block;font-size:19px;color:var(--navy);font-weight:750;text-decoration:none;padding:8px 10px;margin-bottom:20px}
+.accounting-nav .brand small{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:3px}
+.accounting-nav .section-label{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--muted);padding:16px 10px 6px}
+.accounting-nav .navlink{display:block;padding:10px 12px;border-radius:8px;color:var(--navy);text-decoration:none;margin:2px 0}
+.accounting-nav .navlink:hover,.accounting-nav .navlink[aria-current=page]{background:#e7f0f5;color:var(--blue);font-weight:700}
+.accounting-nav .future{color:#7e8b98;padding:10px 12px}
+.accounting-main{margin-left:228px}
+.accounting-menu-toggle{display:none}
+@media(max-width:950px){
+ .accounting-nav{transform:translateX(-105%);transition:transform .18s ease;box-shadow:4px 0 16px #17283b20}
+ .accounting-nav.is-open{transform:translateX(0)}
+ .accounting-main{margin-left:0}
+ .accounting-menu-toggle{display:inline-flex;position:sticky;top:8px;z-index:30;background:#fff;border:1px solid var(--edge);color:var(--navy);font-weight:700;border-radius:8px;padding:9px 14px;margin:8px 0 0 12px;box-shadow:0 2px 6px #17283b12}
+}
+</style>
+<button type="button" class="accounting-menu-toggle" aria-controls="accounting-nav" aria-expanded="false" onclick="const n=document.getElementById('accounting-nav');const open=n.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false')">☰ Menu</button>
+<nav id="accounting-nav" class="accounting-nav" aria-label="Accounting">
+<a href="{% url 'accounting:dashboard' %}" class="brand">P. Forbes Books<small>Accounting</small></a>
+<a class="navlink" data-nav="dashboard" href="{% url 'accounting:dashboard' %}">Dashboard</a>
+<a class="navlink" data-nav="transactions" href="{% url 'accounting:transaction_list' %}">Transactions</a>
+<a class="navlink" data-nav="journal" href="{% url 'accounting:journal_new' %}">General Journal</a>
+<a class="navlink" data-nav="reports" href="{% url 'accounting:reports_index' %}">Reports</a>
+<a class="navlink" data-nav="accounts" href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a>
+<div class="section-label">CONTACTS & DOCUMENTS</div>
+<a class="navlink" data-nav="customers" href="{% url 'accounting:customers' %}">Customers</a>
+<a class="navlink" data-nav="vendors" href="{% url 'accounting:vendors' %}">Vendors</a>
+<a class="navlink" data-nav="receipts" href="{% url 'accounting:receipts' %}">Receipts</a>
+<div class="section-label">FUTURE FEATURES</div><div class="future">Bank Imports · Later</div><div class="future">Sales Imports · Later</div>
+</nav>
+<script>
+(function(){
+ const path=location.pathname;
+ const section=path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
+ const active=document.querySelector('.accounting-nav [data-nav="'+section+'"]');
+ if(active)active.setAttribute('aria-current','page');
+ document.addEventListener('keydown',function(e){if(e.key==='Escape'){const nav=document.getElementById('accounting-nav');nav.classList.remove('is-open');const b=document.querySelector('.accounting-menu-toggle');if(b)b.setAttribute('aria-expanded','false');}});
+})();
+</script>
