@@ -38,7 +38,7 @@ class SplitTransactionForm(forms.Form):
         options = Account.objects.filter(
             is_active=True,
             account_type__in=["expense", "cogs", "other_expense", "income", "other_income"],
-        ).order_by("number")
+        ).exclude(number="4010", name="Sales Income").order_by("number")
         self.split_fields = []
         for n in range(1, self.MAX_SPLITS + 1):
             category_name = f"category_{n}"
