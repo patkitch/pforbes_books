@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from accounting.models import AuditEvent, JournalEntry, JournalLine
-from .forms import CustomerForm, ReceiptForm, TransactionPartyForm, VendorForm
-from .models import Customer, Receipt, TransactionParty, Vendor
+from .forms import ArtworkItemFormSet, CustomerForm, ReceiptForm, TransactionPartyForm, VendorForm
+from .models import Customer, Receipt, ReceiptItem, TransactionParty, Vendor
 from .services import link_contact
 
 
@@ -163,8 +163,43 @@ def receipt_edit(request, pk=None):
             entry = get_object_or_404(JournalEntry, pk=request.GET["transaction"])
             initial["journal_entry_id"] = entry.pk
     form = ReceiptForm(request.POST or None, request.FILES or None, instance=receipt, initial=initial)
+    existing_items = []
+    if receipt:
+        existing_items = [
+            {
+                "artwork_title": item.artwork_title, "item_type": item.item_type,
+                "size": item.size, "quantity": item.quantity, "unit_price": item.unit_price,
+            }
+            for item in receipt.items.all()
+        ]
+    has_item_post = request.method == "POST" and "items-TOTAL_FORMS" in request.POST
+    items = ArtworkItemFormSet(
+        data=request.POST if has_item_post else None,
+        initial=existing_items if not has_item_post else None,
+        prefix="items",
+    )
     if request.method == "POST" and form.is_valid():
         obj = form.save(commit=False)
+        if has_item_post and not items.is_valid():
+            form.add_error(None, "Please correct the artwork item rows.")
+        if has_item_post and items.is_valid():
+            entered = [
+                line for line in items.cleaned_data
+                if line and line.get("artwork_title")
+            ]
+            if obj.receipt_type != "sale" and entered:
+                form.add_error(None, "Artwork line items belong on sales receipts only.")
+            if obj.receipt_type == "sale" and entered:
+                subtotal = sum(
+                    (line["quantity"] * line["unit_price"] for line in entered),
+                    Decimal("0.00"),
+                )
+                if subtotal > obj.amount:
+                    form.add_error(
+                        "amount",
+                        "Artwork item subtotal exceeds receipt amount. "
+                        "Check prices, quantities, or the receipt total.",
+                    )
         if obj.journal_entry_id and (obj.vendor_id or obj.customer_id):
             existing = TransactionParty.objects.filter(journal_entry_id=obj.journal_entry_id).first()
             if existing and (
@@ -177,6 +212,20 @@ def receipt_edit(request, pk=None):
         if not form.errors:
             with transaction.atomic():
                 obj.save()
+                if has_item_post:
+                    obj.items.all().delete()
+                    if obj.receipt_type == "sale":
+                        ReceiptItem.objects.bulk_create([
+                            ReceiptItem(
+                                receipt=obj, position=position,
+                                artwork_title=line["artwork_title"],
+                                item_type=line["item_type"],
+                                size=line.get("size") or "",
+                                quantity=line["quantity"],
+                                unit_price=line["unit_price"],
+                            )
+                            for position, line in enumerate(entered, start=1)
+                        ])
                 if obj.journal_entry_id and (obj.vendor_id or obj.customer_id):
                     entry = JournalEntry.objects.get(pk=obj.journal_entry_id)
                     existing = TransactionParty.objects.filter(journal_entry_id=entry.pk).first()
@@ -186,9 +235,8 @@ def receipt_edit(request, pk=None):
     return render(request, "accounting_contacts/form.html", {
         "title": "Edit receipt" if receipt else "Add receipt",
         "form": form, "back": reverse("accounting:receipts"),
-        "has_file": True,
+        "has_file": True, "items": items,
     })
-
 
 @staff_member_required(login_url="/admin/login/")
 def receipt_detail(request, pk):
