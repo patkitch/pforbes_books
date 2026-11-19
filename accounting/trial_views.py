@@ -5,12 +5,12 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import render
 
-from .report_views import BalanceSheetDate
+from .report_views import BalanceSheetDate, default_balance_sheet_date
 from .trial_reporting import trial_balance
 
 
 def _validated(request):
-    form = BalanceSheetDate(request.GET if request.GET else {"as_of": "2027-12-31"})
+    form = BalanceSheetDate(request.GET if request.GET else default_balance_sheet_date())
     return form, trial_balance(form.cleaned_data["as_of"]) if form.is_valid() else None
 
 
