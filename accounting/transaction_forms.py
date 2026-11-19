@@ -35,6 +35,16 @@ class SimpleTransactionForm(forms.Form):
             else ["income", "other_income"] if guided and kind == "income"
             else ["expense", "cogs", "income", "other_income", "other_expense"]
         )
+        if guided and kind == "income":
+            self.fields["payee"].label = "Received From (optional name)"
+            self.fields["category_account"].label = "Income Category"
+            self.fields["payment_account"].label = "Deposit To Account"
+            self.fields["customer"].help_text = "Link a customer record for purchase history; Received From is a descriptive name."
+        elif guided and kind == "expense":
+            self.fields["payee"].label = "Paid To (optional name)"
+            self.fields["category_account"].label = "Expense Category"
+            self.fields["payment_account"].label = "Paid From Account"
+            self.fields["vendor"].help_text = "Link a vendor record for spending history; Paid To is a descriptive name."
         self.fields["category_account"].queryset = Account.objects.filter(
             is_active=True, account_type__in=allowed_types
         ).order_by("number")
