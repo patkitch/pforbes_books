@@ -67,6 +67,18 @@ def reverse_transaction(request, pk):
                         memo=line.memo,
                     )
                 post_entry(reversal.pk, actor=request.user)
+                # A reversal belongs to the same vendor/customer as the original
+                # entry, so contact-level totals net to zero without manual relinking.
+                from accounting_contacts.models import TransactionParty
+                from accounting_contacts.services import link_contact
+                original_party = TransactionParty.objects.filter(
+                    journal_entry_id=locked.pk
+                ).first()
+                if original_party:
+                    link_contact(
+                        reversal, vendor=original_party.vendor,
+                        customer=original_party.customer, actor=request.user,
+                    )
                 locked.reversed_by_entry = reversal
                 locked.save(update_fields=["reversed_by_entry"])
                 AuditEvent.objects.create(
