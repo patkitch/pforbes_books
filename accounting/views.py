@@ -77,7 +77,15 @@ def account_status(request, pk):
 @staff_member_required(login_url="/admin/login/")
 def transaction_list(request):
     from .models import JournalEntry
-    entries = JournalEntry.objects.prefetch_related("lines__account").order_by("-date", "-pk")[:100]
+    from accounting_contacts.models import Receipt
+    entries = list(JournalEntry.objects.prefetch_related("lines__account").order_by("-date", "-pk")[:100])
+    receipt_map = defaultdict(list)
+    for receipt in Receipt.objects.filter(
+        journal_entry_id__in=[entry.pk for entry in entries]
+    ).only("pk", "title", "journal_entry_id", "attachment"):
+        receipt_map[receipt.journal_entry_id].append(receipt)
+    for entry in entries:
+        entry.linked_receipts = receipt_map[entry.pk]
     return render(request, "accounting/transaction_list.html", {"entries": entries})
 
 
