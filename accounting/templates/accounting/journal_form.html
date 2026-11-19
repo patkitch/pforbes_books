@@ -1,1 +1,62 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>General journal | P. Forbes Art</title><style>body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#263442;margin:0}main{max-width:1000px;margin:28px auto;padding:26px;background:white;border-radius:12px}label{display:block;font-weight:600;margin:12px 0 5px}input:not([type=radio]),select,textarea{box-sizing:border-box;width:100%;padding:9px;border:1px solid #b5c1cc;border-radius:6px}.line{display:grid;grid-template-columns:2.4fr 1fr 1fr;gap:14px;align-items:end;margin-bottom:12px}.line label{font-size:.88rem}.errorlist{color:#a42d2d}.help{color:#526476}button{background:#19516d;color:white;padding:12px 20px;border:0;border-radius:7px}a{color:#19516d}ul#id_save_action{list-style:none;padding:0}ul#id_save_action label{display:inline;font-weight:400}@media(max-width:620px){.line{grid-template-columns:1fr}}</style></head><body><main><h1>{% if entry %}Edit general journal draft{% else %}General journal entry{% endif %}</h1><p class="help">For advanced manual adjustments only. Enter at least two account lines, with debits equal to credits. Use guided forms for ordinary purchases, sales, transfers, owner contributions, and card payments. Posted entries cannot be edited.</p><form method="post">{% csrf_token %}{{ form.non_field_errors }}{% for field in form.visible_fields %}{% if field.name != "save_action" and field.name|slice:":8" != "account_" and field.name|slice:":6" != "debit_" and field.name|slice:":7" != "credit_" %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% endif %}{% endfor %}<h2>Journal lines</h2>{% for account, debit, credit in form.journal_fields %}<div class="line"><div><label for="{{ account.id_for_label }}">{{ account.label }}</label>{{ account }}{{ account.errors }}</div><div><label for="{{ debit.id_for_label }}">{{ debit.label }}</label>{{ debit }}{{ debit.errors }}</div><div><label for="{{ credit.id_for_label }}">{{ credit.label }}</label>{{ credit }}{{ credit.errors }}</div></div>{% endfor %}<label>Save action</label>{{ form.save_action }}{{ form.save_action.errors }}<p><button type="submit">Save journal entry</button> &nbsp; <a href="{% url 'accounting:transaction_list' %}">Cancel</a></p></form></main>{% include "accounting/_account_search.html" %}</body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>General Journal | P. Forbes Books</title>
+<style>body{font:16px system-ui,sans-serif;background:#f5f7f9;color:#263442;margin:0}main{max-width:1060px;margin:22px auto;padding:24px;background:white;border:1px solid #dfe7ed;border-radius:12px}h1{color:#1e344a}label{display:block;font-weight:600;margin:12px 0 6px}input:not([type=radio]),select,textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #bac7d2;border-radius:7px}.line{display:grid;grid-template-columns:2.5fr 1fr 1fr;gap:14px;align-items:start;border-bottom:1px solid #edf1f5;padding:9px 0}.line label{font-size:13px}.errorlist{color:#a42d2d}.help{color:#647386}button{background:#19516d;color:white;padding:11px 17px;border:0;border-radius:7px;cursor:pointer}button:disabled{background:#a7b3bf;cursor:not-allowed}.secondary{background:#fff;border:1px solid #19516d;color:#19516d}a{color:#19516d}.totals{display:flex;gap:24px;flex-wrap:wrap;align-items:center;padding:15px;background:#f1f5f8;border-radius:8px;margin:18px 0}.totals strong{font-variant-numeric:tabular-nums}.status{font-weight:650}.ok{color:#216345}.bad{color:#a42d2d}ul#id_save_action{list-style:none;padding:0}ul#id_save_action label{display:inline;font-weight:400}.notice{font-size:13px;color:#647386}@media(max-width:700px){main{margin:12px;padding:14px}.line{grid-template-columns:1fr 1fr}.line>div:first-child{grid-column:1 / -1}}</style></head>
+<body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main><h1>{% if entry %}Edit General Journal Draft{% else %}General Journal Entry{% endif %}</h1><p class="help">For manual adjustments. Enter at least two lines with equal debit and credit totals. Use Record Income or Record Expense for everyday transactions. Posted entries cannot be edited.</p>
+<form method="post" id="journal-form">{% csrf_token %}{{ form.non_field_errors }}
+{% for field in form.visible_fields %}{% if field.name != "save_action" and field.name|slice:":8" != "account_" and field.name|slice:":6" != "debit_" and field.name|slice:":7" != "credit_" %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% endif %}{% endfor %}
+<h2>Journal lines</h2>
+<div id="journal-lines">{% for account,debit,credit in form.journal_fields %}<div class="line" data-journal-row="{{ forloop.counter }}"><div><label for="{{ account.id_for_label }}">{{ account.label }}</label>{{ account }}{{ account.errors }}</div><div><label for="{{ debit.id_for_label }}">{{ debit.label }}</label>{{ debit }}{{ debit.errors }}</div><div><label for="{{ credit.id_for_label }}">{{ credit.label }}</label>{{ credit }}{{ credit.errors }}</div></div>{% endfor %}</div>
+<p><button id="add-journal-line" class="secondary" type="button" hidden>Add Line</button> <span class="notice">Up to 8 lines</span></p>
+<div class="totals" aria-live="polite"><span>Debits <strong id="total-debits">$0.00</strong></span><span>Credits <strong id="total-credits">$0.00</strong></span><span id="balance-status" class="status bad">Add two balanced lines</span></div>
+<label>Save action</label>{{ form.save_action }}{{ form.save_action.errors }}<p><button type="submit">Save journal entry</button> &nbsp; <a href="{% url 'accounting:transaction_list' %}">Cancel</a></p>
+<p class="notice">Save Draft does not post to the ledger. Post Transaction is available only when the entry balances. The server checks the totals again on submission.</p></form></main></div>
+<script>
+(function(){
+ const rows=Array.from(document.querySelectorAll('[data-journal-row]'));
+ const add=document.getElementById('add-journal-line');
+ const debitOutput=document.getElementById('total-debits');
+ const creditOutput=document.getElementById('total-credits');
+ const status=document.getElementById('balance-status');
+ const post=document.querySelector('input[name="save_action"][value="post"]');
+ const draft=document.querySelector('input[name="save_action"][value="draft"]');
+ const lineUsed=(row)=>Array.from(row.querySelectorAll('input,select')).some(input=>input.value.trim()!=='' && input.value.trim()!=='0' && input.value.trim()!=='0.00');
+ let visible=Math.max(2,...rows.filter(lineUsed).map(row=>Number(row.dataset.journalRow)),2);
+ function show(){
+   rows.forEach((row,index)=>{row.hidden=index>=visible;row.style.display=index>=visible?'none':'';});
+   add.disabled=visible>=rows.length;
+   add.hidden=visible>=rows.length;
+ }
+ function cents(v){
+   const n=Number(v);
+   return Number.isFinite(n)&&n>=0?Math.round((n+Number.EPSILON)*100):NaN;
+ }
+ function recalculate(){
+   let debits=0,credits=0,valid=true,complete=0;
+   rows.forEach(row=>{
+      const n=row.dataset.journalRow;
+      const account=row.querySelector('select[name="account_'+n+'"]');
+      const d=row.querySelector('input[name="debit_'+n+'"]');
+      const c=row.querySelector('input[name="credit_'+n+'"]');
+      const dv=d.value.trim()===''?0:cents(d.value);
+      const cv=c.value.trim()===''?0:cents(c.value);
+      if(!Number.isFinite(dv)||!Number.isFinite(cv))valid=false;
+      if(account.value||dv||cv){
+         if(!account.value||!(dv>0)===!(cv>0))valid=false;
+         else complete++;
+      }
+      if(Number.isFinite(dv))debits+=dv;
+      if(Number.isFinite(cv))credits+=cv;
+   });
+   debitOutput.textContent='$'+(debits/100).toFixed(2);
+   creditOutput.textContent='$'+(credits/100).toFixed(2);
+   const balanced=valid&&complete>=2&&debits>0&&debits===credits;
+   status.textContent=balanced?'Balanced':'Debits and credits must balance';
+   status.className='status '+(balanced?'ok':'bad');
+   if(post)post.disabled=!balanced;
+   if(!balanced&&post&&post.checked&&draft)draft.checked=true;
+ }
+ add.addEventListener('click',()=>{visible=Math.min(visible+1,rows.length);show();recalculate();rows[visible-1].querySelector('select')?.focus();});
+ document.getElementById('journal-lines').addEventListener('input',recalculate);
+ document.getElementById('journal-lines').addEventListener('change',recalculate);
+ show();recalculate();
+})();
+</script>{% include "accounting/_account_search.html" %}</body></html>
