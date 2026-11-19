@@ -10,12 +10,12 @@ from django import forms
 
 from .models import Account
 from accounting_contacts.models import Customer, Vendor
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 class SplitTransactionForm(forms.Form):
     kind = forms.ChoiceField(choices=(("expense", "Expense / purchase"), ("income", "Income / receipt")))
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), initial=date(2027, 1, 1))
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), initial=LEDGER_START)
     payee = forms.CharField(max_length=200, required=False, label="Payee / customer")
     description = forms.CharField(max_length=255)
     payment_account = forms.ModelChoiceField(queryset=Account.objects.none(), label="Bank / credit card account")
@@ -65,8 +65,8 @@ class SplitTransactionForm(forms.Form):
             self.add_error("customer", "Choose a customer for sales.")
         if kind not in ("expense", "income"):
             return cleaned
-        if cleaned.get("date") and cleaned["date"].year < 2027:
-            self.add_error("date", "This ledger begins January 1, 2027.")
+        if cleaned.get("date") and cleaned["date"] < LEDGER_START:
+            self.add_error("date", "This ledger begins January 1, 2026.")
         acceptable = (
             {"expense", "cogs", "other_expense"} if kind == "expense"
             else {"income", "other_income"}
