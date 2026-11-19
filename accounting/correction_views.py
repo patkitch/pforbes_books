@@ -78,6 +78,7 @@ def reverse_transaction(request, pk):
                     link_contact(
                         reversal, vendor=original_party.vendor,
                         customer=original_party.customer, actor=request.user,
+                        allow_inactive=True,
                     )
                 locked.reversed_by_entry = reversal
                 locked.save(update_fields=["reversed_by_entry"])
