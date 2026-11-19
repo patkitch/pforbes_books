@@ -22,24 +22,46 @@ def chart_of_accounts(request):
         query = search.casefold()
         accounts = [a for a in accounts if query in a.number.casefold() or query in a.name.casefold()]
 
-    # For search results retain each match even if its parent is hidden.
-    children = defaultdict(list)
+    # Group accounts by their actual account type, not number prefixes.
+    # Preserve each parent/subaccount hierarchy, even for filtered results.
+    shown_ids = {account.pk for account in accounts}
+    by_type = defaultdict(list)
     for account in accounts:
-        parent_id = account.parent_id if account.parent_id in {x.pk for x in accounts} else None
-        children[parent_id].append(account)
-    ordered = []
-    def walk(parent_id, depth=0):
-        for account in children.get(parent_id, []):
-            ordered.append({"account": account, "depth": depth})
-            walk(account.pk, depth + 1)
-    walk(None)
+        by_type[account.account_type].append(account)
+    sections = []
+    for type_key, title in [
+        ("asset", "Assets"),
+        ("liability", "Liabilities"),
+        ("equity", "Owner's Equity"),
+        ("income", "Income"),
+        ("cogs", "Cost of Goods Sold"),
+        ("expense", "Operating Expenses"),
+        ("other_income", "Other Income"),
+        ("other_expense", "Other Expenses"),
+    ]:
+        group_accounts = by_type.get(type_key, [])
+        if not group_accounts:
+            continue
+        children = defaultdict(list)
+        for account in group_accounts:
+            parent_id = account.parent_id if account.parent_id in shown_ids else None
+            children[parent_id].append(account)
+        ordered = []
+        def walk(parent_id, depth=0):
+            for account in children.get(parent_id, []):
+                ordered.append({"account": account, "depth": depth})
+                walk(account.pk, depth + 1)
+        walk(None)
+        sections.append({
+            "key": type_key, "title": title,
+            "rows": ordered, "count": len(group_accounts),
+        })
     return render(request, "accounting/chart_of_accounts.html", {
-        "rows": ordered,
+        "sections": sections,
         "search": search,
         "show_inactive": show_inactive,
         "account_count": len(accounts),
     })
-
 
 @staff_member_required(login_url="/admin/login/")
 def account_form(request, pk=None):
