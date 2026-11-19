@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django import forms
 
-from .models import Customer, Receipt, TransactionParty, Vendor
+from .models import Customer, Receipt, ReceiptItem, TransactionParty, Vendor
 
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 MAX_RECEIPT_BYTES = 10 * 1024 * 1024
@@ -31,6 +31,34 @@ class CustomerForm(forms.ModelForm):
             "shipping_country", "notes", "is_active",
         )
         widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+
+class ArtworkItemForm(forms.Form):
+    artwork_title = forms.CharField(max_length=200, required=False, label="Artwork title")
+    item_type = forms.ChoiceField(
+        choices=(("", "Select type"), *ReceiptItem.ITEM_TYPES),
+        required=False, label="Original or print",
+    )
+    size = forms.CharField(max_length=80, required=False, label="Artwork / print size")
+    quantity = forms.IntegerField(min_value=1, required=False, label="Quantity")
+    unit_price = forms.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0,
+        required=False, label="Unit price",
+    )
+
+    def clean(self):
+        data = super().clean()
+        if any(data.get(key) not in (None, "") for key in
+               ("artwork_title", "item_type", "size", "quantity", "unit_price")):
+            for key in ("artwork_title", "item_type", "quantity", "unit_price"):
+                if data.get(key) in (None, ""):
+                    self.add_error(key, "Complete this field for an artwork item.")
+        return data
+
+
+ArtworkItemFormSet = forms.formset_factory(
+    ArtworkItemForm, extra=3, max_num=12, validate_max=True
+)
 
 
 class ReceiptForm(forms.ModelForm):
