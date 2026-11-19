@@ -33,6 +33,9 @@ def post_entry(entry_id, *, actor=None):
         line.full_clean()
         if not line.account.is_active:
             raise ValidationError(f"Account {line.account.number} is inactive.")
+        # 4010 is a reporting parent, not a revenue posting category.
+        if line.account.number == "4010" and line.account.name == "Sales Income" and line.account.children.exists():
+            raise ValidationError("Post sales to a 4011-4015 subaccount, not the 4010 Sales Income parent.")
         debit += line.debit
         credit += line.credit
     if debit <= 0 or debit != credit:
