@@ -96,13 +96,13 @@ class FinancialReportTests(TestCase):
         response = self.client.get(url, {"start": "2027-03-01", "end": "2027-02-01"})
         self.assertContains(response, "end date must be on or after")
         self.assertIsNone(response.context["report"])
-        response = self.client.get(url, {"start": "2026-12-01", "end": "2027-01-01"})
-        self.assertContains(response, "ledger starts January 1, 2027")
+        response = self.client.get(url, {"start": "2025-12-01", "end": "2027-01-01"})
+        self.assertContains(response, "ledger starts January 1, 2026")
         self.assertIsNone(response.context["report"])
 
     def test_reject_pre_start_balance_sheet(self):
-        response = self.client.get(reverse("accounting:balance_sheet"), {"as_of": "2026-12-31"})
-        self.assertContains(response, "ledger starts January 1, 2027")
+        response = self.client.get(reverse("accounting:balance_sheet"), {"as_of": "2025-12-31"})
+        self.assertContains(response, "ledger starts January 1, 2026")
         self.assertIsNone(response.context["report"])
 
     def test_reports_staff_only(self):
