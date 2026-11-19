@@ -8,7 +8,7 @@ button{padding:10px 18px;background:#19516d;color:white;border:0;border-radius:6
 section{background:white;border:1px solid #dee5ec;border-radius:9px;padding:8px 18px;margin:14px 0}
 table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px solid #e9edf1;text-align:left}.money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .total{font-weight:700;background:#f1f5f8}.summary{font-size:1.07rem}.errorlist{color:#a22a2a}
-</style></head><body><main>
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
 <p><a href="{% url 'accounting:transaction_list' %}">Transactions</a> · <a href="{% url 'accounting:balance_sheet' %}">Balance Sheet</a> · <a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a> · <a href="{% url 'accounting:trial_balance' %}">Trial Balance</a></p>
 <h1>Profit &amp; Loss</h1><p class="muted">P. Forbes Art · Cash-basis bookkeeping test · Posted entries only</p>
 <form method="get"><div><label for="{{ form.start.id_for_label }}">From</label>{{ form.start }}{{ form.start.errors }}</div>
@@ -25,4 +25,4 @@ table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px so
 <section class="summary"><table><tr class="total"><td>Net profit / loss</td><td class="money">&#36;{{ report.net_profit|floatformat:2 }}</td></tr></table></section>
 <p class="muted">Click an account to open its full register. Report amounts apply to the selected period; the register currently displays all posted dates. Parent accounts are not counted twice.</p>
 {% else %}<p>Choose a valid date range to run the report.</p>{% endif %}
-</main></body></html>
+</main></div></body></html>
