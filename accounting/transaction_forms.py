@@ -47,7 +47,7 @@ class SimpleTransactionForm(forms.Form):
             self.fields["vendor"].help_text = "Link a vendor record for spending history; Paid To is a descriptive name."
         self.fields["category_account"].queryset = Account.objects.filter(
             is_active=True, account_type__in=allowed_types
-        ).order_by("number")
+        ).exclude(number="4010", name="Sales Income").order_by("number")
         self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True)
         self.fields["payment_account"].queryset = Account.objects.filter(
