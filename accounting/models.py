@@ -131,3 +131,71 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ["created_at", "id"]
+
+
+class SalesTaxRecord(models.Model):
+    """Cash-basis sales-tax information for a sale; posted journal is the ledger source.
+
+    Tax rates are supplied by Stripe or by user lookup, never invented here.
+    A record may represent a gallery-managed sale (no own tax collected).
+    """
+    SOURCES = [
+        ("stripe", "Stripe / WooCommerce"), ("cash", "Cash sale"),
+        ("gallery", "Gallery-managed"), ("other", "Other"),
+    ]
+    sale_date = models.DateField()
+    source = models.CharField(max_length=15, choices=SOURCES)
+    jurisdiction = models.CharField(max_length=160, blank=True)
+    sale_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    taxable_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    tax_collected = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    tax_rate = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
+    authority = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="sales_tax_records", null=True, blank=True)
+    journal_entry = models.OneToOneField(JournalEntry, on_delete=models.PROTECT, related_name="sales_tax_record", null=True, blank=True)
+    memo = models.TextField(blank=True)
+
+    def clean(self):
+        super().clean()
+        if self.sale_amount < 0 or self.taxable_amount < 0 or self.tax_collected < 0:
+            raise ValidationError("Sales amounts and collected tax cannot be negative.")
+        if self.taxable_amount > self.sale_amount:
+            raise ValidationError("Taxable sales cannot exceed total sales.")
+        if self.source == "gallery" and self.tax_collected:
+            raise ValidationError("Gallery-managed sales tax is remitted by the gallery.")
+        if self.source != "gallery" and self.tax_collected and not self.authority_id:
+            raise ValidationError("Choose a tax payable account when you collect sales tax.")
+        if self.authority_id and self.authority.account_type != "liability":
+            raise ValidationError("Tax payable account must be a liability.")
+
+    class Meta:
+        ordering = ["-sale_date", "-pk"]
+
+
+class SalesTaxPayment(models.Model):
+    """Quarterly filing/payment history, including zero-dollar cash payments.
+
+    Zero payments do not create journal entries; positive ones debit sales tax
+    payable and credit the selected asset account.
+    """
+    authority = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="tax_payments")
+    quarter = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    paid_on = models.DateField()
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    bank_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="tax_payments_from")
+    memo = models.TextField(blank=True)
+    journal_entry = models.OneToOneField(JournalEntry, on_delete=models.PROTECT, null=True, blank=True, related_name="sales_tax_payment")
+
+    def clean(self):
+        super().clean()
+        if self.quarter not in (1, 2, 3, 4):
+            raise ValidationError("Choose quarter 1 through 4.")
+        if self.amount < 0:
+            raise ValidationError("Sales tax payment cannot be negative.")
+        if self.authority_id and self.authority.account_type != "liability":
+            raise ValidationError("Payment authority account must be a liability.")
+        if self.bank_account_id and self.bank_account.account_type != "asset":
+            raise ValidationError("Choose a bank or cash asset account.")
+
+    class Meta:
+        ordering = ["-year", "-quarter", "-paid_on", "-pk"]
