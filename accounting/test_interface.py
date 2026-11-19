@@ -53,6 +53,21 @@ class AccountingInterfaceTests(TestCase):
         self.assertContains(expense, "Art Supplies")
         self.assertNotContains(expense, 'Artwork Sales</option>')
 
+    def test_guided_forms_have_distinct_labels_and_contact_links(self):
+        income = self.client.get(reverse("accounting:income_new"))
+        self.assertContains(income, "Received From (optional name)")
+        self.assertContains(income, "Income Category")
+        self.assertContains(income, "Deposit To Account")
+        self.assertContains(income, "+ Create customer")
+        self.assertNotContains(income, "+ Create vendor")
+
+        expense = self.client.get(reverse("accounting:expense_new"))
+        self.assertContains(expense, "Paid To (optional name)")
+        self.assertContains(expense, "Expense Category")
+        self.assertContains(expense, "Paid From Account")
+        self.assertContains(expense, "+ Create vendor")
+        self.assertNotContains(expense, "+ Create customer")
+
     def test_income_route_cannot_be_tricked_into_posting_expense(self):
         data = {
             "kind": "expense", "date": "2027-01-19",
