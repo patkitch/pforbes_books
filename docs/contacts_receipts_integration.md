@@ -49,3 +49,17 @@ Receipt attachment binaries persist in the separate local media directory, not i
 - Production-ready role permissions, retention/encryption/privacy strategy for receipt documents, stronger database referential constraints.
 
 This development candidate is not a tax-deductibility engine and must remain local until a separately approved production release.
+
+## Consolidated improvement update (November 2026)
+
+This branch now also includes the following improvements, **not yet installed on the user's local machine**:
+
+1. Reversing a posted transaction automatically carries its linked vendor or customer to the reversal, preserving contact spending/revenue totals without manual linking. This also works when the original contact has since been marked inactive.
+2. Optional itemized artwork rows on sales receipts: artwork title, original/print/other, size, quantity, and unit price. The customer detail page shows the items beneath its receipt. Receipt amounts and posted accounting balances remain unchanged.
+3. Receipt links and protected document-download links are visible directly in the accounting transaction register.
+4. Exact duplicate manual receipts (same name, type, date, amount and contact) are rejected; genuine PDF/JPEG/PNG/WebP signatures are checked.
+5. The installer only registers the contacts app in `config.settings` when the local test settings inherit that file, preventing duplicate application labels. The installer migrates the local PostgreSQL database and runs the 121-test suite against the isolated test settings. The installer is ASCII-only, and GitHub CI checks its PowerShell parser syntax and encoding to prevent repeat PowerShell 5.1 errors.
+
+The new migration `accounting_contacts/migrations/0002_receiptitem.py` **creates a new table**. It does not rewrite the existing `accounting` or `accounting_contacts` records. The revised installation script backs up accounting and contact data before applying migrations.
+
+Before local installation, stop the :8003 Django server, refresh the extracted development-branch ZIP into `C:\accounting _download\pforbes_books-feature-accounting-foundation`, then run `scripts/install_accounting_test.ps1` **once**. Check for the successful migrations and test suite output before restarting. Never copy the extracted repository into the local app manually or run the script against DigitalOcean.
