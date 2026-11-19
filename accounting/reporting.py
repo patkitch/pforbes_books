@@ -1,4 +1,4 @@
-"""Posted-only, zero-opening-balance financial reports for the 2027 test ledger.
+"""Posted-only, zero-opening-balance financial reports for the 2026-start local test ledger.
 
 Use debit/credit arithmetic from journal lines. Do not include drafts.
 Parent totals roll up each account once without duplicating child postings.
@@ -90,7 +90,7 @@ def profit_and_loss(start, end):
 
 
 def balance_sheet(as_of):
-    """Lifetime-to-date values, starting from the 2027 zero opening balances.
+    """Lifetime-to-date values, starting from the local ledger's zero opening balances.
 
     Current earnings are income minus expenses to date; this has NOT implemented
     annual close / retained earnings transfers for later years.
