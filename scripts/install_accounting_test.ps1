@@ -123,6 +123,15 @@ try {
     Write-Host "Checking contact migration against the models..."
     & $python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings
     if ($LASTEXITCODE -ne 0) { throw "Migration check failed. Do not apply changes or deploy." }
+    # Account normal balance is an additive column. The local accounting migrations
+    # are deliberately preserved across ZIP installs, so generate its migration
+    # against the existing local chain rather than overwriting that history.
+    Write-Host "Creating the additive accounting migration for Normal Balance if needed..."
+    & $python manage.py makemigrations accounting --noinput --settings=config.settings
+    if ($LASTEXITCODE -ne 0) { throw "Accounting migration generation failed. Do not deploy." }
+    Write-Host "Applying accounting schema changes to local PostgreSQL..."
+    & $python manage.py migrate accounting --noinput --settings=config.settings
+    if ($LASTEXITCODE -ne 0) { throw "Accounting migration failed. Restore using installer backup; do not deploy." }
     Write-Host "Creating only the new contacts and receipts tables in local PostgreSQL..."
     & $python manage.py migrate accounting_contacts --noinput --settings=config.settings
     if ($LASTEXITCODE -ne 0) { throw "Contacts migration failed. Do not deploy." }
