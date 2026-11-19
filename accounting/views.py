@@ -116,7 +116,7 @@ def _transaction_new(request, fixed_kind=None):
         submitted["kind"] = fixed_kind
     else:
         submitted = request.POST or None
-    form = SimpleTransactionForm(submitted, initial={"kind": fixed_kind} if fixed_kind else None)
+    form = SimpleTransactionForm(submitted, initial={"kind": fixed_kind, "_guided_kind": True} if fixed_kind else None)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         with transaction.atomic():
