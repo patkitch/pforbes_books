@@ -36,7 +36,10 @@ class AccountForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound:
-            self.fields["normal_balance"].initial = (
+            # ModelForm's instance initial data overrides field.initial.
+            # Set the form's initial mapping so legacy rows with a blank
+            # stored side display the proper default for their account type.
+            self.initial["normal_balance"] = (
                 self.instance.normal_side if self.instance.pk else "debit"
             )
         parents = Account.objects.filter(is_active=True)
