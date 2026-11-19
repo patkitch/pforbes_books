@@ -27,9 +27,12 @@ class SimpleTransactionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         kind = (self.data.get("kind") if self.is_bound else self.initial.get("kind", "expense"))
+        # Keep the legacy combined form's full choices so existing validation
+        # explains wrong-category errors; restrict only guided one-type forms.
+        guided = self.initial.get("_guided_kind", False)
         allowed_types = (
-            ["expense", "cogs", "other_expense"] if kind == "expense"
-            else ["income", "other_income"] if kind == "income"
+            ["expense", "cogs", "other_expense"] if guided and kind == "expense"
+            else ["income", "other_income"] if guided and kind == "income"
             else ["expense", "cogs", "income", "other_income", "other_expense"]
         )
         self.fields["category_account"].queryset = Account.objects.filter(
