@@ -11,7 +11,7 @@ from django import forms
 
 from .models import Account
 from accounting_contacts.models import Customer, Vendor
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 MOVEMENT_TYPES = (
@@ -40,7 +40,7 @@ def valid_account_types(kind):
 class MoneyMovementForm(forms.Form):
     kind = forms.ChoiceField(choices=MOVEMENT_TYPES, label="Transaction type")
     date = forms.DateField(
-        initial=date(2027, 1, 1),
+        initial=LEDGER_START,
         widget=forms.DateInput(attrs={"type": "date"}),
     )
     payee = forms.CharField(max_length=200, required=False, label="Payee / institution")
@@ -88,6 +88,6 @@ class MoneyMovementForm(forms.Form):
             self.add_error("credit_account", "Paying/credit account is not valid for this transaction type.")
         if debit and credit and debit.pk == credit.pk:
             self.add_error("credit_account", "Use two different accounts.")
-        if result.get("date") and result["date"] < date(2027, 1, 1):
-            self.add_error("date", "This new ledger begins January 1, 2027.")
+        if result.get("date") and result["date"] < LEDGER_START:
+            self.add_error("date", "This new ledger begins January 1, 2026.")
         return result
