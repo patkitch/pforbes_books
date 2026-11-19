@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from accounting.models import Account, JournalEntry, JournalLine
-from .models import Customer, Receipt, TransactionParty, Vendor
+from .models import Customer, Receipt, ReceiptItem, TransactionParty, Vendor
 
 
 class ContactsAndReceiptsTests(TestCase):
@@ -214,6 +214,91 @@ class ContactsAndReceiptsTests(TestCase):
                 result.close()
                 self.client.logout()
                 self.assertEqual(self.client.get(url).status_code, 302)
+
+    def test_reversal_inherits_original_vendor_and_nets_spending_to_zero(self):
+        from .services import link_contact
+        link_contact(self.entry, vendor=self.vendor, actor=self.user)
+        result = self.client.post(
+            reverse("accounting:transaction_reverse", args=[self.entry.pk]),
+            {"date": "2027-01-06", "reason": "Duplicate purchase"},
+        )
+        self.assertEqual(result.status_code, 302)
+        self.entry.refresh_from_db()
+        reversal = self.entry.reversed_by_entry
+        self.assertIsNotNone(reversal)
+        self.assertEqual(reversal.status, "posted")
+        self.assertEqual(
+            TransactionParty.objects.get(journal_entry_id=reversal.pk).vendor_id,
+            self.vendor.pk,
+        )
+        detail = self.client.get(reverse("accounting:vendor_detail", args=[self.vendor.pk]))
+        self.assertContains(detail, "0.00")
+        self.assertContains(detail, reversal.description)
+
+    def test_artwork_items_save_and_show_in_customer_history(self):
+        payload = {
+            "title": "Gallery painting sale", "receipt_type": "sale",
+            "date": "2027-01-05", "amount": "275.00",
+            "customer": str(self.customer.pk),
+            "items-TOTAL_FORMS": "3", "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "12",
+            "items-0-artwork_title": "Prairie Sky",
+            "items-0-item_type": "original", "items-0-size": "16x20",
+            "items-0-quantity": "1", "items-0-unit_price": "250.00",
+        }
+        result = self.client.post(reverse("accounting:receipt_new"), payload)
+        self.assertEqual(result.status_code, 302)
+        receipt = Receipt.objects.get(title="Gallery painting sale")
+        item = receipt.items.get()
+        self.assertEqual(item.artwork_title, "Prairie Sky")
+        self.assertEqual(item.line_total, Decimal("250.00"))
+        self.assertContains(
+            self.client.get(reverse("accounting:customer_detail", args=[self.customer.pk])),
+            "Prairie Sky",
+        )
+        self.assertContains(
+            self.client.get(reverse("accounting:receipt_detail", args=[receipt.pk])),
+            "16x20",
+        )
+        self.assertEqual(JournalEntry.objects.count(), 1)
+
+        payload.update({
+            "items-0-artwork_title": "Prairie Sky Revisited",
+            "items-0-unit_price": "260.00",
+        })
+        changed = self.client.post(reverse("accounting:receipt_edit", args=[receipt.pk]), payload)
+        self.assertEqual(changed.status_code, 302)
+        self.assertEqual(receipt.items.count(), 1)
+        self.assertEqual(receipt.items.get().artwork_title, "Prairie Sky Revisited")
+
+    def test_invalid_item_subtotal_does_not_create_receipt(self):
+        result = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "Wrong total", "receipt_type": "sale",
+            "date": "2027-01-05", "amount": "10.00",
+            "customer": str(self.customer.pk),
+            "items-TOTAL_FORMS": "3", "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "12",
+            "items-0-artwork_title": "Test painting",
+            "items-0-item_type": "original", "items-0-quantity": "1",
+            "items-0-unit_price": "50.00",
+        })
+        self.assertContains(result, "subtotal exceeds receipt amount")
+        self.assertFalse(Receipt.objects.exists())
+        self.assertFalse(ReceiptItem.objects.exists())
+
+    def test_purchase_receipt_rejects_artwork_sale_items(self):
+        result = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "Wrong kind", "receipt_type": "purchase",
+            "date": "2027-01-05", "amount": "50.00",
+            "vendor": str(self.vendor.pk),
+            "items-TOTAL_FORMS": "3", "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "12",
+            "items-0-artwork_title": "Original",
+            "items-0-item_type": "original", "items-0-quantity": "1",
+            "items-0-unit_price": "50.00",
+        })
+        self.assertContains(result, "Artwork line items belong on sales receipts only")
+        self.assertFalse(Receipt.objects.exists())
 
     def test_contact_modules_staff_only(self):
         self.client.logout()
