@@ -7,6 +7,7 @@ on:
     paths:
       - 'accounting/**'
       - 'accounting_contacts/**'
+      - 'scripts/install_accounting_test.ps1'
       - 'config/settings_accounting_ci.py'
       - 'config/urls_accounting_ci.py'
       - '.github/workflows/accounting-core-tests.yml'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'accounting/**'
       - 'accounting_contacts/**'
+      - 'scripts/install_accounting_test.ps1'
       - 'config/settings_accounting_ci.py'
       - 'config/urls_accounting_ci.py'
       - '.github/workflows/accounting-core-tests.yml'
@@ -38,6 +40,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install 'Django==5.2.5' 'fpdf2==2.8.4'
+      - name: Validate Windows installer PowerShell syntax and encoding
+        shell: pwsh
+        run: |
+          $scriptPath = "scripts/install_accounting_test.ps1"
+          $content = [System.IO.File]::ReadAllText((Resolve-Path $scriptPath).Path)
+          if ($content.ToCharArray() | Where-Object { [int]$_ -gt 127 }) {
+            throw "Installer must contain ASCII characters only for Windows PowerShell 5.1 compatibility."
+          }
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path $scriptPath).Path, [ref]$tokens, [ref]$parseErrors
+          ) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | Format-List
+            throw "Installer has PowerShell syntax errors."
+          }
       - name: Check accounting configuration
         run: python manage.py check --settings=config.settings_accounting_ci
       - name: Verify receipt/contact migrations match models
