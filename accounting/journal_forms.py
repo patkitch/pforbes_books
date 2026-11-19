@@ -21,7 +21,7 @@ class GeneralJournalForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        options = Account.objects.filter(is_active=True).order_by("number")
+        options = Account.objects.filter(is_active=True).exclude(number="4010", name="Sales Income").order_by("number")
         self.journal_fields = []
         for n in range(1, self.MAX_LINES + 1):
             self.fields[f"account_{n}"] = forms.ModelChoiceField(
