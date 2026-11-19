@@ -11,9 +11,22 @@ PREFIX_BY_TYPE = {
 
 
 class AccountForm(forms.ModelForm):
+    account_type = forms.ChoiceField(
+        choices=[("", "Choose account type")] + [
+            (key, f"{label} — {Account.DEFAULT_BALANCES[key].title()}")
+            for key, label in Account.TYPES
+        ],
+        label="Account Type (usual balance)",
+    )
+    normal_balance = forms.ChoiceField(
+        choices=[("debit", "Debit"), ("credit", "Credit")],
+        label="Normal Balance",
+        help_text="Choose which side ordinarily increases this account. "
+                  "Contra accounts can use the opposite side; both debit and credit entries remain allowed.",
+    )
     class Meta:
         model = Account
-        fields = ["number", "name", "account_type", "detail_type", "parent", "memo"]
+        fields = ["number", "name", "account_type", "normal_balance", "detail_type", "parent", "memo"]
         widgets = {
             "number": forms.TextInput(attrs={"inputmode": "numeric", "maxlength": "4"}),
             "memo": forms.Textarea(attrs={"rows": 3}),
@@ -21,6 +34,10 @@ class AccountForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields["normal_balance"].initial = (
+                self.instance.normal_side if self.instance.pk else "debit"
+            )
         parents = Account.objects.filter(is_active=True)
         if self.instance.pk:
             parents = parents.exclude(pk=self.instance.pk)
