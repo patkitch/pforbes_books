@@ -9,12 +9,11 @@ from django.utils import timezone
 
 from .models import Account, JournalEntry
 from .reporting import account_balances, profit_and_loss
-
-LEDGER_START = date(2027, 1, 1)
+from .period_controls import LEDGER_START
 
 
 def _display_date():
-    """Show existing future-dated test records while the 2027 ledger is being developed."""
+    """Show existing future-dated test records while the local test ledger is being developed."""
     today = timezone.localdate()
     latest = JournalEntry.objects.filter(status="posted").aggregate(
         most_recent=Max("date")
