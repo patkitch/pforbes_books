@@ -69,7 +69,7 @@ class OwnerContributionTests(TestCase):
         self.assertEqual(JournalEntry.objects.count(), 1)
         self.assertEqual(self.client.get(edit).status_code, 404)
 
-    def test_wrong_account_type_and_pre_2027_rejected(self):
+    def test_wrong_account_type_and_pre_2026_rejected(self):
         url = reverse("accounting:owner_new")
         response = self.client.post(url, self.payload(destination_account=str(self.cogs.pk)))
         self.assertContains(response, "Choose a bank account")
@@ -77,8 +77,8 @@ class OwnerContributionTests(TestCase):
         self.assertContains(response, "Choose a bank account")
         response = self.client.post(url, self.payload(contribution_account=str(self.card.pk)))
         self.assertEqual(response.status_code, 200)
-        response = self.client.post(url, self.payload(date="2026-12-31"))
-        self.assertContains(response, "begins January 1, 2027")
+        response = self.client.post(url, self.payload(date="2025-12-31"))
+        self.assertContains(response, "begins January 1, 2026")
         self.assertEqual(JournalEntry.objects.count(), 0)
 
     def test_nonstaff_cannot_use_owner_form(self):
