@@ -300,6 +300,38 @@ class ContactsAndReceiptsTests(TestCase):
         self.assertContains(result, "Artwork line items belong on sales receipts only")
         self.assertFalse(Receipt.objects.exists())
 
+    def test_duplicate_manual_receipt_is_blocked_but_edit_is_allowed(self):
+        payload = {
+            "title": "Original Receipt", "receipt_type": "purchase",
+            "date": "2027-01-05", "amount": "45.50",
+            "vendor": str(self.vendor.pk),
+        }
+        self.assertEqual(self.client.post(reverse("accounting:receipt_new"), payload).status_code, 302)
+        repeat = self.client.post(reverse("accounting:receipt_new"), payload)
+        self.assertContains(repeat, "identical manual receipt already exists")
+        self.assertEqual(Receipt.objects.count(), 1)
+        receipt = Receipt.objects.get()
+        self.assertEqual(
+            self.client.post(reverse("accounting:receipt_edit", args=[receipt.pk]), payload).status_code,
+            302,
+        )
+
+    def test_jpeg_and_png_document_uploads_are_accepted(self):
+        for name, prefix in (
+            ("sample.jpg", bytes.fromhex("ffd8ffe000104a46494600")),
+            ("sample.png", bytes.fromhex("89504e470d0a1a0a0000")),
+        ):
+            with self.subTest(filename=name), TemporaryDirectory() as folder:
+                with override_settings(MEDIA_ROOT=folder):
+                    response = self.client.post(reverse("accounting:receipt_new"), {
+                        "title": f"Test file {name}", "receipt_type": "purchase",
+                        "date": "2027-01-05", "amount": "45.50",
+                        "vendor": str(self.vendor.pk),
+                        "attachment": SimpleUploadedFile(name, prefix + b"test"),
+                    })
+                    self.assertEqual(response.status_code, 302)
+                    self.assertTrue(Receipt.objects.get(title=f"Test file {name}").attachment)
+
     def test_contact_modules_staff_only(self):
         self.client.logout()
         for path in (
