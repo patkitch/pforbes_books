@@ -78,7 +78,7 @@ def record_tax_payment(data, *, actor=None):
         )
         JournalLine.objects.create(entry=entry, account=authority, debit=amount)
         JournalLine.objects.create(entry=entry, account=bank, credit=amount)
-        post_entry(entry.pk, actor=actor)
+        entry = post_entry(entry.pk, actor=actor)
     record = SalesTaxPayment(
         authority=authority, year=data["year"], quarter=int(data["quarter"]),
         amount=amount, paid_on=data["paid_on"], bank_account=bank,
