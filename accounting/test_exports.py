@@ -69,7 +69,7 @@ class FinancialExportTests(TestCase):
             "start": "2027-02-01", "end": "2027-01-01"
         }).status_code, 400)
         self.assertEqual(self.client.get(self.url("bs", "pdf"), {
-            "as_of": "2026-12-31"
+            "as_of": "2025-12-31"
         }).status_code, 400)
         self.assertEqual(self.client.get(self.url("bs", "txt")).status_code, 400)
 
