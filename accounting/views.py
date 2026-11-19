@@ -90,14 +90,33 @@ def transaction_list(request):
 
 
 @staff_member_required(login_url="/admin/login/")
+def income_new(request):
+    return _transaction_new(request, fixed_kind="income")
+
+
+@staff_member_required(login_url="/admin/login/")
+def expense_new(request):
+    return _transaction_new(request, fixed_kind="expense")
+
+
+@staff_member_required(login_url="/admin/login/")
 def transaction_new(request):
+    return _transaction_new(request)
+
+
+def _transaction_new(request, fixed_kind=None):
     from django.core.exceptions import ValidationError
     from .models import JournalEntry, JournalLine
     from .services import post_entry
     from .transaction_forms import SimpleTransactionForm
     from accounting_contacts.services import link_contact
 
-    form = SimpleTransactionForm(request.POST or None)
+    if fixed_kind and request.method == "POST":
+        submitted = request.POST.copy()
+        submitted["kind"] = fixed_kind
+    else:
+        submitted = request.POST or None
+    form = SimpleTransactionForm(submitted, initial={"kind": fixed_kind} if fixed_kind else None)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         with transaction.atomic():
@@ -116,7 +135,9 @@ def transaction_new(request):
             if d["save_action"] == "post":
                 post_entry(entry.pk, actor=request.user)
         return redirect("accounting:transaction_list")
-    return render(request, "accounting/transaction_form.html", {"form": form})
+    return render(request, "accounting/transaction_form.html", {
+        "form": form, "fixed_kind": fixed_kind,
+    })
 
 
 @staff_member_required(login_url="/admin/login/")
