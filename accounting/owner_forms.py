@@ -5,7 +5,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 class OwnerContributionForm(forms.Form):
@@ -14,7 +14,7 @@ class OwnerContributionForm(forms.Form):
         ("personal_expense", "Business expense paid with personal funds"),
     ]
     kind = forms.ChoiceField(choices=KIND_CHOICES, label="Contribution type")
-    date = forms.DateField(initial=date(2027, 1, 1), widget=forms.DateInput(attrs={"type": "date"}))
+    date = forms.DateField(initial=LEDGER_START, widget=forms.DateInput(attrs={"type": "date"}))
     payee = forms.CharField(max_length=200, required=False, label="Payee / source")
     description = forms.CharField(max_length=255)
     amount = forms.DecimalField(min_value=Decimal("0.01"), max_digits=14, decimal_places=2)
@@ -54,8 +54,8 @@ class OwnerContributionForm(forms.Form):
                     "destination_account",
                     "Choose a bank account for cash contributions, or an expense category for personally paid expenses.",
                 )
-        if cleaned.get("date") and cleaned["date"] < date(2027, 1, 1):
-            self.add_error("date", "This new ledger begins January 1, 2027.")
+        if cleaned.get("date") and cleaned["date"] < LEDGER_START:
+            self.add_error("date", "This new ledger begins January 1, 2026.")
         if equity and destination and equity.pk == destination.pk:
             self.add_error("destination_account", "Choose two different accounts.")
         return cleaned
