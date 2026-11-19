@@ -40,7 +40,7 @@ class AccountingInterfaceTests(TestCase):
             JournalLine.objects.create(entry=entry, account=self.bank, debit=Decimal(amount))
             JournalLine.objects.create(entry=entry, account=self.sales, credit=Decimal(amount))
         dash = self.client.get(reverse("accounting:dashboard"))
-        self.assertContains(dash, "$250.00")
+        self.assertContains(dash, "&#36;250.00")
         self.assertNotContains(dash, "$300.00")
 
     def test_guided_income_and_expense_forms_filter_categories(self):
