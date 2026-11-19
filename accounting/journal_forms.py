@@ -5,12 +5,12 @@ from decimal import Decimal
 from django import forms
 
 from .models import Account
-from .period_controls import period_is_locked
+from .period_controls import period_is_locked, LEDGER_START
 
 
 class GeneralJournalForm(forms.Form):
     MAX_LINES = 8
-    date = forms.DateField(initial=date(2027, 1, 1), widget=forms.DateInput(attrs={"type": "date"}))
+    date = forms.DateField(initial=LEDGER_START, widget=forms.DateInput(attrs={"type": "date"}))
     payee = forms.CharField(max_length=200, required=False)
     description = forms.CharField(max_length=255)
     memo = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
@@ -43,8 +43,8 @@ class GeneralJournalForm(forms.Form):
         cleaned = super().clean()
         if cleaned.get("date") and period_is_locked(cleaned["date"]):
             self.add_error("date", "This accounting period is locked.")
-        if cleaned.get("date") and cleaned["date"] < date(2027, 1, 1):
-            self.add_error("date", "This ledger begins January 1, 2027.")
+        if cleaned.get("date") and cleaned["date"] < LEDGER_START:
+            self.add_error("date", "This ledger begins January 1, 2026.")
         lines = []
         total_debit = Decimal("0.00")
         total_credit = Decimal("0.00")
