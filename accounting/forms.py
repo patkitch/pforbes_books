@@ -21,6 +21,7 @@ class AccountForm(forms.ModelForm):
     normal_balance = forms.ChoiceField(
         choices=[("debit", "Debit"), ("credit", "Credit")],
         label="Normal Balance",
+        required=False,
         help_text="Choose which side ordinarily increases this account. "
                   "Contra accounts can use the opposite side; both debit and credit entries remain allowed.",
     )
@@ -50,6 +51,8 @@ class AccountForm(forms.ModelForm):
         cleaned = super().clean()
         number = cleaned.get("number")
         kind = cleaned.get("account_type")
+        if kind and not cleaned.get("normal_balance"):
+            cleaned["normal_balance"] = Account.DEFAULT_BALANCES[kind]
         parent = cleaned.get("parent")
         if number and kind and not number.startswith(PREFIX_BY_TYPE[kind]):
             self.add_error("number", "Account number does not match its account type range.")
