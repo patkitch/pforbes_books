@@ -7,7 +7,7 @@ a{color:#19516d}header{margin-bottom:24px}h1{margin-bottom:5px}.muted{color:#596
 .summary{display:flex;gap:28px;flex-wrap:wrap;background:white;padding:16px;border:1px solid #dfe6ed;border-radius:8px;margin:22px 0}
 .summary strong{display:block;font-size:1.25rem}table{width:100%;border-collapse:collapse;background:white}th,td{padding:12px;border-bottom:1px solid #e3e9ef;text-align:left}th{background:#eaf0f4}
 .money{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.wrap{overflow:auto;border:1px solid #dfe6ed;border-radius:8px}
-</style></head><body><main>
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
 <header><p><a href="{% url 'accounting:chart_of_accounts' %}">← Chart of Accounts</a> · <a href="{% url 'accounting:transaction_list' %}">Transactions</a></p>
 <h1>{{ account.number }} — {{ account.name }}</h1>
 <p class="muted">{{ account.get_account_type_display }} · Posted transactions only · Direct account entries (subaccounts shown separately)</p></header>
@@ -25,4 +25,4 @@ a{color:#19516d}header{margin-bottom:24px}h1{margin-bottom:5px}.muted{color:#596
 {% empty %}<tr><td colspan="6">No posted transactions in this account yet.</td></tr>{% endfor %}
 </tbody></table></div>
 <p class="muted">Starting balance: $0.00 for this 2027 test ledger. Draft entries are excluded. A negative running balance means the account is opposite its normal balance side.</p>
-</main></body></html>
+</main></div></body></html>
