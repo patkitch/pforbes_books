@@ -76,7 +76,28 @@ def profit_and_loss(start, end):
             {"account": a, "amount": direct[a.pk]}
             for a in accounts if a.account_type == account_type and direct[a.pk] != ZERO
         ]
-        value = sum((r["amount"] for r in rows), ZERO)
+        # Show 4010 as a subtotal of its five sales children, not another
+        # income line that would double-count those same transactions.
+        if account_type == "income":
+            sales_parent = next(
+                (a for a in accounts if a.number == "4010" and a.name == "Sales Income"),
+                None,
+            )
+            if sales_parent:
+                subtotal = rolled[sales_parent.pk]
+                if subtotal != ZERO:
+                    sales_row = {
+                        "account": sales_parent, "amount": subtotal,
+                        "is_subtotal": True,
+                    }
+                    # Place subtotal immediately after the last sales child.
+                    children_positions = [
+                        idx for idx, row in enumerate(rows)
+                        if row["account"].parent_id == sales_parent.pk
+                    ]
+                    position = max(children_positions) + 1 if children_positions else len(rows)
+                    rows.insert(position, sales_row)
+        value = sum((r["amount"] for r in rows if not r.get("is_subtotal")), ZERO)
         totals[account_type] = value
         groups.append({"title": title, "key": account_type, "rows": rows, "total": value})
     gross_profit = totals["income"] - totals["cogs"]
