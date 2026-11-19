@@ -9,7 +9,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseBadRequest
 
-from .report_views import BalanceSheetDate, ProfitLossDates
+from .report_views import BalanceSheetDate, ProfitLossDates, default_balance_sheet_date, default_profit_loss_dates
 from .reporting import balance_sheet, profit_and_loss
 
 
@@ -22,7 +22,7 @@ def report_rows(kind, report):
         )]
     else:
         rows += [("Balance Sheet", None), (f"As of {report['as_of'].isoformat()}", None)]
-    rows.append(("Posted transactions only — 2027 zero-opening-balance test", None))
+    rows.append(("Posted transactions only — 2026-start local test ledger", None))
     rows.append(("", None))
     for group in report["groups"]:
         rows.append((group["title"], None))
@@ -161,12 +161,12 @@ def make_pdf(rows):
 @staff_member_required(login_url="/admin/login/")
 def report_download(request, kind, format):
     if kind == "pl":
-        form = ProfitLossDates(request.GET if request.GET else {"start": "2027-01-01", "end": "2027-12-31"})
+        form = ProfitLossDates(request.GET if request.GET else default_profit_loss_dates())
         report = profit_and_loss(**form.cleaned_data) if form.is_valid() else None
         dates = f"{form.cleaned_data['start']}_{form.cleaned_data['end']}" if report else ""
         name = "profit_loss"
     elif kind == "bs":
-        form = BalanceSheetDate(request.GET if request.GET else {"as_of": "2027-12-31"})
+        form = BalanceSheetDate(request.GET if request.GET else default_balance_sheet_date())
         report = balance_sheet(form.cleaned_data["as_of"]) if form.is_valid() else None
         dates = str(form.cleaned_data["as_of"]) if report else ""
         name = "balance_sheet"
