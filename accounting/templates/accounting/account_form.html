@@ -5,4 +5,21 @@
 {{ form.non_field_errors }}
 {% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% endfor %}
 <p><button type="submit">Save account</button><a href="{% url 'accounting:chart_of_accounts' %}">Cancel</a></p></form>
-</main></div></body></html>
+<script>
+const accountType = document.getElementById("id_account_type");
+const normalBalance = document.getElementById("id_normal_balance");
+const suggested = {
+  asset: "debit", liability: "credit", equity: "credit", income: "credit",
+  cogs: "debit", expense: "debit", other_income: "credit", other_expense: "debit"
+};
+if (accountType && normalBalance) {
+  let previousType = accountType.value;
+  accountType.addEventListener("change", () => {
+    // Keep a deliberate contra override; adjust only the typical side.
+    if (!previousType || normalBalance.value === suggested[previousType]) {
+      normalBalance.value = suggested[accountType.value] || normalBalance.value;
+    }
+    previousType = accountType.value;
+  });
+}
+</script></main></div></body></html>
