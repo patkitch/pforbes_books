@@ -28,7 +28,10 @@ def report_rows(kind, report):
         rows.append((group["title"], None))
         for entry in group["rows"]:
             account = entry["account"]
-            rows.append((f"{account.number} — {account.name}", entry["amount"]))
+            label = f"{account.number} — {account.name}"
+            if entry.get("is_subtotal"):
+                label = f"Subtotal {label}"
+            rows.append((label, entry["amount"]))
         if kind == "bs" and group["key"] == "equity":
             rows.append(("Accumulated earnings", report["earnings"]))
             rows.append(("Total Equity including earnings", report["total_equity"]))
