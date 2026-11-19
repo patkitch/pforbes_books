@@ -76,6 +76,31 @@ if (!(Test-Path $contactTarget)) { New-Item -ItemType Directory -Path $contactTa
 Get-ChildItem -LiteralPath $contactSource -Force | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $contactTarget -Recurse -Force
 }
+# A project-level templates/ directory takes precedence over templates shipped
+# inside Django apps. Older local copies caused the guided-income form to fail
+# even though the new template was installed. Quarantine ONLY exact conflicting
+# accounting and contact template paths, preserving every original in the backup.
+$shadowRoot = Join-Path $targetRoot "templates"
+$shadowBackupRoot = Join-Path $backupDir "overridden_root_templates"
+foreach ($templateSource in @(
+    (Join-Path $source "templates"),
+    (Join-Path $contactSource "templates")
+)) {
+    if (!(Test-Path $templateSource)) { continue }
+    Get-ChildItem -LiteralPath $templateSource -Recurse -File -Filter "*.html" | ForEach-Object {
+        $relative = $_.FullName.Substring($templateSource.Length).TrimStart('\')
+        $rootCopy = Join-Path $shadowRoot $relative
+        if (Test-Path -LiteralPath $rootCopy -PathType Leaf) {
+            $backupCopy = Join-Path $shadowBackupRoot $relative
+            $backupParent = Split-Path -Parent $backupCopy
+            if (!(Test-Path $backupParent)) {
+                New-Item -ItemType Directory -Path $backupParent -Force | Out-Null
+            }
+            Write-Host "Backing up overriding template: $relative"
+            Move-Item -LiteralPath $rootCopy -Destination $backupCopy -Force
+        }
+    }
+}
 # The local test settings import all values from config.settings.
 # Register the new app ONLY in settings.py or Django sees duplicate labels.
 $settingsText = Get-Content -LiteralPath $liveSettings -Raw
