@@ -76,13 +76,21 @@ if (!(Test-Path $contactTarget)) { New-Item -ItemType Directory -Path $contactTa
 Get-ChildItem -LiteralPath $contactSource -Force | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $contactTarget -Recurse -Force
 }
-# Register the new module in both settings files, but point migrations at the
-# persistent local PostgreSQL database via config.settings.  The separate
-# config.settings_accounting_test uses SQLite :memory: only for unit tests.
-foreach ($settingsPath in @($liveSettings, $testSettings)) {
-    $settingsText = Get-Content -LiteralPath $settingsPath -Raw
-    if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
-        Add-Content -LiteralPath $settingsPath -Encoding UTF8 -Value "`r`n# Accounting contacts module - local test installation only`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+# The local test settings import all values from config.settings.
+# Register the new app ONLY in settings.py or Django sees duplicate labels.
+$settingsText = Get-Content -LiteralPath $liveSettings -Raw
+if ($settingsText -notmatch "accounting_contacts[.]apps[.]AccountingContactsConfig") {
+    Add-Content -LiteralPath $liveSettings -Encoding UTF8 -Value "`r`n# Contacts and receipts for the local accounting test app`r`nINSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']`r`n"
+}
+# Clean up the old installer mistake, if its extra registration remains
+# in settings_accounting_test.py and this file inherits from settings.py.
+$testText = Get-Content -LiteralPath $testSettings -Raw
+if ($testText -match '(?m)^from \.settings import \*' -and
+    $testText -match "accounting_contacts[.]apps[.]AccountingContactsConfig") {
+    $duplicate = "INSTALLED_APPS = [*INSTALLED_APPS, 'accounting_contacts.apps.AccountingContactsConfig']"
+    if ($testText.Contains($duplicate)) {
+        $testText = $testText.Replace($duplicate, "")
+        [System.IO.File]::WriteAllText($testSettings, $testText, (New-Object System.Text.UTF8Encoding($false)))
     }
 }
 Push-Location $targetRoot
