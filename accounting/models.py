@@ -19,9 +19,20 @@ class Account(models.Model):
         ("other_income", "Other Income"),
         ("other_expense", "Other Expense"),
     ]
+    BALANCES = [("debit", "Debit"), ("credit", "Credit")]
+    DEFAULT_BALANCES = {
+        "asset": "debit", "liability": "credit", "equity": "credit",
+        "income": "credit", "cogs": "debit", "expense": "debit",
+        "other_income": "credit", "other_expense": "debit",
+    }
     number = models.CharField(max_length=4, unique=True)
     name = models.CharField(max_length=180)
     account_type = models.CharField(max_length=20, choices=TYPES)
+    # Blank on older records means the standard balance for their account type.
+    # This permits a safe additive migration without rewriting prior journals.
+    normal_balance = models.CharField(
+        max_length=6, choices=BALANCES, blank=True, default=""
+    )
     detail_type = models.CharField(max_length=120, blank=True)
     parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="children")
     is_active = models.BooleanField(default=True)
@@ -46,6 +57,14 @@ class Account(models.Model):
                     raise ValidationError({"parent": "Parent hierarchy must not contain a cycle."})
                 seen.add(current.pk)
                 current = current.parent
+
+    @property
+    def normal_side(self):
+        return self.normal_balance or self.DEFAULT_BALANCES[self.account_type]
+
+    @property
+    def normal_side_label(self):
+        return self.normal_side.title()
 
     def __str__(self):
         return f"{self.number} — {self.name}"
