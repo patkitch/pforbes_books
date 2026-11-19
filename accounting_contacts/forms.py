@@ -96,8 +96,8 @@ class ReceiptForm(forms.ModelForm):
         upload.seek(0)
         signature_ok = (
             (extension == ".pdf" and header.startswith(b"%PDF-"))
-            or (extension in (".jpg", ".jpeg") and header.startswith(b"\\xff\\xd8\\xff"))
-            or (extension == ".png" and header.startswith(b"\\x89PNG\\r\\n\\x1a\\n"))
+            or (extension in (".jpg", ".jpeg") and header.startswith(b"\xff\xd8\xff"))
+            or (extension == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n"))
             or (extension == ".webp" and header.startswith(b"RIFF") and header[8:12] == b"WEBP")
         )
         if not signature_ok:
@@ -114,6 +114,25 @@ class ReceiptForm(forms.ModelForm):
             self.add_error("customer", "Purchase receipt should be linked to a vendor.")
         if kind == "sale" and vendor:
             self.add_error("vendor", "Sales receipt should be linked to a customer.")
+        # Protect manually entered receipts from accidental duplicate saves.
+        # Imported receipts have an independent source/reference uniqueness rule.
+        title = cleaned.get("title")
+        recorded_date = cleaned.get("date")
+        amount = cleaned.get("amount")
+        if title and recorded_date and amount is not None and kind and self.instance.source == "manual":
+            duplicate = Receipt.objects.filter(
+                title__iexact=title.strip(), receipt_type=kind,
+                date=recorded_date, amount=amount,
+                vendor=vendor, customer=customer, source="manual",
+            )
+            if self.instance.pk:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if duplicate.exists():
+                self.add_error(
+                    "title",
+                    "An identical manual receipt already exists for this contact, date and amount. "
+                    "Open the existing receipt instead of saving another copy.",
+                )
         return cleaned
 
 
