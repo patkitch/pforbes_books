@@ -19,6 +19,7 @@
 <button type="button" class="accounting-menu-toggle" aria-controls="accounting-nav" aria-expanded="false" onclick="const n=document.getElementById('accounting-nav');const open=n.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false')">☰ Menu</button>
 <nav id="accounting-nav" class="accounting-nav" aria-label="Accounting">
 <a href="{% url 'accounting:dashboard' %}" class="brand">P. Forbes Books<small>Accounting</small></a>
+<a class="navlink" data-nav="business-profile" href="{% url 'accounting:business_profile' %}">Business Profile</a>
 <a class="navlink" data-nav="dashboard" href="{% url 'accounting:dashboard' %}">Dashboard</a>
 <a class="navlink" data-nav="transactions" href="{% url 'accounting:transaction_list' %}">Transactions</a>
 <a class="navlink" data-nav="journal" href="{% url 'accounting:journal_new' %}">General Journal</a>
@@ -36,7 +37,7 @@
 <script>
 (function(){
  const path=location.pathname;
- const section=path.startsWith('/accounting/imports/inbox')?'import-inbox':path.startsWith('/accounting/imports')?'import-preview':path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
+ const section=path.startsWith('/accounting/business-profile')?'business-profile':path.startsWith('/accounting/imports/inbox')?'import-inbox':path.startsWith('/accounting/imports')?'import-preview':path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
  const active=document.querySelector('.accounting-nav [data-nav="'+section+'"]');
  if(active)active.setAttribute('aria-current','page');
  document.addEventListener('keydown',function(e){if(e.key==='Escape'){const nav=document.getElementById('accounting-nav');nav.classList.remove('is-open');const b=document.querySelector('.accounting-menu-toggle');if(b)b.setAttribute('aria-expanded','false');}});
