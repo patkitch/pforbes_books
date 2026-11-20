@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sales Tax | P. Forbes Books</title>
+<style>
+body{font:16px system-ui,sans-serif;color:#223247;background:#f6f7f9;margin:0}
+main{max-width:980px;margin:25px auto;padding:0 16px}h1{margin-bottom:5px}
+section{background:white;border:1px solid #dce5ec;border-radius:10px;padding:18px;margin:16px 0}
+label{display:block;margin:12px 0 4px;font-weight:600}
+input,select,textarea{padding:10px;border:1px solid #acbac6;border-radius:6px;max-width:100%;box-sizing:border-box}
+form.pay{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
+form.pay .wide{grid-column:1/-1}textarea{width:100%}button{padding:10px 16px;background:#19516d;color:white;border:0;border-radius:6px;cursor:pointer}
+table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #edf0f2;text-align:left}
+td.money,th.money{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#607386}.errorlist{color:#a31c24}
+@media(max-width:650px){.table-wrap{overflow-x:auto}table{min-width:520px}}
+</style></head>
+<body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<h1>Sales Tax</h1><p><a href="{% url 'accounting:sales_tax_sale_new' %}">+ Record sale with sales tax</a></p><p class="muted">Quarterly tax tracking · Kansas and Missouri · Local test only</p>
+<section><form method="get">
+<label for="year">Year</label><select name="year" id="year">{% for value in year_options %}<option value="{{ value }}"{% if value == year %} selected{% endif %}>{{ value }}</option>{% endfor %}</select>
+<label for="quarter">Quarter</label><select name="quarter" id="quarter">{% for value in quarters %}<option value="{{ value }}"{% if value == quarter %} selected{% endif %}>Q{{ value }}</option>{% endfor %}</select>
+<button type="submit">View quarter</button>
+</form></section>
+{% for report in reports %}
+<section><h2>{{ report.account.name }} — Q{{ quarter }} {{ year }}</h2>
+{% if report.summary.target_date %}<p><strong>Target payment date:</strong> {{ report.summary.target_date|date:"F j, Y" }}
+<span class="muted">· Your personal target, not the state's statutory deadline</span></p>
+<p class="muted">Your existing preparation reminder: {{ report.summary.prepare_date|date:"F j, Y" }}.</p>{% endif %}
+<div class="table-wrap"><table>
+<tr><td>Total recorded sales</td><td class="money">${{ report.summary.total_sales|floatformat:2 }}</td></tr>
+<tr><td>Nontaxable sales</td><td class="money">${{ report.summary.nontaxable_sales|floatformat:2 }}</td></tr>
+<tr><td>Taxable sales</td><td class="money">${{ report.summary.taxable_sales|floatformat:2 }}</td></tr>
+<tr><td>Tax collected on recorded sales</td><td class="money">${{ report.summary.tax_collected|floatformat:2 }}</td></tr>
+<tr><td>Payments recorded for this quarter</td><td class="money">${{ report.summary.paid|floatformat:2 }}</td></tr>
+<tr><th>Remaining on recorded sales</th><th class="money">${{ report.summary.remaining|floatformat:2 }}</th></tr>
+</table></div>
+<p class="muted">This is a test report of sales entered into the new sales-tax register, not a full import of Stripe, WooCommerce, gallery, or prior QuickBooks activity.</p>
+{% if report.summary.locations %}
+<h3>Sales by recorded location</h3>
+<p class="muted">Locations are the descriptions entered with each sale, not a verified state, county, city, or special district tax allocation. Do not use this section as a jurisdiction-level filing report.</p>
+<div class="table-wrap"><table><thead><tr><th>Recorded location</th><th class="money">Sales</th><th class="money">Taxable sales</th><th class="money">Tax collected</th></tr></thead><tbody>
+{% for location in report.summary.locations %}<tr><td>{{ location.name }}</td><td class="money">{{ location.count }}</td><td class="money">${{ location.taxable|floatformat:2 }}</td><td class="money">${{ location.collected|floatformat:2 }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% if report.summary.payments %}<h3>Recorded payments</h3><div class="table-wrap"><table><tr><th>Date</th><th>Paid from</th><th>Memo</th><th class="money">Amount</th></tr>
+{% for payment in report.summary.payments %}<tr><td>{{ payment.paid_on }}</td><td>{{ payment.bank_account.name }}</td><td>{{ payment.memo|default:"—" }}</td><td class="money">${{ payment.amount|floatformat:2 }}</td></tr>{% endfor %}
+</table></div>{% endif %}
+</section>
+{% empty %}<section><p>No active Kansas or Missouri tax payable accounts were found. Check 2007 and 2010 in the Chart of Accounts.</p></section>{% endfor %}
+<section><h2>Record sales tax payment</h2>
+<p class="muted">Enter $0.00 and choose Cash for a zero-dollar payment, just as you do in QuickBooks. A zero-dollar payment creates a payment record but no journal entry.</p>
+<form method="post" class="pay">{% csrf_token %}{{ form.non_field_errors }}
+{% for field in form %}<div{% if field.name == "memo" %} class="wide"{% endif %}><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+<div class="wide"><button type="submit">Record payment</button></div></form>
+<p class="muted">Positive payments debit the selected tax liability and credit the cash or bank account. This records payment only; it does not submit a tax return to the state.</p>
+</section>
+</main></div></body></html>

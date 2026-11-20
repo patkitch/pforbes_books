@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pending Imports | P. Forbes Books</title><style>
+body{font:16px system-ui,sans-serif;background:#f5f7f9;color:#223247;margin:0}main{max-width:1050px;margin:22px auto;padding:0 16px}section{background:#fff;border:1px solid #dce5ec;border-radius:10px;padding:20px;margin:16px 0}label{display:block;font-weight:650;margin:12px 0 4px}input,select{padding:8px;max-width:100%}button{cursor:pointer;padding:7px 12px}.muted{color:#647386}table{width:100%;border-collapse:collapse}td,th{padding:9px;text-align:left;border-bottom:1px solid #edf0f4}td.money{text-align:right;white-space:nowrap}.wrap{overflow-x:auto}@media(max-width:700px){table{min-width:720px}}
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<h1>Pending Import Inbox</h1><p class="muted">Development testing only. Rows are staged for review; none are posted to your accounting ledger. Do not upload sensitive real-life statements to a shared test site.</p>
+<section><h2>Import CSV transactions</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}<p class="muted">{{ field.help_text }}</p>{{ field.errors }}{% endfor %}
+<button type="submit">Save to Pending Inbox</button></form></section>
+{% if result %}<section role="status"><strong>{{ result.added }} new rows staged.</strong> {{ result.skipped }} already imported rows skipped.</section>{% endif %}
+<section><h2>Latest staged transactions</h2><p class="muted">Pending and Excluded are review statuses only. Posting, classification, matching, and splitting will be added next.</p>
+<div class="wrap"><table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th>Amount</th><th>Status</th><th>Review action</th></tr></thead><tbody>
+{% for item in items %}<tr><td>{{ item.transaction_date|date:"M j, Y" }}</td><td>{{ item.account_label }}</td><td>{{ item.description }}</td><td class="money">{{ item.amount|floatformat:2 }}</td><td>{{ item.get_status_display }}</td><td><form method="post" action="{% url 'accounting:import_status' item.pk %}">{% csrf_token %}{% if item.status == 'pending' %}<input type="hidden" name="status" value="excluded"><button type="submit">Exclude</button>{% else %}<input type="hidden" name="status" value="pending"><button type="submit">Restore to Pending</button>{% endif %}</form></td></tr>
+{% empty %}<tr><td colspan="6">No staged transactions.</td></tr>{% endfor %}
+</tbody></table></div></section>
+</main></div></body></html>

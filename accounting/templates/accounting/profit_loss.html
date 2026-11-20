@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profit &amp; Loss | P. Forbes Art</title><style>
+body{font:16px system-ui,sans-serif;color:#223247;background:#f6f7f9;margin:0}
+main{max-width:950px;margin:32px auto;padding:0 18px}a{color:#19516d}h1{margin-bottom:5px}.muted{color:#5c6e7d}
+form{display:flex;align-items:end;gap:14px;flex-wrap:wrap;background:white;border:1px solid #dee5ec;border-radius:9px;padding:17px;margin:20px 0}
+form label{display:block;font-size:.9rem;font-weight:600;margin-bottom:5px}
+form input{padding:9px;border:1px solid #aebecb;border-radius:6px}
+button{padding:10px 18px;background:#19516d;color:white;border:0;border-radius:6px}
+section{background:white;border:1px solid #dee5ec;border-radius:9px;padding:8px 18px;margin:14px 0}
+table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px solid #e9edf1;text-align:left}.money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.total{font-weight:700;background:#f1f5f8}.sales-subtotal{font-weight:700;background:#eef4f8}.summary{font-size:1.07rem}.errorlist{color:#a22a2a}
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<p><a href="{% url 'accounting:transaction_list' %}">Transactions</a> · <a href="{% url 'accounting:balance_sheet' %}">Balance Sheet</a> · <a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a> · <a href="{% url 'accounting:trial_balance' %}">Trial Balance</a></p>
+<h1>Profit &amp; Loss</h1><p class="muted">P. Forbes Art · Cash-basis bookkeeping test · Posted entries only</p>
+<form method="get"><div><label for="{{ form.start.id_for_label }}">From</label>{{ form.start }}{{ form.start.errors }}</div>
+<div><label for="{{ form.end.id_for_label }}">Through</label>{{ form.end }}{{ form.end.errors }}</div><button type="submit">Run report</button></form>
+{% if report %}<p><a href="{% url 'accounting:report_download' 'pl' 'xlsx' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Download Excel</a> · <a href="{% url 'accounting:report_download' 'pl' 'pdf' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Download PDF</a></p><p class="muted">Reporting period: {{ report.start|date:"M j, Y" }} – {{ report.end|date:"M j, Y" }}</p>
+{% for group in report.groups %}
+<section><h2>{{ group.title }}</h2><table>
+{% for row in group.rows %}<tr{% if row.is_subtotal %} class="sales-subtotal"{% endif %}><td>{% if row.is_subtotal %}Subtotal {% endif %}<a href="{% url 'accounting:account_ledger' row.account.pk %}">{{ row.account.number }} — {{ row.account.name }}</a></td><td class="money">&#36;{{ row.amount|floatformat:2 }}</td></tr>
+{% empty %}<tr><td colspan="2" class="muted">No posted activity for this category</td></tr>{% endfor %}
+<tr class="total"><td>Total {{ group.title }}</td><td class="money">&#36;{{ group.total|floatformat:2 }}</td></tr></table></section>
+{% if group.key == "cogs" %}<section class="summary"><table><tr class="total"><td>Gross profit</td><td class="money">&#36;{{ report.gross_profit|floatformat:2 }}</td></tr></table></section>{% endif %}
+{% if group.key == "expense" %}<section class="summary"><table><tr class="total"><td>Operating profit</td><td class="money">&#36;{{ report.operating_profit|floatformat:2 }}</td></tr></table></section>{% endif %}
+{% endfor %}
+<section class="summary"><table><tr class="total"><td>Net profit / loss</td><td class="money">&#36;{{ report.net_profit|floatformat:2 }}</td></tr></table></section>
+<p class="muted">Click an account to open its full register. Report amounts apply to the selected period; the register currently displays all posted dates. Parent accounts are not counted twice.</p>
+{% else %}<p>Choose a valid date range to run the report.</p>{% endif %}
+</main></div></body></html>
