@@ -36,3 +36,32 @@ class ImportRow(models.Model):
                 name="unique_import_row_per_account_occurrence",
             )
         ]
+
+
+class WooOrderImport(models.Model):
+    """Staged WooCommerce order snapshot; never a posted accounting transaction."""
+    PENDING = "pending"
+    EXCLUDED = "excluded"
+    RECEIPTED = "receipted"
+    REVIEW_STATES = [
+        (PENDING, "Pending review"),
+        (EXCLUDED, "Excluded"),
+        (RECEIPTED, "Internal receipt created"),
+    ]
+    source_order_id = models.PositiveBigIntegerField(unique=True)
+    order_date = models.DateField()
+    woo_status = models.CharField(max_length=30)
+    customer_name = models.CharField(max_length=200, blank=True)
+    payment_method = models.CharField(max_length=120, blank=True)
+    payment_reference = models.CharField(max_length=180, blank=True)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+    tax_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    shipping_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    payload = models.JSONField()
+    review_status = models.CharField(max_length=12, choices=REVIEW_STATES, default=PENDING)
+    receipt_id = models.PositiveBigIntegerField(null=True, blank=True)
+    imported_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-order_date", "-pk"]
