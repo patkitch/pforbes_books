@@ -7,6 +7,7 @@ from django.db import models
 
 
 class BusinessProfile(models.Model):
+    id = models.BigAutoField(primary_key=True)
     SOLE = "sole"
     LLC = "llc"
     CORPORATION = "corporation"
