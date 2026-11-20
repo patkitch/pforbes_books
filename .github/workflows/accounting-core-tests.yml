@@ -7,6 +7,7 @@ on:
     paths:
       - 'accounting/**'
       - 'accounting_contacts/**'
+      - 'accounting_imports/**'
       - 'scripts/install_accounting_test.ps1'
       - 'config/settings_accounting_ci.py'
       - 'config/urls_accounting_ci.py'
@@ -60,6 +61,6 @@ jobs:
       - name: Check accounting configuration
         run: python manage.py check --settings=config.settings_accounting_ci
       - name: Verify receipt/contact migrations match models
-        run: python manage.py makemigrations accounting_contacts --check --dry-run --settings=config.settings_accounting_ci
+        run: python manage.py makemigrations accounting_contacts accounting_imports --check --dry-run --settings=config.settings_accounting_ci
       - name: Run complete accounting test suite
-        run: python manage.py test accounting accounting_contacts --settings=config.settings_accounting_ci --verbosity 2
+        run: python manage.py test accounting accounting_contacts accounting_imports --settings=config.settings_accounting_ci --verbosity 2
