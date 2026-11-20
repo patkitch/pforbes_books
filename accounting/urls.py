@@ -1,5 +1,5 @@
 from django.urls import path
-from accounting_imports import views as import_inbox_views
+from accounting_imports import views as import_inbox_views, woo_views
 from accounting_profile import views as business_profile_views
 from accounting_contacts import views as contact_views
 from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales, import_preview
@@ -12,6 +12,8 @@ urlpatterns = [
     path("sales-tax/", sales_tax.tax_dashboard, name="sales_tax"),
     path("imports/preview/", import_preview.preview, name="import_preview"),
     path("imports/inbox/", import_inbox_views.inbox, name="import_inbox"),
+    path("imports/woocommerce/", woo_views.woo_inbox, name="woo_inbox"),
+    path("imports/woocommerce/<int:pk>/action/", woo_views.woo_action, name="woo_action"),
     path("imports/rows/<int:pk>/status/", import_inbox_views.change_status, name="import_status"),
     path("sales-tax/sales/new/", sales_tax_sales.sale_new, name="sales_tax_sale_new"),
     path("transactions/income/new/", views.income_new, name="income_new"),
