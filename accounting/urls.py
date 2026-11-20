@@ -1,12 +1,13 @@
 from django.urls import path
 from accounting_contacts import views as contact_views
-from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales
+from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales, import_preview
 
 app_name = "accounting"
 urlpatterns = [
     path("", home_views.dashboard, name="dashboard"),
     path("reports/", home_views.reports_index, name="reports_index"),
     path("sales-tax/", sales_tax.tax_dashboard, name="sales_tax"),
+    path("imports/preview/", import_preview.preview, name="import_preview"),
     path("sales-tax/sales/new/", sales_tax_sales.sale_new, name="sales_tax_sale_new"),
     path("transactions/income/new/", views.income_new, name="income_new"),
     path("transactions/expense/new/", views.expense_new, name="expense_new"),
