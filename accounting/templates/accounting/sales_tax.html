@@ -22,6 +22,9 @@ td.money,th.money{text-align:right;font-variant-numeric:tabular-nums}.muted{colo
 </form></section>
 {% for report in reports %}
 <section><h2>{{ report.account.name }} — Q{{ quarter }} {{ year }}</h2>
+{% if report.summary.target_date %}<p><strong>Target payment date:</strong> {{ report.summary.target_date|date:"F j, Y" }}
+<span class="muted">· Your personal target, not the state's statutory deadline</span></p>
+<p class="muted">Your existing preparation reminder: {{ report.summary.prepare_date|date:"F j, Y" }}.</p>{% endif %}
 <div class="table-wrap"><table>
 <tr><td>Total recorded sales</td><td class="money">${{ report.summary.total_sales|floatformat:2 }}</td></tr>
 <tr><td>Nontaxable sales</td><td class="money">${{ report.summary.nontaxable_sales|floatformat:2 }}</td></tr>
