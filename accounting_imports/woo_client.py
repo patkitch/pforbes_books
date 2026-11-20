@@ -28,19 +28,41 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _credentials():
+    """Reuse the website automation WooCommerce settings when appropriate.
+
+    Dedicated accounting variables take precedence. Never mix incomplete
+    dedicated settings with the older website settings.
+    """
+    dedicated = (
+        os.environ.get("PFORBooks_WOO_STORE_URL", "").strip(),
+        os.environ.get("PFORBooks_WOO_CONSUMER_KEY", "").strip(),
+        os.environ.get("PFORBooks_WOO_CONSUMER_SECRET", "").strip(),
+    )
+    existing = (
+        os.environ.get("WOO_BASE_URL", "").strip(),
+        os.environ.get("WOO_CONSUMER_KEY", "").strip(),
+        os.environ.get("WOO_CONSUMER_SECRET", "").strip(),
+    )
+    if all(dedicated):
+        return dedicated
+    if any(dedicated):
+        return ("", "", "")
+    return existing
+
+
 def configured():
+    base, key, secret = _credentials()
     return (
         os.environ.get("PFORBooks_WOO_IMPORT_ENABLED", "").strip() == "1"
-        and bool(os.environ.get("PFORBooks_WOO_CONSUMER_KEY", "").strip())
-        and bool(os.environ.get("PFORBooks_WOO_CONSUMER_SECRET", "").strip())
-        and bool(os.environ.get("PFORBooks_WOO_STORE_URL", "").strip())
+        and bool(base and key and secret)
     )
 
 
 def _settings():
     if not configured():
         raise WooConnectionError("WooCommerce import is not configured on this environment.")
-    raw = os.environ["PFORBooks_WOO_STORE_URL"].strip()
+    raw, key, secret = _credentials()
     parsed = urllib.parse.urlsplit(raw)
     if (
         parsed.scheme != "https" or not parsed.hostname or parsed.username
@@ -50,7 +72,7 @@ def _settings():
         raise WooConnectionError("Store URL must be an HTTPS site root without a path or query.")
     if parsed.hostname in {"localhost", "127.0.0.1", "::1"}:
         raise WooConnectionError("Local HTTP addresses are not permitted.")
-    return raw.rstrip("/"), os.environ["PFORBooks_WOO_CONSUMER_KEY"], os.environ["PFORBooks_WOO_CONSUMER_SECRET"]
+    return raw.rstrip("/"), key, secret
 
 
 def fetch_recent_orders(*, days=30, opener=None):
