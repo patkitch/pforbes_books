@@ -17,12 +17,19 @@ from .models import Account, JournalEntry, JournalLine, SalesTaxRecord
 from .period_controls import LEDGER_START, ensure_open_period
 from .sales_tax import tax_authorities, ZERO
 from .services import post_entry
+from accounting_contacts.models import Customer
+from accounting_contacts.services import link_contact
 
 
 CENT = Decimal("0.01")
 
 
 class TaxableSaleForm(forms.Form):
+    customer = forms.ModelChoiceField(
+        queryset=Customer.objects.none(), required=False,
+        label="Customer (optional)",
+        help_text="Select an existing customer to include this purchase in their history. Add new customers through the Customers page.",
+    )
     source = forms.ChoiceField(
         label="Sale method", choices=SalesTaxRecord.SOURCES[:3]
     )
@@ -82,6 +89,9 @@ class TaxableSaleForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["customer"].queryset = Customer.objects.filter(
+            is_active=True
+        ).order_by("name")
         self.fields["revenue_account"].queryset = Account.objects.filter(
             is_active=True, account_type="income"
         ).exclude(number="4010", name="Sales Income").order_by("number")
@@ -184,7 +194,7 @@ def post_taxable_sale(data, *, actor=None):
     if reference and JournalEntry.objects.filter(source="sales_tax_sale", source_reference=reference).exists():
         raise ValidationError("This sale reference is already recorded. Do not post it twice.")
     entry = JournalEntry.objects.create(
-        date=data["sale_date"], payee="Customer",
+        date=data["sale_date"], payee=(data["customer"].name if data.get("customer") else "Customer"),
         description=data["description"], memo=data.get("memo", ""),
         source="sales_tax_sale", source_reference=reference, created_by=actor,
     )
@@ -195,6 +205,8 @@ def post_taxable_sale(data, *, actor=None):
     if tax:
         JournalLine.objects.create(entry=entry, account=authority, credit=tax)
     entry = post_entry(entry.pk, actor=actor)
+    if data.get("customer"):
+        link_contact(entry, customer=data["customer"], actor=actor)
     record = SalesTaxRecord(
         sale_date=data["sale_date"], source=data["source"],
         jurisdiction=data.get("jurisdiction", ""),
