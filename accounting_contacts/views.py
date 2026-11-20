@@ -180,6 +180,7 @@ def receipt_edit(request, pk=None):
     )
     if request.method == "POST" and form.is_valid():
         obj = form.save(commit=False)
+        new_vendor_name = form.cleaned_data.get("new_vendor_name") or ""
         if has_item_post and not items.is_valid():
             form.add_error(None, "Please correct the artwork item rows.")
         if has_item_post and items.is_valid():
@@ -200,10 +201,10 @@ def receipt_edit(request, pk=None):
                         "Artwork item subtotal exceeds receipt amount. "
                         "Check prices, quantities, or the receipt total.",
                     )
-        if obj.journal_entry_id and (obj.vendor_id or obj.customer_id):
+        if obj.journal_entry_id and (obj.vendor_id or obj.customer_id or new_vendor_name):
             existing = TransactionParty.objects.filter(journal_entry_id=obj.journal_entry_id).first()
             if existing and (
-                existing.vendor_id != obj.vendor_id or existing.customer_id != obj.customer_id
+                new_vendor_name or existing.vendor_id != obj.vendor_id or existing.customer_id != obj.customer_id
             ):
                 form.add_error(
                     "journal_entry_id",
@@ -211,6 +212,10 @@ def receipt_edit(request, pk=None):
                 )
         if not form.errors:
             with transaction.atomic():
+                if new_vendor_name:
+                    # Create the vendor only after all form and receipt validation
+                    # succeeds, in the same transaction as the uploaded bill.
+                    obj.vendor = Vendor.objects.create(name=new_vendor_name)
                 obj.save()
                 if has_item_post:
                     obj.items.all().delete()
