@@ -97,3 +97,35 @@ class WooAPIClientTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "2 new orders")
         fetch.assert_called_once_with(days=7)
+
+    @patch.dict("os.environ", {
+        "PFORBooks_WOO_IMPORT_ENABLED": "1",
+        "WOO_BASE_URL": "https://example.org",
+        "WOO_CONSUMER_KEY": "ck_existing",
+        "WOO_CONSUMER_SECRET": "cs_existing",
+    }, clear=True)
+    def test_reuses_existing_woo_environment_keys(self):
+        self.assertTrue(configured())
+        opener = FakeOpener([example()])
+        self.assertEqual(len(fetch_recent_orders(days=7, opener=opener)), 1)
+        self.assertEqual(opener.calls[0][0].get_method(), "GET")
+
+    @patch.dict("os.environ", {
+        "PFORBooks_WOO_IMPORT_ENABLED": "1",
+        "WOO_BASE_URL": "https://example.org",
+        "WOO_CONSUMER_KEY": "ck_existing",
+        "WOO_CONSUMER_SECRET": "cs_existing",
+        "PFORBooks_WOO_CONSUMER_KEY": "ck_unpaired",
+    }, clear=True)
+    def test_incomplete_accounting_override_refuses_fallback(self):
+        self.assertFalse(configured())
+        with self.assertRaises(WooConnectionError):
+            fetch_recent_orders(opener=FakeOpener([]))
+
+    @patch.dict("os.environ", {
+        "WOO_BASE_URL": "https://example.org",
+        "WOO_CONSUMER_KEY": "ck_existing",
+        "WOO_CONSUMER_SECRET": "cs_existing",
+    }, clear=True)
+    def test_existing_credentials_alone_do_not_enable_import(self):
+        self.assertFalse(configured())
