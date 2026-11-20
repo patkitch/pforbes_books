@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Account, JournalEntry, JournalLine, SalesTaxPayment, SalesTaxRecord
-from .sales_tax import quarterly_summary, record_tax_payment
+from .sales_tax import quarterly_summary, record_tax_payment, kansas_target_dates
 
 
 class SalesTaxTests(TestCase):
@@ -103,3 +103,27 @@ class SalesTaxTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             record.full_clean()
+
+    def test_personal_kansas_quarterly_target_dates(self):
+        expected = {
+            1: (date(2026, 4, 5), date(2026, 4, 20)),
+            2: (date(2026, 7, 5), date(2026, 7, 20)),
+            3: (date(2026, 10, 5), date(2026, 10, 20)),
+            4: (date(2027, 1, 5), date(2027, 1, 20)),
+        }
+        for quarter, dates in expected.items():
+            with self.subTest(quarter=quarter):
+                self.assertEqual(kansas_target_dates(2026, quarter), dates)
+                report = quarterly_summary(year=2026, quarter=quarter, authority=self.ks)
+                self.assertEqual(report["prepare_date"], dates[0])
+                self.assertEqual(report["target_date"], dates[1])
+                mo = quarterly_summary(year=2026, quarter=quarter, authority=self.mo)
+                self.assertIsNone(mo["target_date"])
+
+    def test_target_date_is_visible_but_not_mislabeled_as_state_deadline(self):
+        response = self.client.get(reverse("accounting:sales_tax"), {
+            "year": "2026", "quarter": "4"
+        })
+        self.assertContains(response, "January 20, 2027")
+        self.assertContains(response, "January 5, 2027")
+        self.assertContains(response, "Your personal target, not the state")
