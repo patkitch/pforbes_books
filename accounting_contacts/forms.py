@@ -62,6 +62,10 @@ ArtworkItemFormSet = forms.formset_factory(
 
 
 class ReceiptForm(forms.ModelForm):
+    new_vendor_name = forms.CharField(
+        max_length=200, required=False, label="Or create a new vendor (name)",
+        help_text="For a purchase bill, enter a new vendor name here instead of selecting a vendor above.",
+    )
     class Meta:
         model = Receipt
         fields = (
@@ -108,6 +112,15 @@ class ReceiptForm(forms.ModelForm):
         cleaned = super().clean()
         vendor, customer = cleaned.get("vendor"), cleaned.get("customer")
         kind = cleaned.get("receipt_type")
+        new_vendor_name = (cleaned.get("new_vendor_name") or "").strip()
+        cleaned["new_vendor_name"] = new_vendor_name
+        if new_vendor_name:
+            if kind != "purchase":
+                self.add_error("new_vendor_name", "Only purchase bills can create a vendor.")
+            if vendor or customer:
+                self.add_error("new_vendor_name", "Choose an existing vendor or enter a new vendor, not both.")
+            if Vendor.objects.filter(name__iexact=new_vendor_name).exists():
+                self.add_error("new_vendor_name", "A vendor with this name already exists. Select it from the Vendor dropdown instead.")
         if vendor and customer:
             self.add_error("customer", "Choose a vendor or customer, not both.")
         if kind == "purchase" and customer:
