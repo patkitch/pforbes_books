@@ -14,7 +14,7 @@ td.money,th.money{text-align:right;font-variant-numeric:tabular-nums}.muted{colo
 @media(max-width:650px){.table-wrap{overflow-x:auto}table{min-width:520px}}
 </style></head>
 <body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
-<h1>Sales Tax</h1><p class="muted">Quarterly tax tracking · Kansas and Missouri · Local test only</p>
+<h1>Sales Tax</h1><p><a href="{% url 'accounting:sales_tax_sale_new' %}">+ Record sale with sales tax</a></p><p class="muted">Quarterly tax tracking · Kansas and Missouri · Local test only</p>
 <section><form method="get">
 <label for="year">Year</label><select name="year" id="year">{% for value in year_options %}<option value="{{ value }}"{% if value == year %} selected{% endif %}>{{ value }}</option>{% endfor %}</select>
 <label for="quarter">Quarter</label><select name="quarter" id="quarter">{% for value in quarters %}<option value="{{ value }}"{% if value == quarter %} selected{% endif %}>Q{{ value }}</option>{% endfor %}</select>
