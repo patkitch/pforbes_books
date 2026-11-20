@@ -96,6 +96,15 @@ def quarter_dates(year, quarter):
     return date(year, start_month, 1), last_day
 
 
+def kansas_target_dates(year, quarter):
+    """Personal planning dates only; not statutory tax deadlines."""
+    if quarter not in (1, 2, 3, 4):
+        raise ValueError("Quarter must be between 1 and 4.")
+    target_year = year + 1 if quarter == 4 else year
+    target_month = (4, 7, 10, 1)[quarter - 1]
+    return date(target_year, target_month, 5), date(target_year, target_month, 20)
+
+
 def quarterly_summary(*, year, quarter, authority):
     start, end = quarter_dates(year, quarter)
     # Only records linked to posted entries (or with no ledger journal: gallery
@@ -121,6 +130,8 @@ def quarterly_summary(*, year, quarter, authority):
         "nontaxable_sales": (totals["sales"] or ZERO) - (totals["taxable"] or ZERO),
         "tax_collected": tax, "paid": paid, "remaining": tax - paid,
         "payments": payments,
+        "prepare_date": kansas_target_dates(year, quarter)[0] if authority.number == "2007" else None,
+        "target_date": kansas_target_dates(year, quarter)[1] if authority.number == "2007" else None,
         "record_count": rows.count(),
     }
 
