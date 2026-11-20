@@ -8,7 +8,7 @@ from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from .models import Account, JournalEntry, JournalLine, SalesTaxPayment, SalesTaxRecord
@@ -122,6 +122,21 @@ def quarterly_summary(*, year, quarter, authority):
         authority=authority, year=year, quarter=quarter
     ).select_related("bank_account").order_by("paid_on", "pk")
     paid = sum((item.amount for item in payments), ZERO)
+    # Breakdown uses the free-text location recorded with each sale. These are
+    # NOT tax-jurisdiction allocations and should not be presented as such.
+    locations = [
+        {
+            "name": item["jurisdiction"].strip() or "Location not specified",
+            "count": item["sale_count"],
+            "taxable": item["taxable"] or ZERO,
+            "collected": item["collected"] or ZERO,
+        }
+        for item in rows.values("jurisdiction").annotate(
+            sale_count=Count("pk"),
+            taxable=Sum("taxable_amount"),
+            collected=Sum("tax_collected"),
+        ).order_by("jurisdiction")
+    ]
     tax = totals["tax"] or ZERO
     return {
         "year": year, "quarter": quarter, "start": start, "end": end,
@@ -130,6 +145,7 @@ def quarterly_summary(*, year, quarter, authority):
         "nontaxable_sales": (totals["sales"] or ZERO) - (totals["taxable"] or ZERO),
         "tax_collected": tax, "paid": paid, "remaining": tax - paid,
         "payments": payments,
+        "locations": locations,
         "prepare_date": kansas_target_dates(year, quarter)[0] if authority.number == "2007" else None,
         "target_date": kansas_target_dates(year, quarter)[1] if authority.number == "2007" else None,
         "record_count": rows.count(),
