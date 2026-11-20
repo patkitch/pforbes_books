@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from .models import Account, JournalEntry, JournalLine, SalesTaxRecord
 from .sales_tax import quarterly_summary
+from accounting_contacts.models import Customer, TransactionParty
 
 
 class SalesTaxSaleTests(TestCase):
@@ -104,3 +105,39 @@ class SalesTaxSaleTests(TestCase):
         response = self.client.post(reverse("accounting:sales_tax_sale_new"), self.data(revenue_account=str(self.parent.pk)))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(JournalEntry.objects.count(), 0)
+
+    def test_sales_tax_sale_links_existing_customer_purchase_history(self):
+        customer = Customer.objects.create(
+            name="Jane Art Collector", email="jane@example.com",
+            shipping_city="Overland Park", shipping_state="KS",
+        )
+        result = self.client.post(
+            reverse("accounting:sales_tax_sale_new"),
+            self.data(customer=str(customer.pk), reference="customer-sale-11"),
+        )
+        self.assertEqual(result.status_code, 302)
+        entry = JournalEntry.objects.get()
+        self.assertEqual(
+            TransactionParty.objects.get(journal_entry_id=entry.pk).customer_id,
+            customer.pk,
+        )
+        self.assertEqual(entry.payee, customer.name)
+        detail = self.client.get(reverse("accounting:customer_detail", args=[customer.pk]))
+        self.assertContains(detail, "Original artwork")
+        self.assertContains(detail, "100.00")
+
+    def test_missing_customer_keeps_sale_anonymous(self):
+        result = self.client.post(reverse("accounting:sales_tax_sale_new"), self.data())
+        self.assertEqual(result.status_code, 302)
+        self.assertFalse(TransactionParty.objects.exists())
+
+    def test_customer_link_does_not_duplicate_on_repeat_reference(self):
+        customer = Customer.objects.create(name="Repeat Buyer")
+        data = self.data(customer=str(customer.pk), reference="buyer-order-72")
+        self.assertEqual(
+            self.client.post(reverse("accounting:sales_tax_sale_new"), data).status_code, 302
+        )
+        again = self.client.post(reverse("accounting:sales_tax_sale_new"), data)
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(JournalEntry.objects.count(), 1)
+        self.assertEqual(TransactionParty.objects.count(), 1)
