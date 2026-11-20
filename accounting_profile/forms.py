@@ -9,7 +9,12 @@ class BusinessProfileForm(forms.ModelForm):
             "display_name", "legal_name", "entity_type", "industry",
             "address_line_1", "address_line_2", "city", "state",
             "postal_code", "country", "contact_email", "contact_phone",
-            "website", "tax_id_type", "tax_id_last_four", "notes",
+            "website", "branding_logo_url", "tax_id_type", "tax_id_last_four",
+            "legal_address_line_1", "legal_address_line_2", "legal_city", "legal_state",
+            "legal_postal_code", "legal_country",
+            "customer_email", "customer_address_line_1", "customer_address_line_2",
+            "customer_city", "customer_state", "customer_postal_code", "customer_country",
+            "notes",
         ]
         labels = {
             "display_name": "Business name",
