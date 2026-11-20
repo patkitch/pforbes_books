@@ -127,3 +127,52 @@ class SalesTaxTests(TestCase):
         self.assertContains(response, "January 20, 2027")
         self.assertContains(response, "January 5, 2027")
         self.assertContains(response, "Your personal target, not the state")
+
+    def test_location_summary_keeps_tax_by_user_entry_without_double_counting(self):
+        for location, price, taxable, tax in (
+            ("Pickup in Overland Park", "100.00", "100.00", "9.10"),
+            ("Delivery to Lenexa", "60.00", "60.00", "5.40"),
+            ("Pickup in Overland Park", "20.00", "0.00", "0.00"),
+            ("", "15.00", "0.00", "0.00"),
+        ):
+            SalesTaxRecord.objects.create(
+                sale_date=date(2026, 11, 10), source="stripe",
+                authority=self.ks, jurisdiction=location,
+                sale_amount=Decimal(price),
+                taxable_amount=Decimal(taxable),
+                tax_collected=Decimal(tax),
+            )
+        SalesTaxRecord.objects.create(
+            sale_date=date(2026, 11, 10), source="stripe",
+            authority=self.mo, jurisdiction="Delivery to Lenexa",
+            sale_amount=Decimal("300.00"), taxable_amount=Decimal("300.00"),
+            tax_collected=Decimal("24.00"),
+        )
+        summary = quarterly_summary(year=2026, quarter=4, authority=self.ks)
+        self.assertEqual(summary["total_sales"], Decimal("195.00"))
+        self.assertEqual(summary["tax_collected"], Decimal("14.50"))
+        self.assertEqual(
+            sum((location["collected"] for location in summary["locations"]), Decimal("0.00")),
+            summary["tax_collected"],
+        )
+        by_name = {row["name"]: row for row in summary["locations"]}
+        self.assertEqual(by_name["Pickup in Overland Park"]["count"], 2)
+        self.assertEqual(by_name["Pickup in Overland Park"]["collected"], Decimal("9.10"))
+        self.assertEqual(by_name["Delivery to Lenexa"]["collected"], Decimal("5.40"))
+        self.assertEqual(by_name["Location not specified"]["collected"], Decimal("0.00"))
+        self.assertEqual(quarterly_summary(year=2026, quarter=4, authority=self.mo)["tax_collected"], Decimal("24.00"))
+
+    def test_location_table_explains_not_official_jurisdiction_allocation(self):
+        SalesTaxRecord.objects.create(
+            sale_date=date(2026, 11, 10), source="stripe",
+            authority=self.ks, jurisdiction="Picked up at studio",
+            sale_amount=Decimal("60.00"), taxable_amount=Decimal("60.00"),
+            tax_collected=Decimal("6.22"),
+        )
+        response = self.client.get(reverse("accounting:sales_tax"), {
+            "year": "2026", "quarter": "4"
+        })
+        self.assertContains(response, "Sales by recorded location")
+        self.assertContains(response, "Picked up at studio")
+        self.assertContains(response, "not a verified state, county, city")
+        self.assertContains(response, "$6.22")
