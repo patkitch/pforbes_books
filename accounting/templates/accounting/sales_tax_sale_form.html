@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Record Sale &amp; Tax | P. Forbes Books</title><style>
+body{font:16px system-ui,sans-serif;color:#223247;background:#f6f7f9;margin:0}
+main{max-width:850px;margin:25px auto;padding:0 16px}section{background:white;border:1px solid #dce5ec;border-radius:10px;padding:22px;margin:16px 0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 22px}
+label{display:block;margin:14px 0 5px;font-weight:650}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #aebbc6;padding:10px;border-radius:6px}
+button{background:#19516d;border:0;border-radius:6px;color:#fff;padding:12px 20px;cursor:pointer}
+a{color:#19516d}.hint{color:#526476;font-size:14px}.errorlist{color:#a51d27}
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<p><a href="{% url 'accounting:sales_tax' %}">Sales Tax</a> / Record Sale</p>
+<h1>Record Sale with Sales Tax</h1>
+<p class="hint">Enter the actual amounts from Stripe, or the looked-up combined tax rate for a cash sale. Gallery-managed sales record only the proceeds you receive and do not create your own tax liability.</p>
+<section><form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<div class="fields">{% for field in form %}<div>
+<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+</div>{% endfor %}</div>
+<p><button type="submit">Post sale to ledger</button> &nbsp; <a href="{% url 'accounting:sales_tax' %}">Cancel</a></p></form></section>
+<p class="hint">This posts a new sale immediately. Do not use this form to re-enter a sale already recorded elsewhere in P. Forbes Books. The unique Stripe/order reference helps prevent duplicate entries.</p>
+</main></div></body></html>
