@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "accounting.apps.AccountingConfig",
     "accounting_contacts.apps.AccountingContactsConfig",
     "accounting_imports.apps.AccountingImportsConfig",
+    "accounting_profile.apps.AccountingProfileConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
