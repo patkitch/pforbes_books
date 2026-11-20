@@ -143,6 +143,64 @@ class ContactsAndReceiptsTests(TestCase):
         self.assertContains(self.client.get(reverse("accounting:receipts")), "MPix January")
         self.assertContains(self.client.get(reverse("accounting:receipt_detail", args=[receipt.pk])), "MPix")
 
+    def test_manual_mpix_bill_can_create_vendor_and_attach_document(self):
+        with TemporaryDirectory() as folder:
+            with override_settings(MEDIA_ROOT=folder):
+                response = self.client.post(reverse("accounting:receipt_new"), {
+                    "title": "MPix November print bill",
+                    "receipt_type": "purchase",
+                    "date": "2026-11-19",
+                    "amount": "45.50",
+                    "new_vendor_name": "MPix New Supplier",
+                    "attachment": SimpleUploadedFile(
+                        "mpix.pdf", b"%PDF-1.4\\nTest bill", content_type="application/pdf"
+                    ),
+                })
+                self.assertEqual(response.status_code, 302, response.content.decode()[:1000])
+                supplier = Vendor.objects.get(name="MPix New Supplier")
+                document = Receipt.objects.get(title="MPix November print bill")
+                self.assertEqual(document.vendor_id, supplier.pk)
+                self.assertTrue(document.attachment.name)
+                detail = self.client.get(reverse("accounting:vendor_detail", args=[supplier.pk]))
+                self.assertContains(detail, "MPix November print bill")
+                self.assertFalse(JournalEntry.objects.filter(description="MPix November print bill").exists())
+
+    def test_manual_bill_can_link_existing_vendor_and_journal(self):
+        response = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "MPix posted bill",
+            "receipt_type": "purchase",
+            "date": "2027-01-05",
+            "amount": "45.50",
+            "vendor": str(self.vendor.pk),
+            "journal_entry_id": str(self.entry.pk),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Receipt.objects.get(title="MPix posted bill").vendor_id, self.vendor.pk)
+        self.assertEqual(
+            TransactionParty.objects.get(journal_entry_id=self.entry.pk).vendor_id,
+            self.vendor.pk,
+        )
+
+    def test_manual_bill_rejects_existing_vendor_duplicate_name(self):
+        response = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "Duplicate vendor attempt", "receipt_type": "purchase",
+            "date": "2026-11-19", "amount": "19.99",
+            "new_vendor_name": "mpix",
+        })
+        self.assertContains(response, "A vendor with this name already exists")
+        self.assertEqual(Vendor.objects.count(), 1)
+        self.assertFalse(Receipt.objects.filter(title="Duplicate vendor attempt").exists())
+
+    def test_invalid_manual_bill_does_not_create_vendor(self):
+        response = self.client.post(reverse("accounting:receipt_new"), {
+            "title": "Invalid vendor bill", "receipt_type": "purchase",
+            "date": "2026-11-19", "amount": "-12.50",
+            "new_vendor_name": "Invalid Vendor",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Vendor.objects.filter(name="Invalid Vendor").exists())
+        self.assertFalse(Receipt.objects.filter(title="Invalid vendor bill").exists())
+
     def test_receipt_auto_links_vendor_to_existing_journal(self):
         response = self.client.post(reverse("accounting:receipt_new"), {
             "title": "MPix receipt", "receipt_type": "purchase",
