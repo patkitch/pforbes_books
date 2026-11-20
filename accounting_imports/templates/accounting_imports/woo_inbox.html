@@ -1,6 +1,10 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WooCommerce Order Review</title>
 <style>body{font:16px system-ui,sans-serif;background:#f5f7f9;color:#263442;margin:0}main{max-width:1100px;margin:25px auto;padding:0 16px}section{background:white;border:1px solid #dfe7ed;border-radius:12px;padding:18px;margin:16px 0}.muted{color:#566a79}.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:780px}td,th{padding:9px;border-bottom:1px solid #e5eaf0;text-align:left}input{max-width:100%}button{padding:7px 12px;cursor:pointer}.money{text-align:right}h1{font-size:27px}</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
-<h1>WooCommerce Sales Review</h1><p class="muted">Development test only: upload synthetic WooCommerce orders. This screen does not connect to WooCommerce or post income to the ledger. Creating an internal sales receipt is a separate reviewer action.</p>
+<h1>WooCommerce Sales Review</h1><p class="muted">Review imported sales before creating an internal receipt. Importing does not post income to the ledger. Live WooCommerce retrieval is disabled until securely configured.</p>
+<section><h2>Retrieve WooCommerce orders</h2><p class="muted">Read-only, manually initiated import. No accounting entries are posted.</p>
+{% if connection_ready %}<form method="post">{% csrf_token %}<input type="hidden" name="source" value="woocommerce">{{ fetch_form.as_p }}<button type="submit">Retrieve orders for review</button></form>
+{% else %}<p class="muted">Connection not configured. Use sample order data below for testing.</p>{% endif %}
+{% if connection_error %}<p role="alert">{{ connection_error }}</p>{% endif %}</section>
 <section><h2>Stage sample orders</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button type="submit">Stage orders for review</button></form></section>
 {% if result %}<section role="status">{{ result.added }} new orders; {{ result.skipped }} duplicates skipped.</section>{% endif %}
 <section><h2>Imported orders</h2><div class="wrap"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Payment method</th><th>Order status</th><th class="money">Total</th><th>Review</th></tr></thead><tbody>
