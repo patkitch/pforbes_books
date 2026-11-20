@@ -24,17 +24,18 @@
 <a class="navlink" data-nav="journal" href="{% url 'accounting:journal_new' %}">General Journal</a>
 <a class="navlink" data-nav="reports" href="{% url 'accounting:reports_index' %}">Reports</a>
 <a class="navlink" data-nav="sales-tax" href="{% url 'accounting:sales_tax' %}">Sales Tax</a>
+<a class="navlink" data-nav="import-preview" href="{% url 'accounting:import_preview' %}">Import Preview</a>
 <a class="navlink" data-nav="accounts" href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a>
 <div class="section-label">CONTACTS & DOCUMENTS</div>
 <a class="navlink" data-nav="customers" href="{% url 'accounting:customers' %}">Customers</a>
 <a class="navlink" data-nav="vendors" href="{% url 'accounting:vendors' %}">Vendors</a>
 <a class="navlink" data-nav="receipts" href="{% url 'accounting:receipts' %}">Receipts</a>
-<div class="section-label">FUTURE FEATURES</div><div class="future">Bank Imports · Later</div><div class="future">Sales Imports · Later</div>
+<div class="section-label">FUTURE FEATURES</div><div class="future">Reviewed Imports · Later</div><div class="future">Sales Imports · Later</div>
 </nav>
 <script>
 (function(){
  const path=location.pathname;
- const section=path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
+ const section=path.startsWith('/accounting/imports')?'import-preview':path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
  const active=document.querySelector('.accounting-nav [data-nav="'+section+'"]');
  if(active)active.setAttribute('aria-current','page');
  document.addEventListener('keydown',function(e){if(e.key==='Escape'){const nav=document.getElementById('accounting-nav');nav.classList.remove('is-open');const b=document.querySelector('.accounting-menu-toggle');if(b)b.setAttribute('aria-expanded','false');}});
