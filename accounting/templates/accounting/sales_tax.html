@@ -34,6 +34,13 @@ td.money,th.money{text-align:right;font-variant-numeric:tabular-nums}.muted{colo
 <tr><th>Remaining on recorded sales</th><th class="money">${{ report.summary.remaining|floatformat:2 }}</th></tr>
 </table></div>
 <p class="muted">This is a test report of sales entered into the new sales-tax register, not a full import of Stripe, WooCommerce, gallery, or prior QuickBooks activity.</p>
+{% if report.summary.locations %}
+<h3>Sales by recorded location</h3>
+<p class="muted">Locations are the descriptions entered with each sale, not a verified state, county, city, or special district tax allocation. Do not use this section as a jurisdiction-level filing report.</p>
+<div class="table-wrap"><table><thead><tr><th>Recorded location</th><th class="money">Sales</th><th class="money">Taxable sales</th><th class="money">Tax collected</th></tr></thead><tbody>
+{% for location in report.summary.locations %}<tr><td>{{ location.name }}</td><td class="money">{{ location.count }}</td><td class="money">${{ location.taxable|floatformat:2 }}</td><td class="money">${{ location.collected|floatformat:2 }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
 {% if report.summary.payments %}<h3>Recorded payments</h3><div class="table-wrap"><table><tr><th>Date</th><th>Paid from</th><th>Memo</th><th class="money">Amount</th></tr>
 {% for payment in report.summary.payments %}<tr><td>{{ payment.paid_on }}</td><td>{{ payment.bank_account.name }}</td><td>{{ payment.memo|default:"—" }}</td><td class="money">${{ payment.amount|floatformat:2 }}</td></tr>{% endfor %}
 </table></div>{% endif %}
