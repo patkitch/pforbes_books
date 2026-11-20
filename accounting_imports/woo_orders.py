@@ -36,6 +36,14 @@ def normalize_order(order):
     status = str(order.get("status") or "").lower().strip()
     if status not in {"pending", "on-hold", "processing", "completed", "cancelled", "failed", "refunded"}:
         raise ValidationError(f"Order {order_id}: unknown order status.")
+    # A WooCommerce "completed" status alone is not proof of collected funds.
+    # Preserve date_paid for explicit review before creating a sales receipt.
+    paid_date = order.get("date_paid") or order.get("date_paid_gmt")
+    if paid_date:
+        try:
+            datetime.fromisoformat(str(paid_date).replace("Z", "+00:00"))
+        except (ValueError, TypeError) as exc:
+            raise ValidationError(f"Order {order_id}: invalid payment date.") from exc
     payment_method = str(order.get("payment_method_title") or order.get("payment_method") or "")
     order_total = _money(order.get("total"), "order total")
     tax = _money(order.get("total_tax", "0"), "tax")
@@ -111,8 +119,10 @@ def create_reviewed_receipt(record):
     record = WooOrderImport.objects.select_for_update().get(pk=record.pk)
     if record.review_status != WooOrderImport.PENDING:
         raise ValidationError("Only pending orders can be reviewed for a receipt.")
-    if record.woo_status not in PAID_STATUSES:
-        raise ValidationError("Only processing or completed orders can be receipted.")
+    if record.woo_status not in PAID_STATUSES or not (
+        record.payload.get("date_paid") or record.payload.get("date_paid_gmt")
+    ):
+        raise ValidationError("A processing/completed order must have a recorded payment date before creating a sales receipt.")
     if not record.payload:
         raise ValidationError("Original order metadata is unavailable.")
     _, receipt, created = stage_woo_order_receipt(record.payload)
