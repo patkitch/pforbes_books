@@ -16,6 +16,7 @@ def example(order_id=101, status="processing", customer_id=55):
     return {
         "id": order_id, "status": status, "customer_id": customer_id,
         "date_created": "2027-02-01T10:15:00",
+        "date_paid": "2027-02-01T10:16:00",
         "total": "126.00", "total_tax": "9.00", "shipping_total": "7.00",
         "payment_method": "stripe", "transaction_id": "pi_example",
         "billing": {"first_name": "Jane", "last_name": "Collector", "email": "jane@example.com"},
