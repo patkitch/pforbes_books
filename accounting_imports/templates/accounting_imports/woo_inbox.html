@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WooCommerce Order Review</title>
+<style>body{font:16px system-ui,sans-serif;background:#f5f7f9;color:#263442;margin:0}main{max-width:1100px;margin:25px auto;padding:0 16px}section{background:white;border:1px solid #dfe7ed;border-radius:12px;padding:18px;margin:16px 0}.muted{color:#566a79}.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:780px}td,th{padding:9px;border-bottom:1px solid #e5eaf0;text-align:left}input{max-width:100%}button{padding:7px 12px;cursor:pointer}.money{text-align:right}h1{font-size:27px}</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<h1>WooCommerce Sales Review</h1><p class="muted">Development test only: upload synthetic WooCommerce orders. This screen does not connect to WooCommerce or post income to the ledger. Creating an internal sales receipt is a separate reviewer action.</p>
+<section><h2>Stage sample orders</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button type="submit">Stage orders for review</button></form></section>
+{% if result %}<section role="status">{{ result.added }} new orders; {{ result.skipped }} duplicates skipped.</section>{% endif %}
+<section><h2>Imported orders</h2><div class="wrap"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Payment method</th><th>Order status</th><th class="money">Total</th><th>Review</th></tr></thead><tbody>
+{% for order in orders %}<tr><td>#{{ order.source_order_id }}</td><td>{{ order.order_date|date:"M j, Y" }}</td><td>{{ order.customer_name|default:"Not provided" }}</td><td>{{ order.payment_method|default:"Not provided" }}</td><td>{{ order.woo_status }}</td><td class="money">{{ order.total|floatformat:2 }}</td><td>
+{% if order.review_status == "receipted" %}Receipt created (ID {{ order.receipt_id }}); not posted
+{% else %}<form method="post" action="{% url 'accounting:woo_action' order.pk %}">{% csrf_token %}
+{% if order.review_status == "excluded" %}<button name="action" value="restore">Restore</button>
+{% else %}<button name="action" value="exclude">Exclude</button>
+{% if order.woo_status == "processing" or order.woo_status == "completed" %}<button name="action" value="receipt">Create internal receipt</button>{% endif %}{% endif %}
+</form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="7">No orders staged yet.</td></tr>{% endfor %}</tbody></table></div></section>
+</main></div></body></html>
