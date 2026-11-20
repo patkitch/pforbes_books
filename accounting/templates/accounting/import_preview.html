@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Import Preview | P. Forbes Books</title><style>
+body{font:16px system-ui,sans-serif;background:#f6f7f9;color:#223247;margin:0}main{max-width:980px;margin:24px auto;padding:0 16px}
+section{background:#fff;border:1px solid #dce5ec;border-radius:10px;padding:20px;margin:15px 0}
+label{display:block;font-weight:700;margin:12px 0 5px}input,select{padding:10px;border:1px solid #b4c0ca;border-radius:6px;max-width:100%;box-sizing:border-box}
+button{margin-top:15px;background:#19516d;color:#fff;padding:11px 18px;border:0;border-radius:6px;cursor:pointer}
+.muted{color:#566a79}.errorlist{color:#aa2525}table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px;border-bottom:1px solid #edf0f4}.money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:700px){.table-wrap{overflow-x:auto}table{min-width:540px}}
+</style></head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main>
+<h1>Bank &amp; Credit Card Import Preview</h1>
+<p class="muted">First step: inspect a CSV export before building the review and posting workflow. This screen <strong>does not save or post transactions</strong>.</p>
+<section><form method="post" enctype="multipart/form-data">{% csrf_token %}
+{{ form.non_field_errors }}
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+{% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}{{ field.errors }}{% endfor %}
+<button type="submit">Preview CSV only</button></form></section>
+{% if rows %}<section><h2>Imported file preview — {{ rows|length }} transactions</h2>
+<p class="muted">Check the source statement date, merchant name, amount, and signs. Debit/Credit CSV columns may not have the same meaning across banks. No accounting entries or vendors were created.</p>
+<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th class="money">Source amount</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.date|date:"M j, Y" }}</td><td>{{ row.description }}</td><td class="money">{{ row.amount|floatformat:2 }}</td></tr>{% endfor %}
+</tbody></table></div></section>{% endif %}
+<p class="muted">Future stage: review transaction classifications, select or create a vendor, attach documentation, detect duplicates, and explicitly approve posting. Personal payments of business credit cards will be recorded against Owner Contributions—not business checking.</p>
+</main></div></body></html>
