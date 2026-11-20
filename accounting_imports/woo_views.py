@@ -1,4 +1,4 @@
-"""Offline WooCommerce import review screen: test fixtures only, no live API."""
+"""Staff-reviewed WooCommerce imports from fixtures or opt-in read-only API."""
 import json
 from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
@@ -8,6 +8,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .models import WooOrderImport
 from .woo_orders import stage_orders, create_reviewed_receipt
+from .woo_client import configured, fetch_and_stage, WooConnectionError
+
+
+class WooFetchForm(forms.Form):
+    days = forms.TypedChoiceField(coerce=int, choices=[(7, "Last 7 days"), (30, "Last 30 days"), (90, "Last 90 days")], initial=30)
 
 
 class WooOrderUploadForm(forms.Form):
@@ -27,7 +32,20 @@ class WooOrderUploadForm(forms.Form):
 def woo_inbox(request):
     form = WooOrderUploadForm(request.POST or None, request.FILES or None)
     result = None
-    if request.method == "POST" and form.is_valid():
+    fetch_form = WooFetchForm(request.POST or None)
+    connection_error = None
+    if request.method == "POST" and request.POST.get("source") == "woocommerce":
+        if not configured():
+            connection_error = "WooCommerce connection is not enabled or configured."
+        elif fetch_form.is_valid():
+            try:
+                added, skipped = fetch_and_stage(days=fetch_form.cleaned_data["days"])
+            except (WooConnectionError, ValidationError) as exc:
+                connection_error = str(exc)
+            else:
+                result = {"added": added, "skipped": skipped}
+        form = WooOrderUploadForm()
+    elif request.method == "POST" and form.is_valid():
         try:
             data = json.loads(form.cleaned_data["file"].read().decode("utf-8-sig"))
             added, skipped = stage_orders(data)
@@ -37,7 +55,8 @@ def woo_inbox(request):
             result = {"added": added, "skipped": skipped}
             form = WooOrderUploadForm()
     return render(request, "accounting_imports/woo_inbox.html", {
-        "form": form, "result": result,
+        "form": form, "result": result, "fetch_form": fetch_form,
+        "connection_ready": configured(), "connection_error": connection_error,
         "orders": WooOrderImport.objects.order_by("-order_date", "-pk")[:200],
     })
 
