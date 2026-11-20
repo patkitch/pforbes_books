@@ -3,6 +3,7 @@ from django.db import models
 
 
 class ImportBatch(models.Model):
+    id = models.BigAutoField(primary_key=True)
     account_id = models.PositiveBigIntegerField()
     filename = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -15,6 +16,7 @@ class ImportBatch(models.Model):
 
 
 class ImportRow(models.Model):
+    id = models.BigAutoField(primary_key=True)
     PENDING = "pending"
     EXCLUDED = "excluded"
     STATUSES = [(PENDING, "Pending"), (EXCLUDED, "Excluded")]
@@ -39,6 +41,7 @@ class ImportRow(models.Model):
 
 
 class WooOrderImport(models.Model):
+    id = models.BigAutoField(primary_key=True)
     """Staged WooCommerce order snapshot; never a posted accounting transaction."""
     PENDING = "pending"
     EXCLUDED = "excluded"
