@@ -4,7 +4,7 @@
 <main><p class="intro">See the two featured artist walls for each month. Approved artists appear by name. Worker sign-ups are private to members.</p>
 <div class="calendar">
 {% for event in events %}<section class="month">
-<h2>{{ event.event_date|date:"F" }}</h2><p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p>
+<h2>{{ event.event_date|date:"F" }}</h2><p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p><p class="availability">{{ event.open_wall_count }} of 2 walls open</p>
 {% for slot in event.artist_slots %}<div class="slot"><b>Wall {{ slot.position }}</b>
 {% if slot.display_name %}<span class="filled">{{ slot.display_name }}</span>
 {% elif event.is_closed %}<span class="closed">Closed</span>
