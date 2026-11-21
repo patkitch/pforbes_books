@@ -1,4 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Application received</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
 <body><header><div><h1>Images Art Gallery</h1><p>Guest Featured Artist application</p></div></header>
-<main class="narrow"><section class="card"><h2>Request received</h2><p>Thank you, {{ application.artist_name }}. Your request is pending gallery review. Submitting an application does not reserve a wall; the gallery will contact you after a decision.</p><p><a class="button-link" href="{% url 'gallery_signups:public_artist_calendar' %}">Return to the year calendar</a></p></section></main></body></html>
+<main class="narrow"><section class="card"><h2>Request received</h2><p>Thank you, {{ application.artist_name }}. Your request is pending gallery review. Submitting an application does not reserve a wall; the gallery will contact you after a decision.</p>
+{% if email_sent %}<p>A confirmation email was sent to {{ application.email }}.</p>{% else %}<p class="notice">We could not send a confirmation email just now. Your request is recorded; the gallery will contact you using the information you provided.</p>{% endif %}
+<p><a class="button-link" href="{% url 'gallery_signups:public_artist_calendar' %}">Return to the year calendar</a></p></section></main></body></html>
