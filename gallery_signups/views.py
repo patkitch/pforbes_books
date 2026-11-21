@@ -187,22 +187,31 @@ def artist_application(request):
             pass
 
     if request.method == "POST" and form.is_valid():
-        application = GalleryArtistApplication.objects.create(
-            artist_name=form.cleaned_data["artist_name"].strip(),
-            address=form.cleaned_data["address"].strip(),
-            email=form.cleaned_data["email"].strip(),
-            phone=form.cleaned_data["phone"].strip(),
-            medium=form.cleaned_data["medium"].strip(),
-            artwork_url=form.cleaned_data["artwork_url"].strip(),
-            wall_count=int(form.cleaned_data["wall_count"]),
-            preferred_months=[event.pk for event in form.cleaned_data["preferred_months"]],
-        )
-        for uploaded in form.cleaned_data["images"]:
-            GalleryArtistApplicationImage.objects.create(
-                application=application,
-                image=uploaded,
-                original_name=uploaded.name[:255],
+        try:
+            with transaction.atomic():
+                application = GalleryArtistApplication.objects.create(
+                    artist_name=form.cleaned_data["artist_name"].strip(),
+                    address=form.cleaned_data["address"].strip(),
+                    email=form.cleaned_data["email"].strip(),
+                    phone=form.cleaned_data["phone"].strip(),
+                    medium=form.cleaned_data["medium"].strip(),
+                    artwork_url=form.cleaned_data["artwork_url"].strip(),
+                    wall_count=int(form.cleaned_data["wall_count"]),
+                    preferred_months=[event.pk for event in form.cleaned_data["preferred_months"]],
+                )
+                for uploaded in form.cleaned_data["images"]:
+                    GalleryArtistApplicationImage.objects.create(
+                        application=application,
+                        image=uploaded,
+                        original_name=uploaded.name[:255],
+                    )
+        except Exception:
+            logger.exception("Could not save a guest artist application or its uploaded images.")
+            form.add_error(
+                None,
+                "We couldn't save your application. It was not submitted. Please contact the gallery before trying again.",
             )
+            return render(request, "gallery_signups/artist_application.html", {"form": form})
 
         admin_link = request.build_absolute_uri(
             reverse("gallery_signups:application_detail", args=[application.pk])
