@@ -58,10 +58,10 @@ class MultiImageField(forms.FileField):
         image_field = forms.ImageField()
         cleaned = []
         for uploaded in files:
-            image_field.clean(uploaded)
+            cleaned_file = image_field.clean(uploaded)
             if uploaded.size > 5 * 1024 * 1024:
                 raise forms.ValidationError("Each image must be 5 MB or smaller.")
-            cleaned.append(uploaded)
+            cleaned.append(cleaned_file)
         return cleaned
 
 
@@ -115,7 +115,7 @@ class GalleryArtistApplicationForm(forms.Form):
 
     def clean_images(self):
         images = self.cleaned_data.get("images") or []
-        if images and not getattr(settings, "SPACES_BUCKET_NAME", ""):
+        if images and not getattr(settings, "SPACES_CONFIGURED", False):
             raise forms.ValidationError(
                 "Secure image storage is not configured yet. Please provide a link to your artwork instead."
             )
