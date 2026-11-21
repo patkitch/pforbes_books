@@ -22,20 +22,20 @@ Keep the bucket private. The Django storage backend requests signed URLs for ima
 
 ## Titan email
 
-The app is set to use Titan's SMTP server with STARTTLS:
+The app uses Titan's SMTP server with STARTTLS. These variables already appear in the DigitalOcean App Platform settings, so verify their values rather than creating duplicates:
 
 - `EMAIL_HOST=smtp.titan.email`
 - `EMAIL_PORT=587`
 - `EMAIL_USE_TLS=True`
 - `EMAIL_USE_SSL=False`
 - `EMAIL_HOST_USER=patriciaforbes@pforbesart.com`
-- `EMAIL_HOST_PASSWORD` (secret; a Titan mailbox password or app password)
+- `EMAIL_HOST_PASSWORD` (the saved Titan mailbox password; keep it encrypted)
 - `DEFAULT_FROM_EMAIL=patriciaforbes@pforbesart.com`
 - `GALLERY_ADMIN_EMAIL=patriciaforbes@pforbesart.com`
 
-The SMTP host, port, and encryption values are published Titan settings. The username is the full Titan mailbox address. In Titan, third-party email access must be enabled. If two-factor authentication is enabled, generate an app password in Titan webmail under **Settings → Preferences → Account & Security → Security & Access → Two-Factor Authentication → Manage → Generate App Password**. Titan only displays a generated app password once, so enter it directly into DigitalOcean's encrypted `EMAIL_HOST_PASSWORD` field and do not send it in chat.
+The SMTP host, port, and encryption values are Titan's published settings. The username is the full Titan mailbox address. The existing app password variable is encrypted; do not reveal it or put it in GitHub or chat. If the saved password is no longer valid, use the Titan mailbox password. When two-factor authentication is enabled, Titan requires an application password and third-party email access must be enabled.
 
-Your WordPress email plugin may show the host, port, username, and encryption settings already used for website email. Do not change the website's settings for this app. Its saved SMTP password may be masked; use a separate Titan app password if needed.
+Your WordPress email plugin may show the same host, port, username, and encryption settings. Do not change the website's mail settings for this app.
 
 ## Release steps
 
