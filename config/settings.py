@@ -61,7 +61,10 @@ GALLERY_ADMIN_EMAIL = env("GALLERY_ADMIN_EMAIL", default="patriciaforbes@pforbes
 # App Platform filesystems are temporary. Store application images in a private
 # Spaces bucket when the storage environment variables are configured.
 SPACES_BUCKET_NAME = env("SPACES_BUCKET_NAME", default="")
-if SPACES_BUCKET_NAME:
+SPACES_ACCESS_KEY_ID = env("SPACES_ACCESS_KEY_ID", default="")
+SPACES_SECRET_ACCESS_KEY = env("SPACES_SECRET_ACCESS_KEY", default="")
+SPACES_CONFIGURED = bool(SPACES_BUCKET_NAME and SPACES_ACCESS_KEY_ID and SPACES_SECRET_ACCESS_KEY)
+if SPACES_CONFIGURED:
     INSTALLED_APPS.append("storages")
     STORAGES = {
         "default": {
@@ -70,8 +73,8 @@ if SPACES_BUCKET_NAME:
                 "bucket_name": SPACES_BUCKET_NAME,
                 "region_name": env("SPACES_REGION_NAME", default="nyc3"),
                 "endpoint_url": env("SPACES_ENDPOINT_URL", default="https://nyc3.digitaloceanspaces.com"),
-                "access_key": env("SPACES_ACCESS_KEY_ID", default=""),
-                "secret_key": env("SPACES_SECRET_ACCESS_KEY", default=""),
+                "access_key": SPACES_ACCESS_KEY_ID,
+                "secret_key": SPACES_SECRET_ACCESS_KEY,
                 "location": "gallery-signups",
                 "default_acl": None,
                 "querystring_auth": True,
