@@ -14,6 +14,7 @@
     <section class="month">
       <h2>{{ event.event_date|date:"F" }}</h2>
       <p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p>
+      <p class="availability">{{ event.open_artist_count }} of 2 walls open · {{ event.open_worker_count }} of 4 worker spots open</p>
       <div class="overview-group">
         <h3>Featured artist walls</h3>
         {% for slot in event.artist_slots %}
