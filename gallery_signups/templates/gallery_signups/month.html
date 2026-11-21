@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ event.event_date|date:"F Y" }} Sign-ups</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
+<body>
+<header><div><h1>Images Art Gallery</h1><p>{{ event.event_date|date:"F j, Y" }} · Third Friday</p></div><a href="{% url 'gallery_signups:member_logout' %}">Sign out</a></header>
+<main>
+  <p><a href="{% url 'gallery_signups:calendar' %}">← Back to the year</a></p>
+  {% if messages %}{% for message in messages %}<p class="notice">{{ message }}</p>{% endfor %}{% endif %}
+  {% if event.title %}<p class="reserved">{{ event.title }}</p>{% endif %}
+  {% if event.is_closed %}<p class="closed-banner">This month is closed for sign-ups.</p>{% endif %}
+  <div class="month-detail">
+    {% for slot in event.slots.all %}
+      <section class="card detail-slot">
+        <div class="detail-heading"><h2>{{ slot.slot_label }}</h2><span class="date">{% if slot.slot_type == "artist" %}Gallery wall{% else %}Volunteer spot{% endif %}</span></div>
+        {% if slot.reservation_label %}
+          <p class="reserved">{{ slot.reservation_label }}</p>
+        {% elif slot.artist_name %}
+          <p class="filled">{{ slot.artist_name }}</p>
+          {% if not slot.guest_application and not event.is_closed %}
+            <form method="post" action="{% url 'gallery_signups:change_slot' slot.id %}" class="edit-signup">
+              {% csrf_token %}<label>Change name<input name="name" maxlength="120" value="{{ slot.artist_name }}" required></label><button>Save change</button>
+            </form>
+            <form method="post" action="{% url 'gallery_signups:change_slot' slot.id %}" class="remove-signup">
+              {% csrf_token %}<input type="hidden" name="name" value=""><button class="secondary">Remove this signup</button>
+            </form>
+          {% elif slot.guest_application %}<p class="muted">Guest artist placement</p>{% endif %}
+        {% elif event.is_closed %}
+          <p class="closed">Closed</p>
+        {% else %}
+          <form method="post" action="{% url 'gallery_signups:claim_slot' slot.id %}" class="claim-form">
+            {% csrf_token %}<label>Your name<input name="name" maxlength="120" placeholder="Enter your name" required></label><button>Sign up</button>
+          </form>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+</main>
+</body></html>
