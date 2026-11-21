@@ -1,1 +1,38 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ year }} Featured Artist Calendar</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head><body><header><div><h1>Images Art Gallery</h1><p>Third Friday Featured Artist Sign-up · {{ year }}</p></div><a href="{% url 'gallery_signups:member_logout' %}">Sign out</a></header><main><div class="calendar">{% for event in events %}<section class="month"><h2>{{ event.event_date|date:"F" }}</h2><p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p>{% if event.title %}<p class="reserved">{{ event.title }}</p>{% endif %}{% for slot in event.slots.all %}<div class="slot"><b>{{ slot.slot_label }}</b>{% if event.is_closed %}<span class="closed">Closed</span>{% elif slot.artist_name %}<span class="filled">{{ slot.artist_name }}</span>{% elif slot.reservation_label %}<span class="reserved">{{ slot.reservation_label }}</span>{% else %}<details><summary>Open — claim this spot</summary><form method="post" action="{% url 'gallery_signups:claim_slot' slot.id %}">{% csrf_token %}<input name="name" maxlength="120" placeholder="Your name" aria-label="Your name" required><button>Claim spot</button></form></details>{% endif %}</div>{% endfor %}</section>{% empty %}<p>The calendar has not been set up yet.</p>{% endfor %}</div></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ year }} Member Calendar · Images Art Gallery</title>
+  <link rel="stylesheet" href="/static/gallery_signups/gallery.css">
+</head>
+<body>
+<header><div><h1>Images Art Gallery</h1><p>Member sign-up calendar · {{ year }}</p></div><a href="{% url 'gallery_signups:member_logout' %}">Sign out</a></header>
+<main>
+  <p class="intro">Year at a glance. Select a month to sign up or change a spot.</p>
+  <div class="calendar">
+  {% for event in events %}
+    <section class="month">
+      <h2>{{ event.event_date|date:"F" }}</h2>
+      <p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p>
+      <p class="availability">{{ event.open_artist_count }} of 2 walls open · {{ event.open_worker_count }} of 4 worker spots open</p>
+      <div class="overview-group">
+        <h3>Featured artist walls</h3>
+        {% for slot in event.artist_slots %}
+          <div class="overview-slot"><b>Wall {{ slot.position }}</b><span>{% if slot.display_name %}{{ slot.display_name }}{% elif event.is_closed %}Closed{% else %}Open{% endif %}</span></div>
+        {% endfor %}
+      </div>
+      <div class="overview-group">
+        <h3>Workers</h3>
+        {% for slot in event.worker_slots %}
+          <div class="overview-slot"><b>{{ slot.slot_label }}</b><span>{% if slot.display_name %}{{ slot.display_name }}{% elif event.is_closed %}Closed{% else %}Open{% endif %}</span></div>
+        {% endfor %}
+      </div>
+      {% if event.is_full %}<p class="full-status">No openings</p>{% endif %}
+      <a class="button-link" href="{% url 'gallery_signups:month' event.id %}">View {{ event.event_date|date:"F" }}</a>
+    </section>
+  {% empty %}
+    <p>The calendar has not been set up yet.</p>
+  {% endfor %}
+  </div>
+</main>
+</body></html>

@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signup change history</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
+<body><header><div><h1>Signup change history</h1><p>Private administration · latest 500 changes</p></div><a href="{% url 'gallery_signups:manage' %}">Back to calendar</a></header>
+<main><p><a href="{% url 'gallery_signups:manage' %}">← Administration</a></p>
+<div class="table-wrap"><table><thead><tr><th>When</th><th>Month</th><th>Spot</th><th>Action</th><th>Signup name</th></tr></thead><tbody>
+{% for change in changes %}<tr><td>{{ change.changed_at|date:"M j, Y g:i A" }}</td><td>{{ change.event_date|date:"F Y" }}</td><td>{{ change.slot_label }}</td><td>{{ change.get_action_display }}</td><td>{% if change.old_name and change.new_name %}{{ change.old_name }} → {{ change.new_name }}{% elif change.old_name %}{{ change.old_name }}{% else %}{{ change.new_name }}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="5">No changes have been recorded yet.</td></tr>{% endfor %}
+</tbody></table></div></main></body></html>

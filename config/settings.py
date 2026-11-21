@@ -46,6 +46,62 @@ INSTALLED_APPS = [
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Email is configured through DigitalOcean environment variables. Titan supports
+# STARTTLS on port 587; credentials are never stored in source control.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.titan.email")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="patriciaforbes@pforbesart.com")
+GALLERY_ADMIN_EMAIL = env("GALLERY_ADMIN_EMAIL", default="patriciaforbes@pforbesart.com")
+
+# App Platform filesystems are temporary. Store application images in a private
+# Spaces bucket when the storage environment variables are configured.
+# Reuse the DO_SPACES_* variables already configured for this app; explicit
+# SPACES_* values can override them if a separate storage setup is ever needed.
+SPACES_BUCKET_NAME = env("SPACES_BUCKET_NAME", default=env("DO_SPACES_BUCKET", default=""))
+SPACES_ACCESS_KEY_ID = env("SPACES_ACCESS_KEY_ID", default=env("DO_SPACES_KEY", default=""))
+SPACES_SECRET_ACCESS_KEY = env("SPACES_SECRET_ACCESS_KEY", default=env("DO_SPACES_SECRET", default=""))
+SPACES_REGION_NAME = env("SPACES_REGION_NAME", default=env("DO_SPACES_REGION", default="nyc3"))
+SPACES_ENDPOINT_URL = env("SPACES_ENDPOINT_URL", default=env("DO_SPACES_ENDPOINT", default=""))
+SPACES_USE_HTTPS = env.bool("DO_SPACES_USE_HTTPS", default=True)
+if not SPACES_ENDPOINT_URL:
+    SPACES_ENDPOINT_URL = f"{'https' if SPACES_USE_HTTPS else 'http'}://{SPACES_REGION_NAME}.digitaloceanspaces.com"
+elif not SPACES_ENDPOINT_URL.startswith(("http://", "https://")):
+    SPACES_ENDPOINT_URL = f"{'https' if SPACES_USE_HTTPS else 'http'}://{SPACES_ENDPOINT_URL}"
+SPACES_ADDRESSING_STYLE = env(
+    "SPACES_ADDRESSING_STYLE",
+    default=env("DO_SPACES_ADDRESSING_STYLE", default="virtual"),
+)
+SPACES_CONFIGURED = bool(SPACES_BUCKET_NAME and SPACES_ACCESS_KEY_ID and SPACES_SECRET_ACCESS_KEY)
+if SPACES_CONFIGURED:
+    INSTALLED_APPS.append("storages")
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": SPACES_BUCKET_NAME,
+                "region_name": SPACES_REGION_NAME,
+                "endpoint_url": SPACES_ENDPOINT_URL,
+                "access_key": SPACES_ACCESS_KEY_ID,
+                "secret_key": SPACES_SECRET_ACCESS_KEY,
+                "location": "gallery-signups",
+                "default_acl": None,
+                "querystring_auth": True,
+                "querystring_expire": 3600,
+                "file_overwrite": False,
+                "addressing_style": SPACES_ADDRESSING_STYLE,
+                "signature_version": "s3v4",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guest Artist Application</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
+<body><header><div><h1>Images Art Gallery</h1><p>Guest Featured Artist application</p></div><a href="{% url 'gallery_signups:public_artist_calendar' %}">Year calendar</a></header>
+<main>
+<p><a href="{% url 'gallery_signups:artist_information' %}">← Read application instructions and show terms</a></p>
+<section class="card application-form">
+<h2>Request a wall</h2>
+<p>Select each month you would be willing to exhibit. The gallery will review your request and contact you. Your request is not a reservation.</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+{{ form.non_field_errors }}
+{% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endfor %}
+<button>Submit application</button>
+</form>
+</section></main></body></html>
