@@ -18,7 +18,7 @@ The signup app maps these existing names automatically, so there is no need to a
 
 `gallery-signups/guest_artist_applications/<year>/...`
 
-Keep the bucket private. The Django storage backend requests signed URLs for images; do not enable public read access for the bucket or its objects. Existing report objects are separate from this folder. Before deployment, confirm the values above are set on the web service and that the bucket is private.
+Keep the bucket private. The Django storage backend requests signed URLs for images; do not enable public read access for the bucket or its objects. Existing report objects are separate from this folder. Before deployment, confirm the values above are set on the web service and that the bucket is private. The access key configured as `DO_SPACES_KEY` must have **Read/Write/Delete (Objects)** permission for this bucket: uploads need write access, private image viewing and the storage `HeadObject` check need read access, and admin deletion needs delete access.
 
 ## Titan email
 
