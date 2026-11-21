@@ -26,5 +26,10 @@
 <form method="post" action="{% url 'gallery_signups:approve_application' application.id %}">{% csrf_token %}<h3>Approve and reserve wall(s)</h3>{{ decision_form.as_p }}<button>Approve request</button></form>
 <form method="post" action="{% url 'gallery_signups:decline_application' application.id %}">{% csrf_token %}<label>Note (optional)<textarea name="admin_note"></textarea></label><button class="secondary">Mark not selected</button></form>
 {% endif %}
+{% if application.status == "pending" or application.status == "not_selected" %}
+<form method="post" action="{% url 'gallery_signups:delete_application' application.id %}" class="delete-application no-print" onsubmit="return confirm('Permanently delete this application and any uploaded images?');">
+{% csrf_token %}<button class="secondary">Delete application and uploaded images</button>
+</form>
+{% endif %}
 </div>
 </main></body></html>
