@@ -3,11 +3,13 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.views import redirect_to_login
 from django.core.mail import send_mail
 from django.db import transaction
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import (
@@ -236,7 +238,7 @@ def _application_admin_context(application):
 
 def application_list(request):
     if not _admin_allowed(request):
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     applications = GalleryArtistApplication.objects.prefetch_related("images").select_related("selected_event")
     for application in applications:
         application.requested_months = FeaturedArtistEvent.objects.filter(
@@ -335,6 +337,11 @@ def decline_application(request, application_id):
 
 
 def admin_login(request):
+    next_url = request.POST.get("next") or request.GET.get("next", "")
+    if next_url and not url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        next_url = ""
     form = AdminLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         username = form.cleaned_data["username"].strip()
@@ -343,7 +350,7 @@ def admin_login(request):
         if user and user.is_active and user.is_superuser:
             request.session.flush()
             login(request, user)
-            return redirect("gallery_signups:manage")
+            return redirect(next_url or reverse("gallery_signups:manage"))
         account = GalleryAdministrator.objects.filter(username__iexact=username, is_active=True).first()
         if account and account.check_password(password):
             logout(request)
@@ -352,7 +359,7 @@ def admin_login(request):
             request.session.set_expiry(60 * 60 * 12)
             return redirect("gallery_signups:manage")
         form.add_error(None, "The username or password was not recognized.")
-    return render(request, "gallery_signups/admin_login.html", {"form": form})
+    return render(request, "gallery_signups/admin_login.html", {"form": form, "next": next_url})
 
 
 def admin_logout(request):
