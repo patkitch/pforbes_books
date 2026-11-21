@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ year }} Guest Artist Calendar</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
+<body><header><div><h1>Images Art Gallery</h1><p>Guest Featured Artist availability · {{ year }}</p></div><a href="{% url 'gallery_signups:artist_information' %}">Application information</a></header>
+<main><p class="intro">See the two featured artist walls for each month. Approved artists appear by name. Worker sign-ups are private to members.</p>
+<div class="calendar">
+{% for event in events %}<section class="month">
+<h2>{{ event.event_date|date:"F" }}</h2><p class="date">Third Friday · {{ event.event_date|date:"F j" }}</p>
+{% for slot in event.artist_slots %}<div class="slot"><b>Wall {{ slot.position }}</b>
+{% if slot.display_name %}<span class="filled">{{ slot.display_name }}</span>
+{% elif event.is_closed %}<span class="closed">Closed</span>
+{% else %}<a href="{% url 'gallery_signups:artist_application' %}?month={{ event.id }}">Open — request this wall</a>{% endif %}</div>{% endfor %}
+{% if event.is_full %}<p class="full-status">No openings</p>{% endif %}
+</section>{% empty %}<p>The calendar is not available yet.</p>{% endfor %}
+</div><p class="bottom-cta"><a class="button-link" href="{% url 'gallery_signups:artist_information' %}">Application details and instructions</a></p>
+</main></body></html>
