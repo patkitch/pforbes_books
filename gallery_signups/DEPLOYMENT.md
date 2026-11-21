@@ -4,21 +4,21 @@ This page describes the DigitalOcean settings needed before deploying the guest 
 
 ## Existing Spaces bucket
 
-Use the existing `pforbesbooks-reports` bucket in the `nyc3` region. The app writes new application images beneath:
+Use the existing private `pforbesbooks-reports` bucket in the `nyc3` region. The app reads the existing DigitalOcean environment variables already shown in App Platform:
+
+- `DO_SPACES_BUCKET`
+- `DO_SPACES_KEY`
+- `DO_SPACES_SECRET`
+- `DO_SPACES_REGION`
+- `DO_SPACES_ENDPOINT`
+- `DO_SPACES_USE_HTTPS`
+- `DO_SPACES_ADDRESSING_STYLE` (if present)
+
+The signup app maps these existing names automatically, so there is no need to add duplicate `SPACES_*` credentials. It writes new application images beneath:
 
 `gallery-signups/guest_artist_applications/<year>/...`
 
-The Django storage backend requests signed URLs for images, so the bucket must remain private. Do not enable public read access for the bucket or its objects. The existing report objects are separate from this folder.
-
-Create or use Spaces access keys and set these App Platform environment variables on the `pforbes-books` web service:
-
-- `SPACES_BUCKET_NAME=pforbesbooks-reports`
-- `SPACES_REGION_NAME=nyc3`
-- `SPACES_ENDPOINT_URL=https://nyc3.digitaloceanspaces.com`
-- `SPACES_ACCESS_KEY_ID` (secret)
-- `SPACES_SECRET_ACCESS_KEY` (secret)
-
-Do not put access keys in GitHub, this file, or chat.
+Keep the bucket private. The Django storage backend requests signed URLs for images; do not enable public read access for the bucket or its objects. Existing report objects are separate from this folder. Before deployment, confirm the values above are set on the web service and that the bucket is private.
 
 ## Titan email
 
