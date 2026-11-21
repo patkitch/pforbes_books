@@ -135,6 +135,9 @@ def change_slot(request, slot_id):
     slot = get_object_or_404(
         FeaturedArtistSlot.objects.select_related("event"), pk=slot_id, slot_type__in=["artist", "worker"]
     )
+    if slot.event.is_closed:
+        messages.error(request, "This month is closed for changes. Please contact Patricia.")
+        return redirect("gallery_signups:month", event_id=slot.event_id)
     if slot.guest_application_id or slot.reservation_label:
         messages.error(request, "Please contact Patricia to change this reserved spot.")
         return redirect("gallery_signups:month", event_id=slot.event_id)
@@ -143,6 +146,12 @@ def change_slot(request, slot_id):
         slot = get_object_or_404(
             FeaturedArtistSlot.objects.select_for_update().select_related("event"), pk=slot_id
         )
+        if slot.event.is_closed:
+            messages.error(request, "This month is closed for changes. Please contact Patricia.")
+            return redirect("gallery_signups:month", event_id=slot.event_id)
+        if slot.guest_application_id or slot.reservation_label:
+            messages.error(request, "Please contact Patricia to change this reserved spot.")
+            return redirect("gallery_signups:month", event_id=slot.event_id)
         old_name = slot.artist_name
         if old_name:
             if new_name:
@@ -154,8 +163,6 @@ def change_slot(request, slot_id):
                 slot.save(update_fields=["artist_name", "updated_at"])
                 _record_change(slot, "removed", old_name=old_name)
     return redirect("gallery_signups:month", event_id=slot.event_id)
-
-
 def public_artist_calendar(request, year=2027):
     events = FeaturedArtistEvent.objects.filter(year=year).prefetch_related("slots")
     for event in events:
