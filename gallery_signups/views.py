@@ -157,7 +157,7 @@ def public_artist_calendar(request, year=2027):
     for event in events:
         event.artist_slots = [slot for slot in event.slots.all() if slot.slot_type == "artist"]
         event.open_wall_count = sum(1 for slot in event.artist_slots if slot.is_open)
-        event.is_full = not event.open_wall_count
+        event.is_full = event.is_closed or not event.open_wall_count
     return render(request, "gallery_signups/public_calendar.html", {"events": events, "year": year})
 
 
@@ -221,6 +221,9 @@ def artist_application(request):
 def _application_admin_context(application):
     return {
         "application": application,
+        "preferred_events": FeaturedArtistEvent.objects.filter(
+            pk__in=application.preferred_months
+        ).order_by("event_date"),
         "decision_form": ApplicationDecisionForm(application=application),
     }
 
@@ -229,6 +232,10 @@ def application_list(request):
     if not _admin_allowed(request):
         return redirect("gallery_signups:admin_login")
     applications = GalleryArtistApplication.objects.prefetch_related("images").select_related("selected_event")
+    for application in applications:
+        application.requested_months = FeaturedArtistEvent.objects.filter(
+            pk__in=application.preferred_months
+        ).order_by("event_date")
     return render(request, "gallery_signups/application_list.html", {
         "applications": applications,
         "pending_count": applications.filter(status="pending").count(),
