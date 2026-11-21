@@ -12,7 +12,7 @@
 <p><strong>Email</strong><br>{{ application.email }}</p>
 <p><strong>Phone</strong><br>{{ application.phone }}</p>
 <p><strong>Primary medium</strong><br>{{ application.medium }}</p>
-<p><strong>Walls requested</strong><br>{{ application.wall_count }}</p>
+<p><strong>Walls requested</strong><br>{{ application.wall_count }} — ${{ application.total_cost }} due at hanging</p>
 <p><strong>Preferred months (2027)</strong><br>{% for event in preferred_events %}{{ event.event_date|date:"F Y" }}{% if not forloop.last %}, {% endif %}{% empty %}No available months selected{% endfor %}</p>
 {% if application.artwork_url %}<p><strong>Artwork link</strong><br><a href="{{ application.artwork_url }}">{{ application.artwork_url }}</a></p>{% endif %}
 </div>
