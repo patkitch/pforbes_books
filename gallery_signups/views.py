@@ -252,7 +252,7 @@ def application_list(request):
 
 def application_detail(request, application_id):
     if not _admin_allowed(request):
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     application = get_object_or_404(
         GalleryArtistApplication.objects.prefetch_related("images"), pk=application_id
     )
@@ -357,7 +357,7 @@ def admin_login(request):
             request.session.flush()
             request.session["gallery_admin_id"] = account.pk
             request.session.set_expiry(60 * 60 * 12)
-            return redirect("gallery_signups:manage")
+            return redirect(next_url or reverse("gallery_signups:manage"))
         form.add_error(None, "The username or password was not recognized.")
     return render(request, "gallery_signups/admin_login.html", {"form": form, "next": next_url})
 
@@ -370,7 +370,7 @@ def admin_logout(request):
 
 def manage(request):
     if not _admin_allowed(request):
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     events = FeaturedArtistEvent.objects.filter(year=2027).prefetch_related("slots")
     return render(request, "gallery_signups/manage.html", {
         "events": events,
@@ -381,7 +381,7 @@ def manage(request):
 
 def signup_history(request):
     if not _admin_allowed(request):
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     changes = GallerySignupChange.objects.all()[:500]
     return render(request, "gallery_signups/signup_history.html", {"changes": changes})
 
@@ -429,7 +429,7 @@ def save_event(request, event_id):
 
 def owner_settings(request):
     if not request.user.is_authenticated or not request.user.is_superuser:
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     form = MemberSettingsForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         settings_row = GallerySettings.current()
@@ -441,7 +441,7 @@ def owner_settings(request):
 
 def owner_administrators(request):
     if not request.user.is_authenticated or not request.user.is_superuser:
-        return redirect("gallery_signups:admin_login")
+        return redirect_to_login(request.get_full_path(), login_url=reverse("gallery_signups:admin_login"))
     form, message = AdministratorForm(), ""
     if request.method == "POST":
         action = request.POST.get("action")
