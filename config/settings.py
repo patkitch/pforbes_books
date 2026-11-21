@@ -60,9 +60,22 @@ GALLERY_ADMIN_EMAIL = env("GALLERY_ADMIN_EMAIL", default="patriciaforbes@pforbes
 
 # App Platform filesystems are temporary. Store application images in a private
 # Spaces bucket when the storage environment variables are configured.
-SPACES_BUCKET_NAME = env("SPACES_BUCKET_NAME", default="")
-SPACES_ACCESS_KEY_ID = env("SPACES_ACCESS_KEY_ID", default="")
-SPACES_SECRET_ACCESS_KEY = env("SPACES_SECRET_ACCESS_KEY", default="")
+# Reuse the DO_SPACES_* variables already configured for this app; explicit
+# SPACES_* values can override them if a separate storage setup is ever needed.
+SPACES_BUCKET_NAME = env("SPACES_BUCKET_NAME", default=env("DO_SPACES_BUCKET", default=""))
+SPACES_ACCESS_KEY_ID = env("SPACES_ACCESS_KEY_ID", default=env("DO_SPACES_KEY", default=""))
+SPACES_SECRET_ACCESS_KEY = env("SPACES_SECRET_ACCESS_KEY", default=env("DO_SPACES_SECRET", default=""))
+SPACES_REGION_NAME = env("SPACES_REGION_NAME", default=env("DO_SPACES_REGION", default="nyc3"))
+SPACES_ENDPOINT_URL = env("SPACES_ENDPOINT_URL", default=env("DO_SPACES_ENDPOINT", default=""))
+SPACES_USE_HTTPS = env.bool("DO_SPACES_USE_HTTPS", default=True)
+if not SPACES_ENDPOINT_URL:
+    SPACES_ENDPOINT_URL = f"{'https' if SPACES_USE_HTTPS else 'http'}://{SPACES_REGION_NAME}.digitaloceanspaces.com"
+elif not SPACES_ENDPOINT_URL.startswith(("http://", "https://")):
+    SPACES_ENDPOINT_URL = f"{'https' if SPACES_USE_HTTPS else 'http'}://{SPACES_ENDPOINT_URL}"
+SPACES_ADDRESSING_STYLE = env(
+    "SPACES_ADDRESSING_STYLE",
+    default=env("DO_SPACES_ADDRESSING_STYLE", default="virtual"),
+)
 SPACES_CONFIGURED = bool(SPACES_BUCKET_NAME and SPACES_ACCESS_KEY_ID and SPACES_SECRET_ACCESS_KEY)
 if SPACES_CONFIGURED:
     INSTALLED_APPS.append("storages")
@@ -71,8 +84,8 @@ if SPACES_CONFIGURED:
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
                 "bucket_name": SPACES_BUCKET_NAME,
-                "region_name": env("SPACES_REGION_NAME", default="nyc3"),
-                "endpoint_url": env("SPACES_ENDPOINT_URL", default="https://nyc3.digitaloceanspaces.com"),
+                "region_name": SPACES_REGION_NAME,
+                "endpoint_url": SPACES_ENDPOINT_URL,
                 "access_key": SPACES_ACCESS_KEY_ID,
                 "secret_key": SPACES_SECRET_ACCESS_KEY,
                 "location": "gallery-signups",
@@ -80,7 +93,7 @@ if SPACES_CONFIGURED:
                 "querystring_auth": True,
                 "querystring_expire": 3600,
                 "file_overwrite": False,
-                "addressing_style": "virtual",
+                "addressing_style": SPACES_ADDRESSING_STYLE,
                 "signature_version": "s3v4",
             },
         },
