@@ -8,17 +8,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="featuredartistslot",
-            name="guest_application",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                related_name="assigned_slots",
-                to="gallery_signups.galleryartistapplication",
-            ),
-        ),
         migrations.CreateModel(
             name="GallerySignupChange",
             fields=[
@@ -75,5 +64,16 @@ class Migration(migrations.Migration):
                 )),
             ],
             options={"ordering": ["id"]},
+        ),
+        migrations.AddField(
+            model_name="featuredartistslot",
+            name="guest_application",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="assigned_slots",
+                to="gallery_signups.galleryartistapplication",
+            ),
         ),
     ]
