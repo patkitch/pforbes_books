@@ -144,6 +144,10 @@ class GalleryArtistApplication(models.Model):
     def __str__(self):
         return f"{self.artist_name} — {self.get_status_display()}"
 
+    @property
+    def total_cost(self):
+        return self.wall_count * 100
+
 
 class GalleryArtistApplicationImage(models.Model):
     application = models.ForeignKey(
