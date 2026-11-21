@@ -4,6 +4,6 @@
 <main><p><a href="{% url 'gallery_signups:manage' %}">← Administration</a></p>
 {% if pending_count %}<p class="notice">{{ pending_count }} application{{ pending_count|pluralize }} awaiting review.</p>{% endif %}
 <div class="table-wrap"><table><thead><tr><th>Received</th><th>Artist</th><th>Medium</th><th>Walls</th><th>Status</th><th>Preferred months</th><th></th></tr></thead><tbody>
-{% for application in applications %}<tr><td>{{ application.created_at|date:"M j, Y" }}</td><td>{{ application.artist_name }}</td><td>{{ application.medium }}</td><td>{{ application.wall_count }}</td><td>{{ application.get_status_display }}</td><td>{% for event_id in application.preferred_months %}{{ event_id }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td><a href="{% url 'gallery_signups:application_detail' application.id %}">Review</a></td></tr>
+{% for application in applications %}<tr><td>{{ application.created_at|date:"M j, Y" }}</td><td>{{ application.artist_name }}</td><td>{{ application.medium }}</td><td>{{ application.wall_count }}</td><td>{{ application.get_status_display }}</td><td>{% for month in application.requested_months %}{{ month.event_date|date:"F Y" }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td><a href="{% url 'gallery_signups:application_detail' application.id %}">Review</a></td></tr>
 {% empty %}<tr><td colspan="7">No applications received.</td></tr>{% endfor %}
 </tbody></table></div></main></body></html>
