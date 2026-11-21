@@ -267,6 +267,31 @@ def application_detail(request, application_id):
 
 
 @require_POST
+def delete_application(request, application_id):
+    if not _admin_allowed(request):
+        return HttpResponseForbidden()
+    application = get_object_or_404(
+        GalleryArtistApplication, pk=application_id, status__in=["pending", "not_selected"]
+    )
+    # Remove uploaded objects before deleting the record. If storage deletion
+    # fails, keep the application so an administrator can retry.
+    for artwork in application.images.all():
+        if artwork.image:
+            try:
+                artwork.image.storage.delete(artwork.image.name)
+            except Exception:
+                logger.exception("Could not delete an uploaded application image.")
+                messages.error(
+                    request,
+                    "The application was not deleted because an uploaded image could not be removed. Please retry or contact support.",
+                )
+                return redirect("gallery_signups:application_detail", application_id=application.pk)
+    application.delete()
+    messages.success(request, "The application and its uploaded images were deleted.")
+    return redirect("gallery_signups:application_list")
+
+
+@require_POST
 def approve_application(request, application_id):
     if not _admin_allowed(request):
         return HttpResponseForbidden()
