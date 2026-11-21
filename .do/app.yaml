@@ -11,9 +11,9 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         scope: RUN_AND_BUILD_TIME
         value: config.settings
-      - key: DJANGO_DEBUG
+      - key: DEBUG
         scope: RUN_AND_BUILD_TIME
-        value: "True"   # just to get first deploy green; we’ll turn off later
+        value: "False"
       - key: ALLOWED_HOSTS
         scope: RUN_AND_BUILD_TIME
         value: "*"
