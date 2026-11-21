@@ -3,7 +3,7 @@ from . import views
 
 app_name = "gallery_signups"
 urlpatterns = [
-    path("", views.member_login, name="calendar"),
+    path("", views.calendar, name="calendar"),
     path("member-login/", views.member_login, name="member_login"),
     path("member-logout/", views.member_logout, name="member_logout"),
     path("claim/<int:slot_id>/", views.claim_slot, name="claim_slot"),
