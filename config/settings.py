@@ -46,6 +46,46 @@ INSTALLED_APPS = [
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Email is configured through DigitalOcean environment variables. Titan supports
+# STARTTLS on port 587; credentials are never stored in source control.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="patriciaforbes@pforbesart.com")
+GALLERY_ADMIN_EMAIL = env("GALLERY_ADMIN_EMAIL", default="patriciaforbes@pforbesart.com")
+
+# App Platform filesystems are temporary. Store application images in a private
+# Spaces bucket when the storage environment variables are configured.
+SPACES_BUCKET_NAME = env("SPACES_BUCKET_NAME", default="")
+if SPACES_BUCKET_NAME:
+    INSTALLED_APPS.append("storages")
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": SPACES_BUCKET_NAME,
+                "region_name": env("SPACES_REGION_NAME", default="nyc3"),
+                "endpoint_url": env("SPACES_ENDPOINT_URL", default="https://nyc3.digitaloceanspaces.com"),
+                "access_key": env("SPACES_ACCESS_KEY_ID", default=""),
+                "secret_key": env("SPACES_SECRET_ACCESS_KEY", default=""),
+                "location": "gallery-signups",
+                "default_acl": None,
+                "querystring_auth": True,
+                "querystring_expire": 3600,
+                "file_overwrite": False,
+                "addressing_style": "virtual",
+                "signature_version": "s3v4",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
