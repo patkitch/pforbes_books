@@ -40,11 +40,13 @@ def _admin_allowed(request):
 def _send_application_email(subject, body, to):
     if not settings.EMAIL_HOST or not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
         logger.warning("Artist application email not sent because SMTP is not configured.")
-        return
+        return False
     try:
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to], fail_silently=False)
+        return True
     except Exception:
         logger.exception("Could not send artist application email.")
+        return False
 
 
 def _record_change(slot, action, old_name="", new_name=""):
@@ -200,13 +202,13 @@ def artist_application(request):
             event.strftime("%B %Y") for event in
             FeaturedArtistEvent.objects.filter(pk__in=application.preferred_months).values_list("event_date", flat=True)
         )
-        _send_application_email(
+        admin_notified = _send_application_email(
             f"New outside artist application #{application.pk}",
             f"{application.artist_name} submitted an application for {application.wall_count} wall(s). "
             f"Preferred months: {months}. Review it in the private signup admin: {admin_link}",
             getattr(settings, "GALLERY_ADMIN_EMAIL", "patriciaforbes@pforbesart.com"),
         )
-        _send_application_email(
+        applicant_notified = _send_application_email(
             "Images Art Gallery received your Featured Artist request",
             f"Hello {application.artist_name},\n\nWe received your request for a guest Featured Artist wall. "
             "Your request is pending gallery review; submitting an application does not reserve a wall. "
@@ -214,7 +216,11 @@ def artist_application(request):
             "Images Art Gallery",
             application.email,
         )
-        return render(request, "gallery_signups/application_received.html", {"application": application})
+        return render(request, "gallery_signups/application_received.html", {
+            "application": application,
+            "email_sent": applicant_notified,
+            "admin_notified": admin_notified,
+        })
     return render(request, "gallery_signups/artist_application.html", {"form": form})
 
 
@@ -261,11 +267,13 @@ def approve_application(request, application_id):
         messages.error(request, "Choose one of the applicant's requested months.")
         return redirect("gallery_signups:application_detail", application_id=application.pk)
 
-    event = form.cleaned_data["selected_event"]
-    assigned = []
+    selected_event_id = form.cleaned_data["selected_event"].pk
     with transaction.atomic():
         application = get_object_or_404(
             GalleryArtistApplication.objects.select_for_update(), pk=application_id, status="pending"
+        )
+        event = get_object_or_404(
+            FeaturedArtistEvent.objects.select_for_update(), pk=selected_event_id
         )
         slots = list(
             FeaturedArtistSlot.objects.select_for_update()
@@ -285,20 +293,22 @@ def approve_application(request, application_id):
                 action="guest_approved", old_name=previous,
                 new_name=application.artist_name,
             )
-            assigned.append(slot)
         application.status = "approved"
         application.selected_event = event
         application.admin_note = form.cleaned_data["admin_note"].strip()
         application.save(update_fields=["status", "selected_event", "admin_note", "updated_at"])
 
-    _send_application_email(
+    email_sent = _send_application_email(
         "Your Images Art Gallery Featured Artist request was approved",
         f"Hello {application.artist_name},\n\nYour request for {event:%B %Y} has been approved for "
         f"{application.wall_count} wall(s). The gallery will coordinate contract signing and hanging details with you. "
         "Payment remains due when the artwork is hung, as stated in the existing contract.\n\nImages Art Gallery",
         application.email,
     )
-    messages.success(request, f"Application approved for {event:%B %Y}.")
+    if email_sent:
+        messages.success(request, f"Application approved for {event:%B %Y}; the artist was emailed.")
+    else:
+        messages.warning(request, f"Application approved for {event:%B %Y}, but the artist email was not sent. Please contact them directly.")
     return redirect("gallery_signups:application_detail", application_id=application.pk)
 
 
@@ -310,14 +320,17 @@ def decline_application(request, application_id):
     application.status = "not_selected"
     application.admin_note = request.POST.get("admin_note", "").strip()
     application.save(update_fields=["status", "admin_note", "updated_at"])
-    _send_application_email(
+    email_sent = _send_application_email(
         "Update on your Images Art Gallery Featured Artist request",
         f"Hello {application.artist_name},\n\nThank you for your interest. We are unable to offer a wall "
         "from the months requested at this time. Please contact the gallery if you would like to be considered again.\n\n"
         "Images Art Gallery",
         application.email,
     )
-    messages.success(request, "Application marked not selected; the artist was emailed.")
+    if email_sent:
+        messages.success(request, "Application marked not selected; the artist was emailed.")
+    else:
+        messages.warning(request, "Application marked not selected, but the email was not sent. Please contact the artist directly.")
     return redirect("gallery_signups:application_detail", application_id=application.pk)
 
 
