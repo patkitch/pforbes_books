@@ -23,5 +23,6 @@ urlpatterns = [
     path("manage/applications/", views.application_list, name="application_list"),
     path("manage/applications/<int:application_id>/", views.application_detail, name="application_detail"),
     path("manage/applications/<int:application_id>/approve/", views.approve_application, name="approve_application"),
+    path("manage/applications/<int:application_id>/delete/", views.delete_application, name="delete_application"),
     path("manage/applications/<int:application_id>/decline/", views.decline_application, name="decline_application"),
 ]
