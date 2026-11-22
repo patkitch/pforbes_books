@@ -8,7 +8,7 @@
 <body>
 <header><div><h1>Images Art Gallery</h1><p>Member sign-up calendar · {{ year }}</p></div><a href="{% url 'gallery_signups:member_logout' %}">Sign out</a></header>
 <main>
-  <p class="intro">Year at a glance. Select a month to sign up or change a spot.</p>
+  <p class="intro">Year at a glance. Select a month to sign up or change a spot. Each working member must choose three different worker months during 2027. June and July still need four workers even though their Featured Artist walls are reserved for special exhibits.</p>
   <div class="calendar">
   {% for event in events %}
     <section class="month">

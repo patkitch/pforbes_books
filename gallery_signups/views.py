@@ -1,4 +1,6 @@
+import calendar
 import logging
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.contrib import messages
@@ -24,6 +26,26 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _third_friday(year, month):
+    weeks = calendar.monthcalendar(year, month)
+    fridays = [week[calendar.FRIDAY] for week in weeks if week[calendar.FRIDAY]]
+    return date(year, month, fridays[2])
+
+
+def _show_schedule(event_date):
+    hanging_date = event_date - timedelta(days=4)
+    if event_date.month == 12:
+        next_year, next_month = event_date.year + 1, 1
+    else:
+        next_year, next_month = event_date.year, event_date.month + 1
+    removal_date = _third_friday(next_year, next_month) - timedelta(days=5)
+    return hanging_date, removal_date
+
+
+def _friendly_date(day):
+    return f"{day:%A, %B} {day.day}, {day.year}"
 
 
 def _member_allowed(request):
@@ -71,7 +93,7 @@ def member_login(request):
             request.session["gallery_member_access"] = True
             request.session.set_expiry(60 * 60 * 24 * 14)
             return redirect("gallery_signups:calendar")
-        form.add_error("password", "That password did not match. Please check with Patricia.")
+        form.add_error("password", "That password did not match. Please check with Pat.")
     return render(request, "gallery_signups/member_login.html", {
         "form": form, "configured": bool(settings_row.member_password_hash)
     })
@@ -136,10 +158,10 @@ def change_slot(request, slot_id):
         FeaturedArtistSlot.objects.select_related("event"), pk=slot_id, slot_type__in=["artist", "worker"]
     )
     if slot.event.is_closed:
-        messages.error(request, "This month is closed for changes. Please contact Patricia.")
+        messages.error(request, "This month is closed for changes. Please contact Pat.")
         return redirect("gallery_signups:month", event_id=slot.event_id)
     if slot.guest_application_id or slot.reservation_label:
-        messages.error(request, "Please contact Patricia to change this reserved spot.")
+        messages.error(request, "Please contact Pat to change this reserved spot.")
         return redirect("gallery_signups:month", event_id=slot.event_id)
     new_name = request.POST.get("name", "").strip()[:120]
     with transaction.atomic():
@@ -147,10 +169,10 @@ def change_slot(request, slot_id):
             FeaturedArtistSlot.objects.select_for_update().select_related("event"), pk=slot_id
         )
         if slot.event.is_closed:
-            messages.error(request, "This month is closed for changes. Please contact Patricia.")
+            messages.error(request, "This month is closed for changes. Please contact Pat.")
             return redirect("gallery_signups:month", event_id=slot.event_id)
         if slot.guest_application_id or slot.reservation_label:
-            messages.error(request, "Please contact Patricia to change this reserved spot.")
+            messages.error(request, "Please contact Pat to change this reserved spot.")
             return redirect("gallery_signups:month", event_id=slot.event_id)
         old_name = slot.artist_name
         if old_name:
@@ -348,17 +370,33 @@ def approve_application(request, application_id):
         application.admin_note = form.cleaned_data["admin_note"].strip()
         application.save(update_fields=["status", "selected_event", "admin_note", "updated_at"])
 
+    event_month = event.event_date.strftime("%B %Y")
+    hanging_date, removal_date = _show_schedule(event.event_date)
     email_sent = _send_application_email(
-        "Your Images Art Gallery Featured Artist request was approved",
-        f"Hello {application.artist_name},\n\nYour request for {event:%B %Y} has been approved for "
-        f"{application.wall_count} wall(s). The gallery will coordinate contract signing and hanging details with you. "
-        "Payment remains due when the artwork is hung, as stated in the existing contract.\n\nImages Art Gallery",
+        f"Your Images Art Gallery Guest Featured Artist application was approved — {event_month}",
+        f"Hello {application.artist_name},\n\n"
+        f"Your Guest Featured Artist application has been approved for {event_month} for "
+        f"{application.wall_count} wall(s).\n\n"
+        "Your show schedule:\n"
+        f"• Hang original artwork: {_friendly_date(hanging_date)} at 11:00 a.m.\n"
+        f"• Third Friday opening reception: {_friendly_date(event.event_date)}, 5:00–8:00 p.m.\n"
+        f"• Remove original artwork: {_friendly_date(removal_date)} at 11:00 a.m.\n\n"
+        "Images Art Gallery\n"
+        "7320 W 80th Street\n"
+        "Overland Park, KS 66204\n\n"
+        f"The cost is $100 per wall (${application.total_cost} total), payable when your artwork is hung. "
+        "The gallery's existing contract and terms apply.\n\n"
+        "Questions? Contact:\n"
+        "Pat Forbes\n"
+        "patriciaforbes@pforbesart.com\n"
+        "253-266-6219\n\n"
+        "Images Art Gallery",
         application.email,
     )
     if email_sent:
-        messages.success(request, f"Application approved for {event:%B %Y}; the artist was emailed.")
+        messages.success(request, f"Application approved for {event_month}; the artist was emailed.")
     else:
-        messages.warning(request, f"Application approved for {event:%B %Y}, but the artist email was not sent. Please contact them directly.")
+        messages.warning(request, f"Application approved for {event_month}, but the artist email was not sent. Please contact them directly.")
     return redirect("gallery_signups:application_detail", application_id=application.pk)
 
 
