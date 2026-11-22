@@ -23,8 +23,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default=get_random_secret_key())
 DEBUG = env.bool("DEBUG", default=False)
-ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "localhost", "127.0.0.1", "0.0.0.0"]
-CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app"]
+ALLOWED_HOSTS = ["pforbes-books-uuad7.ondigitalocean.app", "ops.pforbesart.com", "localhost", "127.0.0.1", "0.0.0.0"]
+CSRF_TRUSTED_ORIGINS = ["https://pforbes-books-uuad7.ondigitalocean.app", "https://ops.pforbesart.com"]
 
 
 
