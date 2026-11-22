@@ -384,7 +384,7 @@ def approve_application(request, application_id):
         "Images Art Gallery\n"
         "7320 W 80th Street\n"
         "Overland Park, KS 66204\n\n"
-        f"The cost is $100 per wall ($\${application.total_cost} total), payable when your artwork is hung. "
+        f"The cost is $100 per wall ($${application.total_cost} total), payable when your artwork is hung. "
         "The gallery's existing contract and terms apply.\n\n"
         "Questions? Contact:\n"
         "Pat Forbes\n"
