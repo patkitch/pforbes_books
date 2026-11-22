@@ -4,6 +4,12 @@
 <main>
 {% if is_owner %}<nav class="adminnav"><a href="{% url 'gallery_signups:owner_settings' %}">Member password</a><a href="{% url 'gallery_signups:owner_administrators' %}">Administrators</a></nav>{% endif %}
 <section class="card admin-shortcuts">
+<h2>Guest artist applications</h2>
+<p>Review submitted requests here. Administrator sign-in is required; members do not need to use the guest application login.</p>
+<a class="button-link" href="{% url 'gallery_signups:application_list' %}">Review applications{% if pending_applications %} ({{ pending_applications }} pending){% endif %}</a>
+</section>
+<nav class="adminnav"><a href="{% url 'gallery_signups:signup_history' %}">Signup change history</a></nav>
+<section class="card admin-shortcuts">
 <h2>Signup page links</h2>
 <p>Public pages for outside artists:</p>
 <nav class="adminnav">
@@ -14,7 +20,6 @@
 <p>Member sign-up:</p>
 <nav class="adminnav"><a href="{% url 'gallery_signups:member_login' %}">Member sign-in and calendar</a></nav>
 </section>
-<nav class="adminnav"><a href="{% url 'gallery_signups:application_list' %}">Outside artist applications{% if pending_applications %} ({{ pending_applications }} pending){% endif %}</a><a href="{% url 'gallery_signups:signup_history' %}">Signup change history</a></nav>
 {% for event in events %}<section class="admin-month">
 <form class="event-edit" method="post" action="{% url 'gallery_signups:save_event' event.id %}">{% csrf_token %}<h2>{{ event.event_date|date:"F j, Y" }}</h2><input name="title" value="{{ event.title }}" placeholder="Optional event note"><label><input type="checkbox" name="is_closed" value="on" {% if event.is_closed %}checked{% endif %}> Close this month</label><button>Save month</button></form>
 <div class="admin-slots">{% for slot in event.slots.all %}<form class="card" method="post" action="{% url 'gallery_signups:save_slot' slot.id %}">{% csrf_token %}<h3>{{ slot.slot_label }}</h3><label>Name<input name="artist_name" value="{{ slot.artist_name }}" maxlength="120"></label><label>Reserved for<input name="reservation_label" value="{{ slot.reservation_label }}" maxlength="120"></label><button>Save spot</button><button class="secondary" name="action" value="clear">Clear spot</button></form>{% endfor %}</div>
