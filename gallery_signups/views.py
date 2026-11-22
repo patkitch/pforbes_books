@@ -239,6 +239,13 @@ def artist_application(request):
             "email_sent": applicant_notified,
             "admin_notified": admin_notified,
         })
+    if request.method == "POST" and form.errors:
+        logger.warning(
+            "Guest artist application form validation failed; uploaded file fields=%s, image count=%d, invalid fields=%s",
+            sorted(request.FILES.keys()),
+            len(request.FILES.getlist("images")),
+            sorted(form.errors.keys()),
+        )
     return render(request, "gallery_signups/artist_application.html", {"form": form})
 
 
