@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Manage Featured Artist Sign-ups</title><link rel="stylesheet" href="/static/gallery_signups/gallery.css"></head>
 <body><header><div><h1>Featured Artist Sign-ups</h1><p>Private administration · 2027</p></div><a href="{% url 'gallery_signups:admin_logout' %}">Sign out</a></header>
 <main>
-{% if is_owner %}<nav class="adminnav"><a href="{% url 'gallery_signups:owner_settings' %}">Member password</a><a href="{% url 'gallery_signups:owner_administrators' %}">Administrators</a></nav>{% endif %}
+{% if is_owner %}<nav class="adminnav"><a href="{% url 'admin:index' %}">← Back to P Forbes Admin</a><a href="{% url 'gallery_signups:owner_settings' %}">Member password</a><a href="{% url 'gallery_signups:owner_administrators' %}">Administrators</a></nav>{% endif %}
 <section class="card admin-shortcuts">
 <h2>Guest artist applications</h2>
 <p>Review submitted requests here. Administrator sign-in is required; members do not need to use the guest application login.</p>
