@@ -71,7 +71,7 @@ class GalleryArtistApplicationForm(forms.Form):
     email = forms.EmailField(label="Email")
     phone = forms.CharField(label="Phone", max_length=40)
     medium = forms.CharField(label="Primary medium", max_length=120)
-    artwork_url = forms.URLField(label="Link to your artwork", required=False)
+    artwork_url = forms.URLField(label="Link to your original artwork", required=False)
     wall_count = forms.ChoiceField(
         label="Number of walls requested",
         choices=[("1", "One wall — $100"), ("2", "Two walls — $200")],
@@ -83,9 +83,9 @@ class GalleryArtistApplicationForm(forms.Form):
         help_text="Select every month you would be willing to exhibit in.",
     )
     images = MultiImageField(
-        label="Or upload up to five artwork images",
+        label="Or upload up to five images of your original artwork",
         required=False,
-        help_text="Accepted: image files up to 5 MB each. Your images are reviewed privately by the gallery.",
+        help_text="Each image must be 5 MB or smaller. Uploaded images are reviewed privately by the gallery.",
     )
 
     def __init__(self, *args, **kwargs):
@@ -124,7 +124,7 @@ class GalleryArtistApplicationForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get("artwork_url") and not cleaned.get("images"):
-            raise forms.ValidationError("Please provide an artwork link or upload at least one image.")
+            raise forms.ValidationError("Please provide a link to your original artwork or upload at least one image.")
         if not cleaned.get("preferred_months"):
             self.add_error("preferred_months", "Select at least one available month.")
         return cleaned
