@@ -102,6 +102,7 @@ class Receipt(models.Model):
         ("refund", "Refund documentation"),
         ("other", "Other document"),
     )
+    woo_snapshot = models.JSONField(default=dict, blank=True, editable=False)
     title = models.CharField(max_length=200)
     receipt_type = models.CharField(max_length=20, choices=TYPES)
     date = models.DateField()
