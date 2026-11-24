@@ -151,6 +151,8 @@ def receipts(request):
 @staff_member_required(login_url="/admin/login/")
 def receipt_edit(request, pk=None):
     receipt = get_object_or_404(Receipt, pk=pk) if pk else None
+    if receipt and receipt.woo_snapshot:
+        return redirect("accounting:receipt_detail", pk=receipt.pk)
     initial = {}
     if request.method != "POST" and not receipt:
         if request.GET.get("vendor", "").isdigit():
@@ -248,8 +250,13 @@ def receipt_detail(request, pk):
     receipt = get_object_or_404(
         Receipt.objects.select_related("vendor", "customer"), pk=pk
     )
+    snapshot = receipt.woo_snapshot or {}
+    metadata = {m.get("key"): m.get("value") for m in snapshot.get("meta_data", [])
+                if isinstance(m, dict) and isinstance(m.get("key"), str)}
     return render(request, "accounting_contacts/receipt_detail.html", {
-        "receipt": receipt,
+        "receipt": receipt, "snapshot": snapshot,
+        "stripe_fee": metadata.get("_stripe_fee", metadata.get("Stripe Fee")),
+        "stripe_net": metadata.get("_stripe_net", metadata.get("Stripe Payout")),
     })
 
 
