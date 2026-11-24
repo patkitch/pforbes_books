@@ -80,3 +80,22 @@ def woo_action(request, pk):
     else:
         return HttpResponseBadRequest("Invalid review action.")
     return redirect("accounting:woo_inbox")
+
+
+@staff_member_required(login_url="/admin/login/")
+def woo_detail(request, pk):
+    record = get_object_or_404(WooOrderImport, pk=pk)
+    payload = record.payload or {}
+    metadata = {m.get("key"): m.get("value") for m in payload.get("meta_data", [])
+                if isinstance(m, dict) and isinstance(m.get("key"), str)}
+    def first(*keys):
+        for key in keys:
+            value = metadata.get(key)
+            if value is not None and value != "":
+                return value
+        return None
+    return render(request, "accounting_imports/woo_detail.html", {
+        "order": record, "data": payload,
+        "stripe_fee": first("_stripe_fee", "Stripe Fee"),
+        "stripe_net": first("_stripe_net", "Stripe Payout"),
+    })
