@@ -131,10 +131,20 @@ def create_reviewed_receipt(record):
             name = str(line.get("name") or "Unspecified item")[:200]
             quantity = int(line.get("quantity", 1))
             amount = _money(line.get("total", "0"), "item total")
+            option = ""
+            for meta in line.get("meta_data") or []:
+                if not isinstance(meta, dict):
+                    continue
+                key = str(meta.get("display_key") or meta.get("key") or "").lower().replace("_", " ").replace("-", " ")
+                if key in ("print option", "pa print option"):
+                    option = str(meta.get("display_value") or meta.get("value") or "")[:80]
+                    break
+            label = name.casefold()
+            kind = "print" if option or "giclée" in label or "giclee" in label or "fine art print" in label else "original" if "original artwork" in label or "original painting" in label else "other"
             product = ReceiptItem(
                 receipt=receipt, position=position,
                 artwork_title=name,
-                item_type="other", quantity=quantity,
+                item_type=kind, size=option, quantity=quantity,
                 unit_price=(amount / quantity).quantize(Decimal("0.01")),
             )
             product.full_clean()
