@@ -13,6 +13,20 @@ from django.db import transaction
 from .models import Customer, Receipt
 
 
+def receipt_snapshot(order):
+    # Explicit allowlist: do not copy IP addresses or unrelated order metadata.
+    fields = ('id', 'date_created', 'date_paid', 'date_paid_gmt', 'currency',
+              'total', 'total_tax', 'shipping_total', 'discount_total',
+              'payment_method_title', 'payment_method', 'transaction_id',
+              'billing', 'shipping', 'line_items', 'shipping_lines', 'fee_lines',
+              'coupon_lines', 'customer_note')
+    result = {key: order[key] for key in fields if key in order}
+    result['meta_data'] = [m for m in (order.get('meta_data') or [])
+                           if isinstance(m, dict) and m.get('key') in
+                           ('_stripe_fee', '_stripe_net', 'Stripe Fee', 'Stripe Payout')]
+    return result
+
+
 def _name(billing, order_id):
     first = str(billing.get("first_name") or "").strip()
     last = str(billing.get("last_name") or "").strip()
@@ -25,7 +39,7 @@ def stage_woo_order_receipt(order):
     """Create/match customer and order receipt; never make a journal entry.
 
     Registered customers are matched by WooCommerce customer ID. Guests are
-    matched only by the exact previously-imported order ID, not by name/email.
+    matched by a unique case-insensitive billing email when available.
     """
     try:
         order_id = int(order["id"])
@@ -71,14 +85,17 @@ def stage_woo_order_receipt(order):
             woo_customer_id=customer_id, defaults=values
         )
     else:
-        # Guest checkouts lack reliable identity; keep distinct customers per
-        # order rather than wrongly merging unrelated people with similar names.
-        customer = Customer.objects.create(**values)
+        email = values["email"].strip()
+        matches = list(Customer.objects.select_for_update().filter(email__iexact=email)[:2]) if email else []
+        if len(matches) > 1 or (matches and not matches[0].is_active):
+            raise ValidationError("Customer email has ambiguous or inactive matches. Review the customer directory before creating this receipt.")
+        customer = matches[0] if matches else Customer.objects.create(**values)
     receipt = Receipt(
         title=f"WooCommerce order #{order_id}",
         receipt_type="sale", date=order_date, amount=amount,
         customer=customer, source="woocommerce", source_reference=reference,
         notes="Imported order metadata only; no journal entry has been posted.",
+        woo_snapshot=receipt_snapshot(order),
     )
     receipt.full_clean()
     receipt.save()
