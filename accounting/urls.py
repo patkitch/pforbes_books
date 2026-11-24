@@ -13,6 +13,7 @@ urlpatterns = [
     path("imports/preview/", import_preview.preview, name="import_preview"),
     path("imports/inbox/", import_inbox_views.inbox, name="import_inbox"),
     path("imports/woocommerce/", woo_views.woo_inbox, name="woo_inbox"),
+    path("imports/woocommerce/<int:pk>/", woo_views.woo_detail, name="woo_detail"),
     path("imports/woocommerce/<int:pk>/action/", woo_views.woo_action, name="woo_action"),
     path("imports/rows/<int:pk>/status/", import_inbox_views.change_status, name="import_status"),
     path("sales-tax/sales/new/", sales_tax_sales.sale_new, name="sales_tax_sale_new"),
