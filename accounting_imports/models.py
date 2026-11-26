@@ -7,6 +7,9 @@ class ImportBatch(models.Model):
     account_id = models.PositiveBigIntegerField()
     filename = models.CharField(max_length=255)
     statement_summary = models.JSONField(default=dict, blank=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="undone_import_batches")
+    undone_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True
