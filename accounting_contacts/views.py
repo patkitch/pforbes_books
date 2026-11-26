@@ -151,7 +151,7 @@ def receipts(request):
 @staff_member_required(login_url="/admin/login/")
 def receipt_edit(request, pk=None):
     receipt = get_object_or_404(Receipt, pk=pk) if pk else None
-    if receipt and receipt.woo_snapshot:
+    if receipt and (receipt.woo_snapshot or receipt.source == "bank_document"):
         return redirect("accounting:receipt_detail", pk=receipt.pk)
     initial = {}
     if request.method != "POST" and not receipt:
