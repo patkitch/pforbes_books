@@ -19,6 +19,8 @@ def _fingerprint(row):
         row["description"].strip().casefold(),
         f'{row["amount"]:.2f}',
     ))
+    if row.get("source_format") == "boa_card" and row.get("reference"):
+        value += "|boa_card|" + row["reference"]
     return sha256(value.encode("utf-8")).hexdigest()
 
 
@@ -27,6 +29,7 @@ def stage_rows(account, filename, rows, actor=None):
     """Deduplicate per account while retaining legitimate identical rows in one statement."""
     batch = ImportBatch.objects.create(
         account_id=account.pk, filename=filename[:255], created_by=actor,
+        statement_summary=getattr(rows, "summary", {}),
     )
     occurrences = Counter()
     added = skipped = 0
@@ -42,6 +45,7 @@ def stage_rows(account, filename, rows, actor=None):
                 "transaction_date": row["date"],
                 "description": row["description"],
                 "amount": row["amount"],
+                "source_details": {k: row[k] for k in ("reference", "merchant_address", "running_balance", "source_format") if k in row},
             },
         )
         if created:
@@ -65,7 +69,7 @@ def inbox(request):
             _, added, skipped = stage_rows(
                 form.cleaned_data["account"], upload.name, rows, request.user
             )
-            result = {"added": added, "skipped": skipped}
+            result = {"added": added, "skipped": skipped, "summary": getattr(rows, "summary", {})}
             form = ImportPreviewForm()
     accounts = Account.objects.filter(pk__in=ImportRow.objects.values("account_id"))
     names = {account.pk: str(account) for account in accounts}
