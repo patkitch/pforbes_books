@@ -30,7 +30,7 @@ class ImportPreviewForm(forms.Form):
     )
     file = forms.FileField(
         label="Bank or credit card CSV file",
-        help_text="Columns: Date, Description, Amount; or Date, Description, Debit, Credit. CSV only, up to 1 MB and 1,000 transactions.",
+        help_text="Accepts original Bank of America checking, savings and credit card CSV files, or standard Date, Description, Amount CSV. Up to 1 MB and 1,000 transactions.",
     )
 
     def __init__(self, *args, **kwargs):
@@ -69,6 +69,14 @@ def parse_csv_preview(raw):
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ValueError("CSV must be saved as UTF-8.") from exc
+    source = list(csv.reader(io.StringIO(text)))
+    if not source:
+        raise ValueError("CSV is missing column headers.")
+    header = [c.strip().casefold() for c in source[0]]
+    if header == ["posted date", "reference number", "payee", "address", "amount"]:
+        return _parse_boa_card(source)
+    if header == ["description", "", "summary amt."]:
+        return _parse_boa_bank(source)
     reader = csv.DictReader(io.StringIO(text))
     if not reader.fieldnames:
         raise ValueError("CSV is missing column headers.")
@@ -132,3 +140,94 @@ def preview(request):
     return render(request, "accounting/import_preview.html", {
         "form": form, "rows": rows,
     })
+
+
+class ParsedRows(list):
+    """List-compatible result with optional source statement summary."""
+    def __init__(self, rows, summary=None):
+        super().__init__(rows)
+        self.summary = summary or {}
+
+
+def _boa_date(value, line):
+    try:
+        return datetime.strptime(value.strip(), "%m/%d/%Y").date()
+    except ValueError as exc:
+        raise ValueError(f"Row {line}: invalid Bank of America date.") from exc
+
+
+def _boa_row(date, description, amount, line, **extra):
+    if not description.strip() or len(description.strip()) > 255:
+        raise ValueError(f"Row {line}: invalid merchant description.")
+    value = _parse_amount(amount, line)
+    if abs(value) >= Decimal("1000000000000"):
+        raise ValueError(f"Row {line}: amount exceeds supported range.")
+    return {"date": _boa_date(date, line), "description": description.strip(),
+            "amount": value, **extra}
+
+
+def _parse_boa_card(source):
+    rows = []
+    for line, cells in enumerate(source[1:], 2):
+        if not cells or not any(c.strip() for c in cells):
+            continue
+        if len(cells) != 5 or len(rows) >= MAX_ROWS:
+            raise ValueError(f"Row {line}: invalid credit card CSV row or row limit exceeded.")
+        date, reference, payee, address, amount = cells
+        rows.append(_boa_row(date, payee, amount, line,
+                             reference=reference.strip(), merchant_address=address.strip(),
+                             source_format="boa_card"))
+    if not rows:
+        raise ValueError("CSV contains no transactions.")
+    return ParsedRows(rows)
+
+
+def _parse_boa_bank(source):
+    import re
+    if len(source) < 7:
+        raise ValueError("Incomplete Bank of America statement.")
+    labels = ("Beginning balance as of ", "Total credits", "Total debits", "Ending balance as of ")
+    totals = []
+    for i, label in enumerate(labels, 1):
+        cells = source[i]
+        if len(cells) != 3 or not cells[0].startswith(label) or cells[1].strip():
+            raise ValueError("Invalid Bank of America statement summary.")
+        totals.append(_parse_amount(cells[2], i + 1))
+    beginning, credits, debits, ending = totals
+    if credits < 0 or debits > 0 or beginning + credits + debits != ending:
+        raise ValueError("Bank statement summary does not balance.")
+    index = 5
+    while index < len(source) and not any(c.strip() for c in source[index]):
+        index += 1
+    if index >= len(source) or [c.strip().casefold() for c in source[index]] != ["date", "description", "amount", "running bal."]:
+        raise ValueError("Bank transaction header not found.")
+    rows = []
+    running = beginning
+    opening_seen = False
+    for line, cells in enumerate(source[index+1:], index+2):
+        if not cells or not any(c.strip() for c in cells):
+            continue
+        if len(cells) != 4 or len(rows) >= MAX_ROWS:
+            raise ValueError(f"Row {line}: invalid bank CSV row or row limit exceeded.")
+        date, desc, amount, balance = cells
+        reported = _parse_amount(balance, line)
+        if not rows and not opening_seen and desc.startswith("Beginning balance as of ") and not amount.strip():
+            if reported != beginning:
+                raise ValueError("Opening balance row does not match summary.")
+            opening_seen = True
+            continue
+        match = re.search(r"(?:Confirmation#|Conf#|(?<![A-Za-z ])ID:)\s*([A-Za-z0-9-]+)", desc, re.I)
+        row = _boa_row(date, desc, amount, line, reference=match.group(1) if match else "",
+                       running_balance=str(reported), source_format="boa_bank")
+        running += row["amount"]
+        if running != reported:
+            raise ValueError(f"Row {line}: running balance does not match.")
+        rows.append(row)
+    if not rows:
+        raise ValueError("CSV contains no transactions.")
+    if (sum((r["amount"] for r in rows if r["amount"] > 0), Decimal("0")) != credits
+        or sum((r["amount"] for r in rows if r["amount"] < 0), Decimal("0")) != debits
+        or running != ending):
+        raise ValueError("Bank transactions do not match statement totals.")
+    return ParsedRows(rows, {"beginning": str(beginning), "credits": str(credits),
+                             "debits": str(debits), "ending": str(ending)})
