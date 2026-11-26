@@ -73,11 +73,20 @@ def inbox(request):
             form = ImportPreviewForm()
     accounts = Account.objects.filter(pk__in=ImportRow.objects.values("account_id"))
     names = {account.pk: str(account) for account in accounts}
-    items = list(ImportRow.objects.select_related("batch").order_by("-transaction_date", "-pk")[:250])
+    queryset = ImportRow.objects.select_related("batch")
+    account_filter = request.GET.get("account_filter", "")
+    status_filter = request.GET.get("status_filter", "")
+    if account_filter.isdecimal() and len(account_filter) <= 18:
+        queryset = queryset.filter(account_id=int(account_filter))
+    if status_filter in dict(ImportRow.STATUSES):
+        queryset = queryset.filter(status=status_filter)
+    items = list(queryset.order_by("-transaction_date", "-pk")[:250])
     for item in items:
         item.account_label = names.get(item.account_id, f"Account #{item.account_id}")
     return render(request, "accounting_imports/inbox.html", {
         "form": form, "result": result, "items": items,
+        "filter_accounts": accounts.order_by("number"), "filter_statuses": ImportRow.STATUSES,
+        "account_filter": account_filter, "status_filter": status_filter,
     })
 
 
@@ -88,6 +97,9 @@ def change_status(request, pk):
     target = request.POST.get("status")
     if target not in (ImportRow.PENDING, ImportRow.EXCLUDED):
         return HttpResponseBadRequest("Invalid status.")
+    if row.status == ImportRow.REVIEWED:
+        return HttpResponseBadRequest("Use transaction review to change a reviewed classification.")
     row.status = target
-    row.save(update_fields=["status"])
+    row.review_data = {}
+    row.save(update_fields=["status", "review_data"])
     return redirect("accounting:import_inbox")
