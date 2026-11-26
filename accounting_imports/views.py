@@ -4,6 +4,8 @@ from hashlib import sha256
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
+from django.db.models import Count
+from django.utils import timezone
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -92,8 +94,9 @@ def inbox(request):
 
 @require_POST
 @staff_member_required(login_url="/admin/login/")
+@transaction.atomic
 def change_status(request, pk):
-    row = get_object_or_404(ImportRow, pk=pk)
+    row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
     target = request.POST.get("status")
     if target not in (ImportRow.PENDING, ImportRow.EXCLUDED):
         return HttpResponseBadRequest("Invalid status.")
@@ -103,3 +106,42 @@ def change_status(request, pk):
     row.review_data = {}
     row.save(update_fields=["status", "review_data"])
     return redirect("accounting:import_inbox")
+
+
+def _undo_allowed(batch, rows):
+    return not batch.undone_at and bool(rows) and all(
+        row.status == ImportRow.PENDING and not row.review_data and not row.note
+        and row.account_id == batch.account_id for row in rows
+    )
+
+
+@staff_member_required(login_url="/admin/login/")
+def batch_history(request):
+    batches = list(ImportBatch.objects.annotate(row_count=Count("rows")).order_by("-pk"))
+    names = dict((a.pk, str(a)) for a in Account.objects.filter(
+        pk__in=[b.account_id for b in batches]))
+    for batch in batches:
+        batch.account_label = names.get(batch.account_id, f"Account #{batch.account_id}")
+    return render(request, "accounting_imports/batches.html", {"batches": batches})
+
+
+@staff_member_required(login_url="/admin/login/")
+@transaction.atomic
+def undo_batch(request, pk):
+    batch = get_object_or_404(ImportBatch.objects.select_for_update(), pk=pk)
+    rows = list(batch.rows.select_for_update().order_by("pk"))
+    allowed = _undo_allowed(batch, rows)
+    if request.method == "POST":
+        if not allowed or request.POST.get("confirm") != "yes":
+            return HttpResponseBadRequest("Undo not permitted. Only untouched pending imports can be undone.")
+        count = len(rows)
+        batch.rows.all().delete()
+        batch.undone_at = timezone.now()
+        batch.undone_by = request.user
+        batch.undone_count = count
+        batch.save(update_fields=["undone_at", "undone_by", "undone_count"])
+        return redirect("accounting:batch_history")
+    return render(request, "accounting_imports/undo_batch.html", {
+        "batch": batch, "rows": rows, "allowed": allowed,
+        "account": Account.objects.filter(pk=batch.account_id).first(),
+    })
