@@ -5,6 +5,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from accounting.models import Account
 from accounting_contacts.models import Vendor, Receipt
+from accounting_contacts.forms import ReceiptForm
+from hashlib import sha256
 from .models import ImportRow
 
 
@@ -18,8 +20,8 @@ class BankReviewForm(forms.Form):
     category = forms.ModelChoiceField(queryset=Account.objects.none(), required=False,
                                       label="Chart of Accounts")
     memo = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(attrs={"rows": 3}))
-    receipt = forms.ModelChoiceField(queryset=Receipt.objects.none(), required=False,
-                                      label="Existing purchase receipt (optional)")
+    attachment = forms.FileField(required=False, label="Upload original receipt or invoice (optional)",
+        help_text="PDF, JPG, PNG or WebP, up to 10 MB. You can add another document later.")
     remember = forms.BooleanField(required=False, label="Remember this vendor and category for this exact bank description")
 
     def __init__(self, *args, row, **kwargs):
@@ -28,15 +30,23 @@ class BankReviewForm(forms.Form):
         self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
         self.fields["category"].queryset = Account.objects.filter(is_active=True, account_type__in=(
             "expense", "cogs", "other_expense", "income", "other_income"))
-        self.fields["receipt"].queryset = Receipt.objects.filter(
-            receipt_type="purchase", journal_entry_id__isnull=True, amount=abs(row.amount),
-            date=row.transaction_date)
+        self.documents = Receipt.objects.filter(source="bank_document",
+            source_reference__startswith=f"{row.pk}:").order_by("pk")
+
+    def clean_attachment(self):
+        return ReceiptForm.clean_attachment(self)
 
     def clean(self):
         data = super().clean()
         kind = data.get("classification")
         vendor, name, category = data.get("vendor"), data.get("new_vendor"), data.get("category")
-        receipt = data.get("receipt")
+        attachment = data.get("attachment")
+        documents = list(self.documents)
+        legacy = self.row.review_data.get("receipt")
+        if legacy:
+            documents += list(Receipt.objects.filter(pk=legacy))
+        if documents and (kind != "expense" or not vendor or any(d.vendor_id != vendor.pk for d in documents)):
+            self.add_error("vendor", "Existing purchase documentation is linked to this vendor. Keep the vendor and expense classification.")
         if name and (vendor or Vendor.objects.filter(name__iexact=name).exists()):
             self.add_error("new_vendor", "Select the existing vendor instead.")
         if kind == "expense":
@@ -46,16 +56,15 @@ class BankReviewForm(forms.Form):
                 self.add_error("vendor", "Select or create a vendor.")
             if not category or category.account_type not in ("expense", "cogs", "other_expense"):
                 self.add_error("category", "Select an expense or cost of goods sold account.")
-            if receipt and receipt.vendor_id and (not vendor or receipt.vendor_id != vendor.pk):
-                self.add_error("receipt", "Receipt belongs to a different vendor.")
+
         elif kind == "income":
             if self.row.amount <= 0:
                 self.add_error("classification", "Income must be a positive deposit.")
             if not category or category.account_type not in ("income", "other_income"):
                 self.add_error("category", "Select an income account.")
-            if vendor or name or receipt or data.get("remember"):
+            if vendor or name or attachment or data.get("remember"):
                 self.add_error("classification", "Vendor and receipt options are for expenses only.")
-        elif vendor or name or category or receipt or data.get("remember"):
+        elif vendor or name or category or attachment or data.get("remember"):
             self.add_error("classification", "Clear accounting selections for personal or deferred items.")
         return data
 
@@ -74,17 +83,29 @@ def review(request, pk):
             if saved.get("remember") and saved.get("classification") == "expense":
                 initial = {k: saved.get(k) for k in ("classification", "vendor", "category")}
                 break
-    form = BankReviewForm(request.POST or None, row=row, initial=initial)
+    form = BankReviewForm(request.POST or None, request.FILES or None, row=row, initial=initial)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         vendor = data.get("vendor")
         if data.get("new_vendor"):
             vendor = Vendor.objects.create(name=data["new_vendor"])
+        upload = data.get("attachment")
+        if upload:
+            digest = sha256()
+            for chunk in upload.chunks():
+                digest.update(chunk)
+            upload.seek(0)
+            reference = f"{row.pk}:{digest.hexdigest()}"
+            if not Receipt.objects.filter(source="bank_document", source_reference=reference).exists():
+                Receipt.objects.create(title=f"{vendor.name} — purchase document"[:200],
+                    receipt_type="purchase", date=row.transaction_date, amount=abs(row.amount),
+                    vendor=vendor, source="bank_document", source_reference=reference,
+                    attachment=upload, notes="Original document attached to bank transaction. Date and amount are from bank record.")
         row.review_data = {
             "classification": data["classification"],
             "vendor": vendor.pk if vendor else None,
             "category": data["category"].pk if data.get("category") else None,
-            "receipt": data["receipt"].pk if data.get("receipt") else None,
+            "receipt": row.review_data.get("receipt"),
             "memo": data.get("memo", ""),
             "remember": data.get("remember", False),
             "reviewed_by": request.user.pk,
@@ -95,4 +116,5 @@ def review(request, pk):
         return redirect("accounting:import_inbox")
     account = Account.objects.filter(pk=row.account_id).first()
     return render(request, "accounting_imports/bank_review.html",
-                  {"row": row, "account": account, "form": form})
+                  {"row": row, "account": account, "form": form,
+                   "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
