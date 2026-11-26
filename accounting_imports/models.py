@@ -20,7 +20,8 @@ class ImportRow(models.Model):
     id = models.BigAutoField(primary_key=True)
     PENDING = "pending"
     EXCLUDED = "excluded"
-    STATUSES = [(PENDING, "Pending"), (EXCLUDED, "Excluded")]
+    REVIEWED = "reviewed"
+    STATUSES = [(PENDING, "Pending"), (EXCLUDED, "Excluded"), (REVIEWED, "Reviewed — not posted")]
     batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="rows")
     account_id = models.PositiveBigIntegerField()
     transaction_date = models.DateField()
@@ -31,6 +32,7 @@ class ImportRow(models.Model):
     occurrence = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=12, choices=STATUSES, default=PENDING)
     note = models.CharField(max_length=255, blank=True)
+    review_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["transaction_date", "pk"]
