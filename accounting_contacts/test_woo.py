@@ -42,12 +42,52 @@ class WooReceiptPreparationTests(TestCase):
         self.assertEqual(Receipt.objects.count(), 2)
         self.assertFalse(JournalEntry.objects.exists())
 
-    def test_guest_orders_do_not_merge_by_name_or_email(self):
-        first_customer, _, _ = stage_woo_order_receipt(self.order(customer_id=0))
-        second_customer, _, _ = stage_woo_order_receipt(self.order(order_id=102, customer_id=0))
-        self.assertNotEqual(first_customer.pk, second_customer.pk)
-        self.assertIsNone(first_customer.woo_customer_id)
+    def test_guest_orders_match_unique_email_case_insensitively(self):
+        first, first_receipt, _ = stage_woo_order_receipt(self.order(customer_id=0))
+        order = self.order(order_id=102, customer_id=0)
+        order["billing"]["email"] = "JANE@example.com"
+        order["billing"]["address_1"] = "456 New Street"
+        second, second_receipt, _ = stage_woo_order_receipt(order)
+        self.assertEqual(first.pk, second.pk)
+        self.assertIsNone(first.woo_customer_id)
+        self.assertEqual(Customer.objects.count(), 1)
+        self.assertEqual(Receipt.objects.count(), 2)
+        first_receipt.refresh_from_db()
+        self.assertEqual(first_receipt.woo_snapshot["billing"]["address_1"], "123 Street")
+        self.assertEqual(second_receipt.woo_snapshot["billing"]["address_1"], "456 New Street")
+        self.assertFalse(JournalEntry.objects.exists())
+
+    def test_guest_orders_without_email_do_not_merge_by_name(self):
+        order = self.order(customer_id=0)
+        order["billing"]["email"] = ""
+        first, _, _ = stage_woo_order_receipt(order)
+        order["id"] = 102
+        second, _, _ = stage_woo_order_receipt(order)
+        self.assertNotEqual(first.pk, second.pk)
         self.assertEqual(Customer.objects.count(), 2)
+
+    def test_guest_ambiguous_email_requires_review(self):
+        Customer.objects.create(name="Jane", email="jane@example.com")
+        Customer.objects.create(name="Other", email="JANE@example.com")
+        with self.assertRaises(ValidationError):
+            stage_woo_order_receipt(self.order(customer_id=0))
+        self.assertEqual(Customer.objects.count(), 2)
+        self.assertFalse(Receipt.objects.exists())
+        self.assertFalse(JournalEntry.objects.exists())
+
+    def test_guest_inactive_customer_requires_review(self):
+        Customer.objects.create(name="Jane", email="jane@example.com", is_active=False)
+        with self.assertRaises(ValidationError):
+            stage_woo_order_receipt(self.order(customer_id=0))
+        self.assertEqual(Customer.objects.count(), 1)
+        self.assertFalse(Receipt.objects.exists())
+
+    def test_guest_distinct_emails_do_not_merge_by_name(self):
+        first, _, _ = stage_woo_order_receipt(self.order(customer_id=0))
+        order = self.order(order_id=102, customer_id=0)
+        order["billing"]["email"] = "different@example.com"
+        second, _, _ = stage_woo_order_receipt(order)
+        self.assertNotEqual(first.pk, second.pk)
 
     def test_invalid_order_never_creates_records(self):
         with self.assertRaises(ValidationError):
