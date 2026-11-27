@@ -11,6 +11,7 @@ from accounting_contacts.models import Vendor, Receipt
 from accounting_contacts.forms import ReceiptForm
 from hashlib import sha256
 from .models import ImportRow
+from .payment_matching import active_match
 from .merchant_recognition import suggest
 from .bank_splits import SplitFormSet, validate_allocations
 from decimal import Decimal, ROUND_HALF_UP
@@ -176,6 +177,8 @@ class BankReviewForm(forms.Form):
 @transaction.atomic
 def review(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    if active_match(row.pk).exists():
+        return redirect("accounting:payment_match", pk=row.pk)
     account_filter = request.GET.get("account_filter", "")
     if not (account_filter.isdecimal() and len(account_filter) <= 18):
         account_filter = ""
