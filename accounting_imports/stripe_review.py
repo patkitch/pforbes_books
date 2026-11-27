@@ -144,7 +144,7 @@ def review(request, pk):
             return redirect("accounting:stripe_review",pk=pk)
     users = get_user_model().objects.in_bulk({e["by"] for e in payment.review_history})
     history = [{**e,"local_time":datetime.fromisoformat(e["at"]).astimezone(ZoneInfo("America/Chicago")),
-        "username":str(users.get(e["by"],f"User #{e[\"by\"]}"))} for e in payment.review_history]
+        "username":str(users.get(e["by"],"User #{}".format(e["by"])))} for e in payment.review_history]
     if eligible:
         if receipt: label="Internal receipt created — not posted"
         elif current.get("state")=="reviewed": label="Direct sale reviewed — not posted"
