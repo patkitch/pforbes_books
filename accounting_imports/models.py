@@ -133,6 +133,8 @@ class StripePaymentImport(models.Model):
     source_details = models.JSONField(default=dict)
     imported_at = models.DateTimeField(auto_now_add=True)
     imported_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, related_name="imported_stripe_payments")
+    review_data = models.JSONField(default=dict, blank=True)
+    review_history = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["-created_utc", "-pk"]
