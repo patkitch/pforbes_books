@@ -16,8 +16,9 @@ from django.views.decorators.http import require_POST
 
 from accounting.import_preview import ImportPreviewForm, parse_csv_preview, validate_statement_account
 from accounting.models import Account
-from .models import ImportBatch, ImportRow, CardPaymentMatch
+from .models import ImportBatch, ImportRow, CardPaymentMatch, WooPayoutMatch
 from .payment_matching import active_match
+from .woo_payouts import active_payout
 
 
 def _fingerprint(row):
@@ -127,7 +128,9 @@ def inbox(request):
     matched_ids = set()
     for bank_id, card_id in CardPaymentMatch.objects.filter(undone_at__isnull=True).values_list('bank_row_id','card_row_id'):
         matched_ids.update((bank_id,card_id))
+    payouts = dict(WooPayoutMatch.objects.filter(undone_at__isnull=True, bank_row_id__in=[i.pk for i in items]).values_list('bank_row_id','order_id'))
     for item in items:
+        item.payout_order_id = payouts.get(item.pk)
         item.is_matched = item.pk in matched_ids
         item.account_label = names.get(item.account_id, f"Account #{item.account_id}")
         item.vendor_label = vendors.get(item.review_data.get("vendor"))
@@ -158,6 +161,8 @@ def inbox(request):
 @transaction.atomic
 def change_status(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    if active_payout(row.pk):
+        return HttpResponseBadRequest("Undo the payout match before changing status.")
     if active_match(row.pk).exists():
         return HttpResponseBadRequest("Undo the payment match before changing status.")
     target = request.POST.get("status")
@@ -180,7 +185,7 @@ def change_status(request, pk):
 def _undo_allowed(batch, rows):
     return not batch.undone_at and bool(rows) and all(
         row.status == ImportRow.PENDING and not row.review_data and not row.note
-        and row.account_id == batch.account_id and not (row.bank_payment_matches.exists() or row.card_payment_matches.exists()) for row in rows
+        and row.account_id == batch.account_id and not (row.bank_payment_matches.exists() or row.card_payment_matches.exists() or row.woo_payout_matches.exists()) for row in rows
     )
 
 
