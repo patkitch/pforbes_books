@@ -6,10 +6,12 @@ separate future workflows requiring explicit user review.
 """
 import csv
 import io
+import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.db.models import Q
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
@@ -20,6 +22,37 @@ MAX_BYTES = 1_000_000
 MAX_ROWS = 1000
 REQUIRED = {"date", "description"}
 AMOUNT_SCHEMAS = ({"amount"}, {"debit", "credit"})
+
+
+def eligible_import_accounts():
+    # QuickBooks detail types are retained in the approved COA.
+    # For legacy accounts without a detail type, use a narrow name fallback.
+    bank = Q(account_type="asset") & (
+        Q(detail_type__iexact="Checking") | Q(detail_type__iexact="Savings")
+        | Q(detail_type__iexact="Money Market")
+        | (Q(detail_type="") & (Q(name__icontains="checking") | Q(name__icontains="savings")
+                                | Q(name__icontains="banking")))
+    )
+    card = Q(account_type="liability") & (
+        Q(detail_type__iexact="Credit Card")
+        | (Q(detail_type="") & (Q(name__icontains="credit card") | Q(name__icontains="visa")
+                                | Q(name__icontains="mastercard") | Q(name__icontains="discover")
+                                | Q(name__icontains="american express")))
+    )
+    return Account.objects.filter(bank | card, is_active=True).order_by("number")
+
+
+def validate_statement_account(account, filename, rows):
+    source_format = rows[0].get("source_format")
+    if source_format == "boa_card":
+        if account.account_type != "liability":
+            raise ValueError("This is a credit card CSV. Select its credit card account, not a bank account.")
+        match = re.fullmatch(r"currentTransaction_(\d{4})(?: \(\d+\))?\.csv", filename, re.I)
+        account_digits = re.search(r"\((\d{4})\)\s*$", account.name)
+        if match and account_digits and match.group(1) != account_digits.group(1):
+            raise ValueError(f"Credit card file ends in {match.group(1)} but selected account ends in {account_digits.group(1)}.")
+    elif source_format == "boa_bank" and account.account_type != "asset":
+        raise ValueError("This is a bank statement CSV. Select its checking or savings account, not a credit card.")
 
 
 class ImportPreviewForm(forms.Form):
@@ -35,9 +68,7 @@ class ImportPreviewForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["account"].queryset = Account.objects.filter(
-            is_active=True, account_type__in=("asset", "liability")
-        ).order_by("number")
+        self.fields["account"].queryset = eligible_import_accounts()
 
     def clean_file(self):
         upload = self.cleaned_data["file"]
@@ -134,8 +165,11 @@ def preview(request):
     rows = None
     if request.method == "POST" and form.is_valid():
         try:
-            rows = parse_csv_preview(form.cleaned_data["file"].read())
+            upload = form.cleaned_data["file"]
+            rows = parse_csv_preview(upload.read())
+            validate_statement_account(form.cleaned_data["account"], upload.name, rows)
         except ValueError as exc:
+            rows = None
             form.add_error("file", str(exc))
     return render(request, "accounting/import_preview.html", {
         "form": form, "rows": rows,
