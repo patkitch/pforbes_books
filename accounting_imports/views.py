@@ -5,6 +5,10 @@ from hashlib import sha256
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
 from django.db.models import Count
+from django.core.paginator import Paginator
+from django.urls import reverse
+from urllib.parse import urlencode
+from accounting_contacts.models import Vendor, Receipt
 from django.utils import timezone
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -88,15 +92,51 @@ def inbox(request):
     status_filter = request.GET.get("status_filter", "")
     if account_filter.isdecimal() and len(account_filter) <= 18:
         queryset = queryset.filter(account_id=int(account_filter))
-    if status_filter in dict(ImportRow.STATUSES):
-        queryset = queryset.filter(status=status_filter)
-    items = list(queryset.order_by("-transaction_date", "-pk")[:250])
+    tab = request.GET.get("tab", "review")
+    if tab not in ("review", "excluded", "posted"):
+        tab = "review"
+    if request.method == "POST":
+        tab = "review"
+    counts = dict(queryset.values("status").annotate(total=Count("pk")).values_list("status", "total"))
+    tabs = [
+        {"key": "review", "label": "To Review", "count": counts.get("pending", 0) + counts.get("reviewed", 0)},
+        {"key": "excluded", "label": "Excluded", "count": counts.get("excluded", 0)},
+        {"key": "posted", "label": "Posted", "count": 0},
+    ]
+    if tab == "review":
+        queryset = queryset.filter(status__in=(ImportRow.PENDING, ImportRow.REVIEWED))
+        if status_filter in (ImportRow.PENDING, ImportRow.REVIEWED):
+            queryset = queryset.filter(status=status_filter)
+    elif tab == "excluded":
+        queryset = queryset.filter(status=ImportRow.EXCLUDED)
+        status_filter = ""
+    else:
+        # No bank posting service exists yet. Never equate review with posting.
+        queryset = queryset.none()
+        status_filter = ""
+    page = Paginator(queryset.order_by("-transaction_date", "-pk"), 50).get_page(request.GET.get("page"))
+    items = list(page.object_list)
+    vendors = Vendor.objects.in_bulk({i.review_data["vendor"] for i in items if i.review_data.get("vendor")})
+    categories = Account.objects.in_bulk({i.review_data["category"] for i in items if i.review_data.get("category")})
+    document_counts = Counter()
+    for reference in Receipt.objects.filter(source="bank_document").values_list("source_reference", flat=True):
+        prefix = reference.split(":", 1)[0]
+        if prefix.isdecimal():
+            document_counts[int(prefix)] += 1
     for item in items:
         item.account_label = names.get(item.account_id, f"Account #{item.account_id}")
+        item.vendor_label = vendors.get(item.review_data.get("vendor"))
+        item.category_label = categories.get(item.review_data.get("category"))
+        item.document_count = document_counts[item.pk] + int(bool(item.review_data.get("receipt")))
+        item.amount_label = ("−" if item.amount < 0 else "") + f"${abs(item.amount):,.2f}"
+    for entry in tabs:
+        entry["url"] = "?" + urlencode({"tab": entry["key"], "account_filter": account_filter})
+    page_query = urlencode({"tab": tab, "account_filter": account_filter, "status_filter": status_filter})
     return render(request, "accounting_imports/inbox.html", {
         "form": form, "result": result, "items": items,
         "filter_accounts": accounts.order_by("number"), "filter_statuses": ImportRow.STATUSES,
         "account_filter": account_filter, "status_filter": status_filter,
+        "tab": tab, "tabs": tabs, "page": page, "page_query": page_query,
     })
 
 
@@ -113,7 +153,13 @@ def change_status(request, pk):
     row.status = target
     row.review_data = {}
     row.save(update_fields=["status", "review_data"])
-    return redirect("accounting:import_inbox")
+    params = {"tab": "review" if target == ImportRow.PENDING else request.POST.get("tab", "review")}
+    if params["tab"] not in ("review", "excluded"):
+        params["tab"] = "review"
+    account_filter = request.POST.get("account_filter", "")
+    if account_filter.isdecimal() and len(account_filter) <= 18:
+        params["account_filter"] = account_filter
+    return redirect(reverse("accounting:import_inbox") + "?" + urlencode(params))
 
 
 def _undo_allowed(batch, rows):
