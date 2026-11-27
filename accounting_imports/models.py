@@ -75,3 +75,19 @@ class WooOrderImport(models.Model):
 
     class Meta:
         ordering = ["-order_date", "-pk"]
+
+
+class CardPaymentMatch(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    bank_row = models.ForeignKey(ImportRow, on_delete=models.PROTECT, related_name="bank_payment_matches")
+    card_row = models.ForeignKey(ImportRow, on_delete=models.PROTECT, related_name="card_payment_matches")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, related_name="created_payment_matches")
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="undone_payment_matches")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_bank_payment_match"),
+            models.UniqueConstraint(fields=["card_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_card_payment_match"),
+        ]
