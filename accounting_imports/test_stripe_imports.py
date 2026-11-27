@@ -133,3 +133,49 @@ class StripeImportTests(TestCase):
         self.assertEqual(self.client.post(reverse("accounting:stripe_review",args=[p.pk]),self.form()).status_code,302)
         p.refresh_from_db()
         self.assertEqual(p.review_data,{})
+
+
+    def test_receipt_creation_locks_review_and_deduplicates(self):
+        p=self.payment()
+        url=reverse("accounting:stripe_review",args=[p.pk])
+        self.client.post(url,self.form())
+        self.assertEqual(self.client.post(url,{"action":"receipt","confirm":"yes"}).status_code,302)
+        receipt=Receipt.objects.get()
+        self.assertEqual(receipt.source,"stripe_direct")
+        self.assertEqual(receipt.source_reference,p.charge_id)
+        self.assertEqual(receipt.amount,Decimal("16.53"))
+        self.assertEqual(receipt.items.get().artwork_title,"Print")
+        self.assertEqual(Customer.objects.count(),1)
+        self.assertContains(self.client.get(url),"Internal receipt created")
+        self.assertEqual(self.client.post(url,{"action":"receipt","confirm":"yes"}).status_code,400)
+        self.assertEqual(self.client.post(url,self.form()).status_code,400)
+        self.assertEqual(Receipt.objects.count(),1)
+        self.assertFalse(JournalEntry.objects.exists())
+
+    def test_receipt_requires_review_and_confirmation(self):
+        p=self.payment()
+        url=reverse("accounting:stripe_review",args=[p.pk])
+        self.assertContains(self.client.post(url,{"action":"receipt","confirm":"yes"}),"Only a reviewed")
+        self.client.post(url,self.form())
+        self.assertEqual(self.client.post(url,{"action":"receipt"}).status_code,400)
+        self.assertFalse(Receipt.objects.exists())
+
+    def test_receipt_reuses_existing_customer(self):
+        p=self.payment()
+        customer=Customer.objects.create(name="Original Buyer",email="buyer@example.com")
+        url=reverse("accounting:stripe_review",args=[p.pk])
+        self.client.post(url,self.form(customer=str(customer.pk)))
+        self.assertEqual(self.client.post(url,{"action":"receipt","confirm":"yes"}).status_code,302)
+        self.assertEqual(Receipt.objects.get().customer,customer)
+        self.assertEqual(Customer.objects.count(),1)
+        customer.refresh_from_db()
+        self.assertEqual(customer.name,"Original Buyer")
+        self.assertContains(self.client.get(reverse("accounting:receipt_detail",args=[Receipt.objects.get().pk])),"Print / Save as PDF")
+
+    def test_receipt_blocks_later_woo_conflict(self):
+        p=self.payment()
+        url=reverse("accounting:stripe_review",args=[p.pk])
+        self.client.post(url,self.form())
+        self.woo(payment_reference=p.charge_id)
+        self.assertContains(self.client.post(url,{"action":"receipt","confirm":"yes"}),"Only a reviewed")
+        self.assertFalse(Receipt.objects.exists())
