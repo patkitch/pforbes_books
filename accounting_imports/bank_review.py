@@ -10,6 +10,7 @@ from accounting_contacts.models import Vendor, Receipt
 from accounting_contacts.forms import ReceiptForm
 from hashlib import sha256
 from .models import ImportRow
+from .merchant_recognition import suggest
 
 
 class BankReviewForm(forms.Form):
@@ -24,7 +25,7 @@ class BankReviewForm(forms.Form):
     memo = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(attrs={"rows": 3}))
     attachment = forms.FileField(required=False, label="Upload original receipt or invoice (optional)",
         help_text="PDF, JPG, PNG or WebP, up to 10 MB. You can add another document later.")
-    remember = forms.BooleanField(required=False, label="Remember this vendor and category for this exact bank description")
+    remember = forms.BooleanField(required=False, label="Remember this expense category for this merchant (suggest only)")
 
     def __init__(self, *args, row, **kwargs):
         super().__init__(*args, **kwargs)
@@ -81,15 +82,9 @@ def review(request, pk):
         account_filter = ""
     back_url = reverse("accounting:import_inbox") + "?" + urlencode({"tab": "excluded" if request.GET.get("tab") == "excluded" else "review", "account_filter": account_filter})
     initial = dict(row.review_data)
+    suggestion = ""
     if not initial:
-        # Only explicitly remembered exact descriptions suggest an assignment.
-        candidates = ImportRow.objects.filter(description__iexact=row.description,
-            account_id=row.account_id, status=ImportRow.REVIEWED).exclude(pk=pk).order_by("-pk")
-        for candidate in candidates:
-            saved = candidate.review_data
-            if saved.get("remember") and saved.get("classification") == "expense":
-                initial = {k: saved.get(k) for k in ("classification", "vendor", "category")}
-                break
+        initial, suggestion = suggest(row)
     form = BankReviewForm(request.POST or None, request.FILES or None, row=row, initial=initial)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
@@ -124,5 +119,5 @@ def review(request, pk):
     account = Account.objects.filter(pk=row.account_id).first()
     return render(request, "accounting_imports/bank_review.html",
                   {"row": row, "account": account, "form": form,
-                   "back_url": back_url, "amount_label": ("−" if row.amount < 0 else "") + f"${abs(row.amount):,.2f}",
+                   "suggestion": suggestion, "back_url": back_url, "amount_label": ("−" if row.amount < 0 else "") + f"${abs(row.amount):,.2f}",
                    "category_types": form.category_types, "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
