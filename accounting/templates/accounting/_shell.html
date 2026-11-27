@@ -26,6 +26,7 @@
 <a class="navlink" data-nav="reports" href="{% url 'accounting:reports_index' %}">Reports</a>
 <a class="navlink" data-nav="sales-tax" href="{% url 'accounting:sales_tax' %}">Sales Tax</a>
 <a class="navlink" data-nav="woo-inbox" href="{% url 'accounting:woo_inbox' %}">WooCommerce Sales</a>
+<a class="navlink" data-nav="stripe-inbox" href="{% url 'accounting:stripe_inbox' %}">Stripe Payments</a>
 <a class="navlink" data-nav="import-inbox" href="{% url 'accounting:import_inbox' %}">Pending Imports</a>
 <a class="navlink" data-nav="import-history" href="{% url 'accounting:batch_history' %}">Import History</a>
 <a class="navlink" data-nav="import-preview" href="{% url 'accounting:import_preview' %}">Import Preview</a>
@@ -39,7 +40,7 @@
 <script>
 (function(){
  const path=location.pathname;
- const section=path.startsWith('/accounting/business-profile')?'business-profile':path.startsWith('/accounting/imports/woocommerce')?'woo-inbox':path.startsWith('/accounting/imports/batches')?'import-history':(path.startsWith('/accounting/imports/inbox')||path.startsWith('/accounting/imports/rows'))?'import-inbox':path.startsWith('/accounting/imports')?'import-preview':path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
+ const section=path.startsWith('/accounting/business-profile')?'business-profile':path.startsWith('/accounting/imports/stripe')?'stripe-inbox':path.startsWith('/accounting/imports/woocommerce')?'woo-inbox':path.startsWith('/accounting/imports/batches')?'import-history':(path.startsWith('/accounting/imports/inbox')||path.startsWith('/accounting/imports/rows'))?'import-inbox':path.startsWith('/accounting/imports')?'import-preview':path.startsWith('/accounting/sales-tax')?'sales-tax':path.startsWith('/accounting/reports')?'reports':path.startsWith('/accounting/accounts')?'accounts':path.startsWith('/accounting/vendors')?'vendors':path.startsWith('/accounting/customers')?'customers':path.startsWith('/accounting/receipts')?'receipts':path.includes('/journal/')?'journal':path.startsWith('/accounting/transactions')?'transactions':path==='/accounting/'?'dashboard':'';
  const active=document.querySelector('.accounting-nav [data-nav="'+section+'"]');
  if(active)active.setAttribute('aria-current','page');
  document.addEventListener('keydown',function(e){if(e.key==='Escape'){const nav=document.getElementById('accounting-nav');nav.classList.remove('is-open');const b=document.querySelector('.accounting-menu-toggle');if(b)b.setAttribute('aria-expanded','false');}});
