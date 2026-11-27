@@ -146,6 +146,9 @@ def inbox(request):
             result={"added":added,"skipped":skipped}
             form=UploadForm()
     payments=list(StripePaymentImport.objects.all()[:200])
+    from .models import StripePayoutMatch, WooPayoutMatch
+    direct_matches = set(StripePayoutMatch.objects.filter(undone_at__isnull=True, payment_id__in=[p.pk for p in payments]).values_list("payment_id", flat=True))
+    woo_matches = dict(WooPayoutMatch.objects.filter(undone_at__isnull=True).values_list("order_id", "processor"))
     for p in payments:
         p.review_label,p.woo_order=classify(p)
         p.can_review = p.review_label == "Possible direct sale — review required" or p.review_data.get("state") == "excluded"
@@ -154,5 +157,9 @@ def inbox(request):
                 p.review_label = "Internal receipt created — not posted" if p.review_data.get("receipt_id") else "Direct sale reviewed — not posted"
             elif p.review_data.get("state") == "excluded":
                 p.review_label = "Personal / test — excluded"
+        p.direct_payout_matched = p.pk in direct_matches
+        p.can_reconcile_direct = p.can_review and p.review_data.get("state") == "reviewed" and bool(p.review_data.get("receipt_id"))
+        p.woo_payout_matched = p.review_label == "WooCommerce linked — no new sale" and p.woo_order and woo_matches.get(p.woo_order.pk) == "Stripe"
+        p.can_reconcile_woo = p.review_label == "WooCommerce linked — no new sale" and bool(p.woo_order)
         p.net=p.gross-p.fee
     return render(request,"accounting_imports/stripe_inbox.html",{"form":form,"result":result,"payments":payments})

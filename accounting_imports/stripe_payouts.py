@@ -74,6 +74,9 @@ def reconcile(request, pk):
     choices = candidates(payment)
     for row in choices:
         row.account_label = names.get(row.account_id, str(row.account_id))
+    receipt = Receipt.objects.filter(source="stripe_direct", source_reference=payment.charge_id).select_related("customer").first()
+    customer_name = (receipt.customer.name if receipt and receipt.customer else "") or payment.review_data.get("customer_name") or payment.customer_name or "Name not provided"
     return render(request, "accounting_imports/stripe_payout.html", {
+        "customer_name":customer_name,
         "payment":payment, "match":match, "choices":choices, "eligible":eligible(payment),
         "net":payment.gross-payment.fee, "history":payment.payout_matches.order_by("-created_at")})

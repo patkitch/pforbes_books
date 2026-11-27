@@ -23,6 +23,7 @@ class StripePayoutTests(TestCase):
         self.receipt = patch("accounting_imports.stripe_payouts.Receipt.objects.filter")
         mock = self.receipt.start()
         mock.return_value.exists.return_value = True
+        mock.return_value.select_related.return_value.first.return_value = None
         self.addCleanup(self.receipt.stop)
 
     def confirm(self, **extra):
@@ -63,3 +64,17 @@ class StripePayoutTests(TestCase):
         StripePaymentImport.objects.create(charge_id="ch_other",payout_id=self.payment.payout_id,created_utc=self.payment.created_utc,
             gross=10,fee=1,refunded=0,currency="usd",payment_status="paid",captured=True)
         self.assertEqual(candidates(self.payment),[])
+
+    def test_customer_name_and_payout_status_display(self):
+        self.payment.review_data["customer_name"] = "Saved Customer"
+        self.payment.save(update_fields=["review_data"])
+        inbox = reverse("accounting:stripe_inbox")
+        self.assertContains(self.client.get(inbox), "Unmatched")
+        with patch("accounting_imports.stripe_payouts.has_documents", return_value=False):
+            self.assertContains(self.client.get(self.url), "Saved Customer")
+            self.assertEqual(self.confirm().status_code, 302)
+            self.assertContains(self.client.get(inbox), "Matched — not posted")
+            self.assertContains(self.client.get(self.url), "Active match — not posted")
+            self.assertEqual(self.client.post(self.url, {"action":"undo","confirm":"yes"}).status_code,302)
+            self.assertContains(self.client.get(inbox), "Unmatched")
+            self.assertContains(self.client.get(self.url), "Previous match — undone")
