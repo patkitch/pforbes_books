@@ -11,13 +11,13 @@ from django.urls import reverse
 from django.utils import timezone
 from accounting.models import Account
 from accounting_contacts.models import Receipt
-from accounting_imports.models import WooOrderImport, StripePaymentImport, WooPayoutMatch, StripePayoutMatch
+from accounting_imports.models import WooOrderImport, StripePaymentImport, WooPayoutMatch, StripePayoutMatch, StripeGroupMember
 from accounting_imports.woo_payouts import eligible_order, paid_date, processor_for, metadata_money
 from accounting_imports.stripe_imports import classify
 
 ZERO = Decimal("0.00")
 MONEY = ("artwork", "shipping", "tax", "gross", "fee", "net", "deposit")
-HEADERS = ("Sale date", "Customer", "Source", "Reference", "Artwork / item", "Shipping", "Sales tax", "Gross", "Fee", "Expected net", "Bank deposit", "Deposit date", "Bank account", "Status", "Receipt")
+HEADERS = ("Sale date", "Customer", "Source", "Reference", "Artwork / item", "Shipping", "Sales tax", "Gross", "Fee", "Expected net", "Bank deposit / allocated share", "Deposit date", "Bank account", "Status", "Receipt")
 KEYS = ("day", "customer", "source", "reference", *MONEY, "deposit_date", "bank", "status", "receipt")
 
 
@@ -46,6 +46,9 @@ def build_report(start=None, end=None, source=""):
     accounts = {a.pk:str(a) for a in Account.objects.all()}
     woo_matches = {m.order_id:m for m in WooPayoutMatch.objects.filter(undone_at__isnull=True).select_related("bank_row")}
     stripe_matches = {m.payment_id:m for m in StripePayoutMatch.objects.filter(undone_at__isnull=True).select_related("bank_row")}
+    members=list(StripeGroupMember.objects.filter(group__undone_at__isnull=True).select_related('group__bank_row','payment'))
+    group_orders={m.order_id:m for m in members if m.order_id}
+    group_direct={m.payment_id:m for m in members if not m.order_id}
     linked = {}
     direct = []
     for p in StripePaymentImport.objects.all():
@@ -56,11 +59,16 @@ def build_report(start=None, end=None, source=""):
             direct.append(p)
         elif p.review_data.get("state") != "excluded":
             omitted += 1
-    def add(row, match):
+    def add(row, match, member=None):
         if (start and row["day"] < start) or (end and row["day"] > end):
             return
         row.update(deposit=None, deposit_date=None, bank="", status="Unmatched")
-        if match:
+        if member:
+            group=member.group
+            row.update(deposit=member.net,deposit_date=group.bank_row.transaction_date,bank=accounts.get(group.bank_row.account_id,str(group.bank_row.account_id)),status="Matched — not posted",detail=reverse("accounting:stripe_group",args=[group.payout_id]),reference=row["reference"]+" | Group "+group.payout_id)
+            if member.gross!=row["gross"] or member.fee!=row["fee"] or group.net!=group.bank_row.amount or member.net!=member.gross-member.fee or group.gross-group.fee!=group.net:
+                row["status"]="Conflict — review"
+        elif match:
             row.update(deposit=match.bank_row.amount, deposit_date=match.bank_row.transaction_date,
                        bank=accounts.get(match.bank_row.account_id, f"Account #{match.bank_row.account_id}"),
                        status="Matched — not posted")
@@ -80,7 +88,7 @@ def build_report(start=None, end=None, source=""):
             add(dict(day=paid_date(o),customer=o.customer_name or "Name not provided",source="WooCommerce",
                 reference=f"Order #{o.source_order_id}",artwork=o.total-o.shipping_total-o.tax_total,shipping=o.shipping_total,tax=o.tax_total,gross=o.total,
                 fee=fee,net=o.total-fee if fee is not None else None,receipt=o.receipt_id,
-                detail=reverse("accounting:woo_payout",args=[o.pk])),woo_matches.get(o.pk))
+                detail=reverse("accounting:woo_payout",args=[o.pk])),woo_matches.get(o.pk),group_orders.get(o.pk))
     if source != "woo":
         receipts={r.source_reference:r for r in Receipt.objects.filter(source="stripe_direct").select_related("customer")}
         for p in direct:
@@ -97,7 +105,7 @@ def build_report(start=None, end=None, source=""):
             day=p.created_utc.astimezone(ZoneInfo("America/Chicago")).date()
             add(dict(day=day,customer=(r.customer.name if r and r.customer else "") or data.get("customer_name") or p.customer_name or "Name not provided",
                 source="Direct Stripe",reference=p.charge_id,artwork=price*qty,shipping=shipping,tax=tax,gross=p.gross,
-                fee=p.fee,net=p.gross-p.fee,receipt=r.pk if r else None,detail=reverse("accounting:stripe_payout",args=[p.pk])),stripe_matches.get(p.pk))
+                fee=p.fee,net=p.gross-p.fee,receipt=r.pk if r else None,detail=reverse("accounting:stripe_payout",args=[p.pk])),stripe_matches.get(p.pk),group_direct.get(p.pk))
     rows.sort(key=lambda r:(r["day"],r["source"],r["reference"]))
     totals={k:sum((r[k] for r in rows if r[k] is not None),ZERO) for k in MONEY}
     incomplete={k:sum(r[k] is None for r in rows) for k in MONEY}
@@ -162,7 +170,7 @@ def pdf(report, caption):
         return "Unknown" if v is None else f"${v:,.2f}"
     line("P. Forbes Art | Sales and Payout Reconciliation",True)
     line(caption)
-    line("Review only - not a ledger report. Totals include known amounts only.")
+    line("Review only - not a ledger report. Grouped deposits show allocated net shares; totals include known amounts only.")
     for r in report["rows"]:
         doc.ln(3)
         line(f"{r['day']} | {r['customer']} | {r['source']}",True)

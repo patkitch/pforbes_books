@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from accounting.import_preview import eligible_import_accounts
 from accounting.models import Account
-from .models import ImportRow, WooOrderImport, WooPayoutMatch, StripePayoutMatch
+from .models import ImportRow, WooOrderImport, WooPayoutMatch, StripePayoutMatch, StripeGroupMatch, StripePaymentImport
 from .payment_matching import active_match, has_documents
 
 PAYOUT_DAYS = 14
@@ -59,6 +59,12 @@ def metadata_money(order, keys):
 def candidates(order):
     if not eligible_order(order) or order.payout_matches.filter(undone_at__isnull=True).exists():
         return []
+    if order.stripe_group_memberships.filter(group__undone_at__isnull=True).exists():
+        return []
+    if processor_for(order) == "Stripe":
+        for p in StripePaymentImport.objects.filter(woo_order_number=order.source_order_id).exclude(payout_id=""):
+            if StripePaymentImport.objects.filter(payout_id=p.payout_id).exclude(pk=p.pk).exists():
+                return []
     processor = processor_for(order)
     paid = paid_date(order)
     known_fee = metadata_money(order, ("_stripe_fee", "Stripe Fee")) if processor == "Stripe" else None
@@ -68,6 +74,7 @@ def candidates(order):
         amount__gte=order.total*(1-MAX_FEE_RATE), transaction_date__range=(paid, paid+timedelta(days=PAYOUT_DAYS)))
     rows = rows.exclude(pk__in=WooPayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     rows = rows.exclude(pk__in=StripePayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
+    rows = rows.exclude(pk__in=StripeGroupMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     result = []
     account_names = {a.pk: str(a) for a in eligible_import_accounts().filter(account_type="asset")}
     for row in rows.order_by("transaction_date", "pk"):
@@ -90,6 +97,9 @@ def candidates(order):
 @transaction.atomic
 def reconcile(request, pk):
     order = get_object_or_404(WooOrderImport.objects.select_for_update(), pk=pk)
+    member = order.stripe_group_memberships.filter(group__undone_at__isnull=True).select_related("group").first()
+    if member:
+        return redirect("accounting:stripe_group",payout_id=member.group.payout_id)
     match = order.payout_matches.filter(undone_at__isnull=True).select_related("bank_row").first()
     if request.method == "POST":
         if request.POST.get("confirm") != "yes":

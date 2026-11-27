@@ -179,6 +179,10 @@ class BankReviewForm(forms.Form):
 @transaction.atomic
 def review(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    from .stripe_groups import active_group
+    group = active_group(row.pk)
+    if group:
+        return redirect("accounting:stripe_group",payout_id=group.payout_id)
     stripe_match = active_stripe_payout(row.pk)
     if stripe_match:
         return redirect("accounting:stripe_payout", pk=stripe_match.payment_id)

@@ -74,7 +74,7 @@ def woo_inbox(request):
 def woo_action(request, pk):
     record = get_object_or_404(WooOrderImport.objects.select_for_update(), pk=pk)
     action = request.POST.get("action")
-    if action == "exclude" and record.payout_matches.filter(undone_at__isnull=True).exists():
+    if action == "exclude" and (record.payout_matches.filter(undone_at__isnull=True).exists() or record.stripe_group_memberships.filter(group__undone_at__isnull=True).exists()):
         return HttpResponseBadRequest("Undo the payout match before excluding the order.")
     if action == "exclude" and record.review_status == WooOrderImport.PENDING:
         record.review_status = WooOrderImport.EXCLUDED

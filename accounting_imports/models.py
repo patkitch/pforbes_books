@@ -159,3 +159,34 @@ class StripePayoutMatch(models.Model):
             models.UniqueConstraint(fields=["payout_id"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_payout"),
             models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_bank"),
         ]
+
+
+class StripeGroupMatch(models.Model):
+    payout_id = models.CharField(max_length=180)
+    bank_row = models.ForeignKey(ImportRow, on_delete=models.PROTECT, related_name="stripe_group_matches")
+    gross = models.DecimalField(max_digits=14, decimal_places=2)
+    fee = models.DecimalField(max_digits=14, decimal_places=2)
+    net = models.DecimalField(max_digits=14, decimal_places=2)
+    evidence = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, related_name="created_stripe_groups")
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="undone_stripe_groups")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["payout_id"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_group"),
+            models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_group_bank"),
+        ]
+
+
+class StripeGroupMember(models.Model):
+    group = models.ForeignKey(StripeGroupMatch, on_delete=models.PROTECT, related_name="members")
+    payment = models.ForeignKey(StripePaymentImport, on_delete=models.PROTECT, related_name="group_memberships")
+    order = models.ForeignKey(WooOrderImport, on_delete=models.PROTECT, null=True, blank=True, related_name="stripe_group_memberships")
+    gross = models.DecimalField(max_digits=14, decimal_places=2)
+    fee = models.DecimalField(max_digits=14, decimal_places=2)
+    net = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["group","payment"], name="unique_stripe_group_member")]

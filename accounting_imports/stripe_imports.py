@@ -149,7 +149,13 @@ def inbox(request):
     from .models import StripePayoutMatch, WooPayoutMatch
     direct_matches = set(StripePayoutMatch.objects.filter(undone_at__isnull=True, payment_id__in=[p.pk for p in payments]).values_list("payment_id", flat=True))
     woo_matches = dict(WooPayoutMatch.objects.filter(undone_at__isnull=True).values_list("order_id", "processor"))
+    from django.db.models import Count
+    from .models import StripeGroupMatch
+    grouped=set(StripePaymentImport.objects.exclude(payout_id="").values("payout_id").annotate(n=Count("pk")).filter(n__gt=1).values_list("payout_id",flat=True))
+    matched_groups=set(StripeGroupMatch.objects.filter(undone_at__isnull=True).values_list("payout_id",flat=True))
     for p in payments:
+        p.is_grouped=p.payout_id in grouped
+        p.group_matched=p.payout_id in matched_groups
         p.review_label,p.woo_order=classify(p)
         p.can_review = p.review_label == "Possible direct sale — review required" or p.review_data.get("state") == "excluded"
         if p.review_label == "Possible direct sale — review required":

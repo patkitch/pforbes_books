@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from accounting.import_preview import eligible_import_accounts
 from accounting_contacts.models import Receipt
-from .models import ImportRow, StripePaymentImport, StripePayoutMatch, WooPayoutMatch
+from .models import ImportRow, StripePaymentImport, StripePayoutMatch, WooPayoutMatch, StripeGroupMatch
 from .payment_matching import active_match, has_documents
 from .stripe_imports import classify
 
@@ -38,6 +38,7 @@ def candidates(payment):
         batch__undone_at__isnull=True)
     rows = rows.exclude(pk__in=StripePayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     rows = rows.exclude(pk__in=WooPayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
+    rows = rows.exclude(pk__in=StripeGroupMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     return [r for r in rows if re.search(r"\bstripe\b", r.description, re.I)
         and (not r.review_data or r.review_data.get("classification") == "deferred")
         and not active_match(r.pk).exists() and not has_documents(r)]
@@ -47,6 +48,9 @@ def candidates(payment):
 @transaction.atomic
 def reconcile(request, pk):
     payment = get_object_or_404(StripePaymentImport.objects.select_for_update(), pk=pk)
+    member = payment.group_memberships.filter(group__undone_at__isnull=True).select_related("group").first()
+    if member:
+        return redirect("accounting:stripe_group",payout_id=member.group.payout_id)
     match = payment.payout_matches.filter(undone_at__isnull=True).select_related("bank_row").first()
     if request.method == "POST":
         if request.POST.get("confirm") != "yes":

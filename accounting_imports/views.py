@@ -132,7 +132,10 @@ def inbox(request):
         matched_ids.update((bank_id,card_id))
     payouts = dict(WooPayoutMatch.objects.filter(undone_at__isnull=True, bank_row_id__in=[i.pk for i in items]).values_list('bank_row_id','order_id'))
     stripe_payouts = dict(StripePayoutMatch.objects.filter(undone_at__isnull=True, bank_row_id__in=[i.pk for i in items]).values_list('bank_row_id','payment_id'))
+    from .models import StripeGroupMatch
+    groups=dict(StripeGroupMatch.objects.filter(undone_at__isnull=True,bank_row_id__in=[i.pk for i in items]).values_list('bank_row_id','payout_id'))
     for item in items:
+        item.stripe_group_id=groups.get(item.pk)
         item.stripe_payment_id = stripe_payouts.get(item.pk)
         item.payout_order_id = payouts.get(item.pk)
         item.is_matched = item.pk in matched_ids
@@ -165,7 +168,8 @@ def inbox(request):
 @transaction.atomic
 def change_status(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
-    if active_payout(row.pk) or active_stripe_payout(row.pk):
+    from .stripe_groups import active_group
+    if active_payout(row.pk) or active_stripe_payout(row.pk) or active_group(row.pk):
         return HttpResponseBadRequest("Undo the payout match before changing status.")
     if active_match(row.pk).exists():
         return HttpResponseBadRequest("Undo the payment match before changing status.")
@@ -189,7 +193,7 @@ def change_status(request, pk):
 def _undo_allowed(batch, rows):
     return not batch.undone_at and bool(rows) and all(
         row.status == ImportRow.PENDING and not row.review_data and not row.note
-        and row.account_id == batch.account_id and not (row.bank_payment_matches.exists() or row.card_payment_matches.exists() or row.woo_payout_matches.exists() or row.stripe_payout_matches.exists()) for row in rows
+        and row.account_id == batch.account_id and not (row.bank_payment_matches.exists() or row.card_payment_matches.exists() or row.woo_payout_matches.exists() or row.stripe_payout_matches.exists() or row.stripe_group_matches.exists()) for row in rows
     )
 
 
