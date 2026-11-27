@@ -14,6 +14,7 @@ from .models import ImportRow
 from .merchant_recognition import suggest
 from .bank_splits import SplitFormSet, validate_allocations
 from decimal import Decimal
+import re
 
 
 class BankReviewForm(forms.Form):
@@ -87,6 +88,11 @@ class BankReviewForm(forms.Form):
                 self.add_error("classification", "Review the outgoing bank payment only. Incoming card-side payments require matching later.")
             if not data.get("payment_card"):
                 self.add_error("payment_card", "Select the card being paid.")
+            else:
+                stated = re.search(r"\b(?:CRD|CARD)\s+(\d{4})\b", self.row.description, re.I)
+                selected = re.search(r"\((\d{4})\)\s*$", data["payment_card"].name)
+                if stated and (not selected or stated.group(1) != selected.group(1)):
+                    self.add_error("payment_card", f"Bank description identifies card ending in {stated.group(1)}. Select the matching card.")
             funding = data.get("payment_funding")
             if funding not in ("personal", "business"):
                 self.add_error("payment_funding", "Choose the funding source.")
@@ -166,8 +172,8 @@ def review(request, pk):
             "payment_card": data["payment_card"].pk if data.get("payment_card") else None,
             "payment_funding": data.get("payment_funding") or "",
             "payment_equity": data["payment_equity"].pk if data.get("payment_equity") else None,
-            "payment_business": str(data["payment_business"]) if data.get("payment_business") is not None else None,
-            "payment_remainder": str(abs(row.amount) - data["payment_business"]) if data.get("payment_business") is not None else None,
+            "payment_business": format(data["payment_business"], ".2f") if data.get("payment_business") is not None else None,
+            "payment_remainder": format(abs(row.amount) - data["payment_business"], ".2f") if data.get("payment_business") is not None else None,
             "splits": allocations,
             "business_amount": str(sum((Decimal(line["amount"]) for line in allocations if line["kind"] == "business"), Decimal("0"))) if allocations else None,
             "personal_amount": str(sum((Decimal(line["amount"]) for line in allocations if line["kind"] == "personal"), Decimal("0"))) if allocations else None,
