@@ -8,6 +8,7 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from accounting.import_preview import eligible_import_accounts
+from accounting.models import Account
 from .models import ImportRow, WooOrderImport, WooPayoutMatch
 from .payment_matching import active_match, has_documents
 
@@ -67,6 +68,7 @@ def candidates(order):
         amount__gte=order.total*(1-MAX_FEE_RATE), transaction_date__range=(paid, paid+timedelta(days=PAYOUT_DAYS)))
     rows = rows.exclude(pk__in=WooPayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     result = []
+    account_names = {a.pk: str(a) for a in eligible_import_accounts().filter(account_type="asset")}
     for row in rows.order_by("transaction_date", "pk"):
         if not re.search(r"\b" + re.escape(processor) + r"\b", row.description, re.I):
             continue
@@ -77,6 +79,7 @@ def candidates(order):
         fee = order.total - row.amount
         if (known_fee is not None and fee != known_fee) or (known_net is not None and row.amount != known_net):
             continue
+        row.account_label = account_names.get(row.account_id, f"Account #{row.account_id}")
         row.calculated_fee = fee
         result.append(row)
     return result
@@ -111,7 +114,8 @@ def reconcile(request, pk):
         WooPayoutMatch.objects.create(order=order, bank_row=bank, processor=processor_for(order),
             gross=order.total, fee=order.total-bank.amount, net=bank.amount, evidence=evidence, created_by=request.user)
         return redirect("accounting:woo_payout", pk=pk)
+    matched_account = Account.objects.filter(pk=match.bank_row.account_id).first() if match else None
     return render(request, "accounting_imports/woo_payout.html", {"order":order, "match":match,
-        "choices":candidates(order), "processor":processor_for(order), "paid":paid_date(order),
+        "matched_account":matched_account, "choices":candidates(order), "processor":processor_for(order), "paid":paid_date(order),
         "eligible":eligible_order(order), "artwork":order.total-order.shipping_total-order.tax_total,
         "history":order.payout_matches.order_by("-created_at")})
