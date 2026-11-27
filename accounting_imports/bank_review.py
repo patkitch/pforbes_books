@@ -3,6 +3,8 @@ from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from urllib.parse import urlencode
 from accounting.models import Account
 from accounting_contacts.models import Vendor, Receipt
 from accounting_contacts.forms import ReceiptForm
@@ -16,9 +18,9 @@ class BankReviewForm(forms.Form):
         ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
     ])
     vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False)
-    new_vendor = forms.CharField(max_length=200, required=False, label="Or create vendor")
+    new_vendor = forms.CharField(max_length=200, required=False, label="Add new vendor (if not listed)")
     category = forms.ModelChoiceField(queryset=Account.objects.none(), required=False,
-                                      label="Chart of Accounts")
+                                      label="Expense / Income Category")
     memo = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(attrs={"rows": 3}))
     attachment = forms.FileField(required=False, label="Upload original receipt or invoice (optional)",
         help_text="PDF, JPG, PNG or WebP, up to 10 MB. You can add another document later.")
@@ -30,6 +32,7 @@ class BankReviewForm(forms.Form):
         self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
         self.fields["category"].queryset = Account.objects.filter(is_active=True, account_type__in=(
             "expense", "cogs", "other_expense", "income", "other_income"))
+        self.category_types = {str(a.pk): a.account_type for a in self.fields["category"].queryset}
         self.documents = Receipt.objects.filter(source="bank_document",
             source_reference__startswith=f"{row.pk}:").order_by("pk")
 
@@ -73,6 +76,10 @@ class BankReviewForm(forms.Form):
 @transaction.atomic
 def review(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    account_filter = request.GET.get("account_filter", "")
+    if not (account_filter.isdecimal() and len(account_filter) <= 18):
+        account_filter = ""
+    back_url = reverse("accounting:import_inbox") + "?" + urlencode({"tab": "excluded" if request.GET.get("tab") == "excluded" else "review", "account_filter": account_filter})
     initial = dict(row.review_data)
     if not initial:
         # Only explicitly remembered exact descriptions suggest an assignment.
@@ -113,8 +120,9 @@ def review(request, pk):
         row.status = {"personal": ImportRow.EXCLUDED, "deferred": ImportRow.PENDING}.get(
             data["classification"], ImportRow.REVIEWED)
         row.save(update_fields=["review_data", "status"])
-        return redirect("accounting:import_inbox")
+        return redirect(reverse("accounting:import_inbox") + "?" + urlencode({"tab": "review", "account_filter": account_filter}))
     account = Account.objects.filter(pk=row.account_id).first()
     return render(request, "accounting_imports/bank_review.html",
                   {"row": row, "account": account, "form": form,
-                   "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
+                   "back_url": back_url, "amount_label": ("−" if row.amount < 0 else "") + f"${abs(row.amount):,.2f}",
+                   "category_types": form.category_types, "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
