@@ -7,7 +7,8 @@ from django.core.exceptions import ValidationError
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from .models import WooOrderImport
+from .models import WooOrderImport, WooPayoutMatch
+from .woo_payouts import eligible_order
 from .woo_orders import stage_orders, create_reviewed_receipt
 from .woo_client import configured, fetch_and_stage, WooConnectionError
 
@@ -55,10 +56,15 @@ def woo_inbox(request):
         else:
             result = {"added": added, "skipped": skipped}
             form = WooOrderUploadForm()
+    orders = list(WooOrderImport.objects.order_by("-order_date", "-pk")[:200])
+    matches = {m.order_id: m for m in WooPayoutMatch.objects.filter(undone_at__isnull=True, order_id__in=[o.pk for o in orders])}
+    for order in orders:
+        order.active_payout = matches.get(order.pk)
+        order.payout_eligible = eligible_order(order)
     return render(request, "accounting_imports/woo_inbox.html", {
         "form": form, "result": result, "fetch_form": fetch_form,
         "connection_ready": configured(), "connection_error": connection_error,
-        "orders": WooOrderImport.objects.order_by("-order_date", "-pk")[:200],
+        "orders": orders,
     })
 
 
