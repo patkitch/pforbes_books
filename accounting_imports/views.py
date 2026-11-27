@@ -127,6 +127,9 @@ def inbox(request):
         item.account_label = names.get(item.account_id, f"Account #{item.account_id}")
         item.vendor_label = vendors.get(item.review_data.get("vendor"))
         item.category_label = categories.get(item.review_data.get("category"))
+        if item.review_data.get("classification") == "split":
+            item.category_label = "Split — business ${}, personal ${}".format(
+                item.review_data.get("business_amount"), item.review_data.get("personal_amount"))
         item.document_count = document_counts[item.pk] + int(bool(item.review_data.get("receipt")))
         item.amount_label = ("−" if item.amount < 0 else "") + f"${abs(item.amount):,.2f}"
     for entry in tabs:
