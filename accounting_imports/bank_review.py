@@ -15,6 +15,14 @@ from .merchant_recognition import suggest
 from .bank_splits import SplitFormSet, validate_allocations
 from decimal import Decimal, ROUND_HALF_UP
 import re
+from datetime import timedelta
+
+
+class SalesMonthField(forms.DateField):
+    def to_python(self, value):
+        if isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}", value):
+            value += "-01"
+        return super().to_python(value)
 
 
 class BankReviewForm(forms.Form):
@@ -39,7 +47,7 @@ class BankReviewForm(forms.Form):
         label="Business liability portion of payment")
 
     gallery_name = forms.CharField(required=False, max_length=200, label="Gallery name")
-    gallery_period = forms.DateField(required=False, label="Sales period (first day of month)", widget=forms.DateInput(attrs={"type": "date"}))
+    gallery_period = SalesMonthField(required=False, label="Sales month", widget=forms.DateInput(format="%Y-%m", attrs={"type": "month"}))
     gallery_received = forms.DateField(required=False, label="Payment received date", widget=forms.DateInput(attrs={"type": "date"}))
     gallery_gross = forms.DecimalField(required=False, min_value=Decimal("0.01"), max_digits=14, decimal_places=2, label="Gross artwork sales (excluding sales tax)")
     gallery_rate = forms.DecimalField(required=False, min_value=Decimal("0"), max_value=Decimal("100"), max_digits=5, decimal_places=2, initial=Decimal("30.00"), label="Commission percentage")
@@ -51,6 +59,14 @@ class BankReviewForm(forms.Form):
         self.row = row
         self.fields["gallery_income"].queryset = Account.objects.filter(is_active=True, account_type="income").order_by("number")
         self.fields["gallery_commission_account"].queryset = Account.objects.filter(is_active=True, account_type__in=("expense", "cogs", "other_expense"), name__icontains="commission").order_by("number")
+        if self.initial.get("gallery_period"):
+            self.initial["gallery_period"] = str(self.initial["gallery_period"])[:7]
+        else:
+            self.initial["gallery_period"] = (row.transaction_date.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+        if self.initial.get("classification") != "gallery":
+            self.initial["gallery_name"] = "Images Art Gallery"
+            self.initial["gallery_income"] = self.fields["gallery_income"].queryset.filter(number="4013").values_list("pk", flat=True).first()
+            self.initial["gallery_commission_account"] = self.fields["gallery_commission_account"].queryset.filter(number="6008").values_list("pk", flat=True).first()
         if not self.initial.get("gallery_rate"):
             self.initial["gallery_rate"] = Decimal("30.00") if self.initial.get("gallery_rate") is None else self.initial["gallery_rate"]
         if not self.initial.get("gallery_received"):
