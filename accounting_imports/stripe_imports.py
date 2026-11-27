@@ -148,5 +148,11 @@ def inbox(request):
     payments=list(StripePaymentImport.objects.all()[:200])
     for p in payments:
         p.review_label,p.woo_order=classify(p)
+        p.can_review = p.review_label == "Possible direct sale — review required" or p.review_data.get("state") == "excluded"
+        if p.review_label == "Possible direct sale — review required":
+            if p.review_data.get("state") == "reviewed":
+                p.review_label = "Direct sale reviewed — not posted"
+            elif p.review_data.get("state") == "excluded":
+                p.review_label = "Personal / test — excluded"
         p.net=p.gross-p.fee
     return render(request,"accounting_imports/stripe_inbox.html",{"form":form,"result":result,"payments":payments})
