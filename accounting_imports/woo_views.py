@@ -1,5 +1,6 @@
 """Staff-reviewed WooCommerce imports from fixtures or opt-in read-only API."""
 import json
+from django.db import transaction
 from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
@@ -63,9 +64,12 @@ def woo_inbox(request):
 
 @require_POST
 @staff_member_required(login_url="/admin/login/")
+@transaction.atomic
 def woo_action(request, pk):
-    record = get_object_or_404(WooOrderImport, pk=pk)
+    record = get_object_or_404(WooOrderImport.objects.select_for_update(), pk=pk)
     action = request.POST.get("action")
+    if action == "exclude" and record.payout_matches.filter(undone_at__isnull=True).exists():
+        return HttpResponseBadRequest("Undo the payout match before excluding the order.")
     if action == "exclude" and record.review_status == WooOrderImport.PENDING:
         record.review_status = WooOrderImport.EXCLUDED
         record.save(update_fields=["review_status"])
