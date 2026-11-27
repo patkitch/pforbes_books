@@ -10,7 +10,7 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from accounting.import_preview import ImportPreviewForm, parse_csv_preview
+from accounting.import_preview import ImportPreviewForm, parse_csv_preview, validate_statement_account
 from accounting.models import Account
 from .models import ImportBatch, ImportRow
 
@@ -65,13 +65,21 @@ def inbox(request):
         upload = form.cleaned_data["file"]
         try:
             rows = parse_csv_preview(upload.read())
+            validate_statement_account(form.cleaned_data["account"], upload.name, rows)
         except ValueError as exc:
             form.add_error("file", str(exc))
         else:
+            selected = form.cleaned_data["account"]
+            other_ids = set(ImportRow.objects.filter(
+                fingerprint__in={_fingerprint(row) for row in rows}
+            ).exclude(account_id=selected.pk).values_list("account_id", flat=True))
+            warning = ", ".join(str(a) for a in Account.objects.filter(pk__in=other_ids))
+            if other_ids and not warning:
+                warning = "another financial account"
             _, added, skipped = stage_rows(
                 form.cleaned_data["account"], upload.name, rows, request.user
             )
-            result = {"added": added, "skipped": skipped, "summary": getattr(rows, "summary", {})}
+            result = {"added": added, "skipped": skipped, "summary": getattr(rows, "summary", {}), "cross_account_warning": warning}
             form = ImportPreviewForm()
     accounts = Account.objects.filter(pk__in=ImportRow.objects.values("account_id"))
     names = {account.pk: str(account) for account in accounts}
