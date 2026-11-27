@@ -151,7 +151,7 @@ def inbox(request):
         p.can_review = p.review_label == "Possible direct sale — review required" or p.review_data.get("state") == "excluded"
         if p.review_label == "Possible direct sale — review required":
             if p.review_data.get("state") == "reviewed":
-                p.review_label = "Direct sale reviewed — not posted"
+                p.review_label = "Internal receipt created — not posted" if p.review_data.get("receipt_id") else "Direct sale reviewed — not posted"
             elif p.review_data.get("state") == "excluded":
                 p.review_label = "Personal / test — excluded"
         p.net=p.gross-p.fee
