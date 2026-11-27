@@ -24,6 +24,11 @@ def has_documents(row):
         source="bank_document", source_reference__startswith=f"{row.pk}:").exists()
 
 
+def confirmation(description):
+    match = re.search(r"\b(?:confirmation|conf)\s*#\s*([a-z0-9-]+)", description, re.I)
+    return match.group(1).casefold() if match else None
+
+
 def candidates(bank):
     if bank.status != ImportRow.REVIEWED or bank.review_data.get("classification") != "card_payment" or bank.amount >= 0:
         return ImportRow.objects.none()
@@ -37,11 +42,21 @@ def candidates(bank):
     if stated and (not suffix or stated.group(1) != suffix.group(1)):
         return ImportRow.objects.none()
     used = CardPaymentMatch.objects.filter(undone_at__isnull=True)
-    return ImportRow.objects.filter(account_id=card.pk, amount=-bank.amount,
+    possible = ImportRow.objects.filter(account_id=card.pk, amount=-bank.amount,
         status=ImportRow.PENDING, transaction_date__range=(bank.transaction_date-timedelta(days=MATCH_DAYS),
         bank.transaction_date+timedelta(days=MATCH_DAYS)),
-        description__iregex=r"\b(?:payment|pymt|pmt)\b").exclude(
+        ).exclude(
         pk__in=used.values("card_row_id")).exclude(pk__in=used.values("bank_row_id")).order_by("transaction_date", "pk")
+    bank_ref = confirmation(bank.description)
+    eligible = []
+    for candidate in possible:
+        if not re.search(r"\b(?:payment|pymt|pmt)\b", candidate.description, re.I):
+            continue
+        card_ref = confirmation(candidate.description)
+        if bank_ref and card_ref and bank_ref != card_ref:
+            continue
+        eligible.append(candidate.pk)
+    return possible.filter(pk__in=eligible)
 
 
 @staff_member_required(login_url="/admin/login/")
