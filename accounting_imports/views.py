@@ -130,6 +130,8 @@ def inbox(request):
         if item.review_data.get("classification") == "split":
             item.category_label = "Split — business ${}, personal ${}".format(
                 item.review_data.get("business_amount"), item.review_data.get("personal_amount"))
+        if item.review_data.get("classification") == "card_payment":
+            item.category_label = "Card payment — business ${}, {}".format(item.review_data.get("payment_business"), "Owner Investment" if item.review_data.get("payment_funding") == "personal" else "bank funded")
         item.document_count = document_counts[item.pk] + int(bool(item.review_data.get("receipt")))
         item.amount_label = ("−" if item.amount < 0 else "") + f"${abs(item.amount):,.2f}"
     for entry in tabs:
