@@ -132,6 +132,9 @@ def inbox(request):
                 item.review_data.get("business_amount"), item.review_data.get("personal_amount"))
         if item.review_data.get("classification") == "card_payment":
             item.category_label = "Card payment — business ${}, {}".format(item.review_data.get("payment_business"), "Owner Investment" if item.review_data.get("payment_funding") == "personal" else "bank funded")
+        if item.review_data.get("classification") == "gallery":
+            item.vendor_label = item.review_data.get("gallery_name")
+            item.category_label = "Gallery — gross ${}, commission ${}".format(item.review_data.get("gallery_gross"), item.review_data.get("gallery_commission"))
         item.document_count = document_counts[item.pk] + int(bool(item.review_data.get("receipt")))
         item.amount_label = ("−" if item.amount < 0 else "") + f"${abs(item.amount):,.2f}"
     for entry in tabs:
