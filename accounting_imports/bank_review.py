@@ -15,7 +15,7 @@ from .merchant_recognition import suggest
 
 class BankReviewForm(forms.Form):
     classification = forms.ChoiceField(choices=[
-        ("expense", "Business expense"), ("income", "Business income"),
+        ("", "Choose classification"), ("expense", "Business expense"), ("income", "Business income"),
         ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
     ])
     vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False)
@@ -83,6 +83,9 @@ def review(request, pk):
     back_url = reverse("accounting:import_inbox") + "?" + urlencode({"tab": "excluded" if request.GET.get("tab") == "excluded" else "review", "account_filter": account_filter})
     initial = dict(row.review_data)
     suggestion = ""
+    # Do not silently upgrade an older exact-description authorization.
+    if initial.get("remember") and initial.get("remember_scope") != "merchant":
+        initial["remember"] = False
     if not initial:
         initial, suggestion = suggest(row)
     form = BankReviewForm(request.POST or None, request.FILES or None, row=row, initial=initial)
@@ -110,6 +113,7 @@ def review(request, pk):
             "receipt": row.review_data.get("receipt"),
             "memo": data.get("memo", ""),
             "remember": data.get("remember", False),
+            "remember_scope": "merchant" if data.get("remember") else "",
             "reviewed_by": request.user.pk,
         }
         row.status = {"personal": ImportRow.EXCLUDED, "deferred": ImportRow.PENDING}.get(
