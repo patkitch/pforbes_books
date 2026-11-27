@@ -11,12 +11,14 @@ from accounting_contacts.forms import ReceiptForm
 from hashlib import sha256
 from .models import ImportRow
 from .merchant_recognition import suggest
+from .bank_splits import SplitFormSet, validate_allocations
+from decimal import Decimal
 
 
 class BankReviewForm(forms.Form):
     classification = forms.ChoiceField(choices=[
         ("", "Choose classification"), ("expense", "Business expense"), ("income", "Business income"),
-        ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
+        ("split", "Split purchase — business / personal"), ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
     ])
     vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False)
     new_vendor = forms.CharField(max_length=200, required=False, label="Add new vendor (if not listed)")
@@ -43,23 +45,28 @@ class BankReviewForm(forms.Form):
     def clean(self):
         data = super().clean()
         kind = data.get("classification")
+        if kind == "personal":
+            for key in ("vendor", "new_vendor", "category", "remember"):
+                data[key] = None
         vendor, name, category = data.get("vendor"), data.get("new_vendor"), data.get("category")
         attachment = data.get("attachment")
         documents = list(self.documents)
         legacy = self.row.review_data.get("receipt")
         if legacy:
             documents += list(Receipt.objects.filter(pk=legacy))
-        if documents and (kind != "expense" or not vendor or any(d.vendor_id != vendor.pk for d in documents)):
+        if documents and (kind not in ("expense", "split") or not vendor or any(d.vendor_id != vendor.pk for d in documents)):
             self.add_error("vendor", "Existing purchase documentation is linked to this vendor. Keep the vendor and expense classification.")
         if name and (vendor or Vendor.objects.filter(name__iexact=name).exists()):
             self.add_error("new_vendor", "Select the existing vendor instead.")
-        if kind == "expense":
+        if kind in ("expense", "split"):
             if self.row.amount >= 0:
                 self.add_error("classification", "Use further review for credits or refunds.")
             if not vendor and not name:
                 self.add_error("vendor", "Select or create a vendor.")
-            if not category or category.account_type not in ("expense", "cogs", "other_expense"):
+            if kind == "expense" and (not category or category.account_type not in ("expense", "cogs", "other_expense")):
                 self.add_error("category", "Select an expense or cost of goods sold account.")
+            if kind == "split" and (category or data.get("remember")):
+                self.add_error("category", "Use the allocation categories below; do not remember a single category for a split.")
 
         elif kind == "income":
             if self.row.amount <= 0:
@@ -89,7 +96,17 @@ def review(request, pk):
     if not initial:
         initial, suggestion = suggest(row)
     form = BankReviewForm(request.POST or None, request.FILES or None, row=row, initial=initial)
-    if request.method == "POST" and form.is_valid():
+    split_initial = row.review_data.get("splits", [])
+    split_formset = SplitFormSet(request.POST if request.method == "POST" and request.POST.get("classification") == "split" else None,
+                                initial=split_initial, prefix="splits")
+    valid = request.method == "POST" and form.is_valid()
+    allocations = []
+    if request.method == "POST" and request.POST.get("classification") == "split":
+        allocations, error = validate_allocations(split_formset, row.amount)
+        if error:
+            form.add_error(None, error)
+            valid = False
+    if valid:
         data = form.cleaned_data
         vendor = data.get("vendor")
         if data.get("new_vendor"):
@@ -115,6 +132,9 @@ def review(request, pk):
             "remember": data.get("remember", False),
             "remember_scope": "merchant" if data.get("remember") else "",
             "reviewed_by": request.user.pk,
+            "splits": allocations,
+            "business_amount": str(sum((Decimal(line["amount"]) for line in allocations if line["kind"] == "business"), Decimal("0"))) if allocations else None,
+            "personal_amount": str(sum((Decimal(line["amount"]) for line in allocations if line["kind"] == "personal"), Decimal("0"))) if allocations else None,
         }
         row.status = {"personal": ImportRow.EXCLUDED, "deferred": ImportRow.PENDING}.get(
             data["classification"], ImportRow.REVIEWED)
@@ -124,4 +144,4 @@ def review(request, pk):
     return render(request, "accounting_imports/bank_review.html",
                   {"row": row, "account": account, "form": form,
                    "suggestion": suggestion, "back_url": back_url, "amount_label": ("−" if row.amount < 0 else "") + f"${abs(row.amount):,.2f}",
-                   "category_types": form.category_types, "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
+                   "split_formset": split_formset, "purchase_cents": int(abs(row.amount) * 100), "category_types": form.category_types, "documents": form.documents, "legacy_receipt": row.review_data.get("receipt")})
