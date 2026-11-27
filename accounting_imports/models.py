@@ -91,3 +91,24 @@ class CardPaymentMatch(models.Model):
             models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_bank_payment_match"),
             models.UniqueConstraint(fields=["card_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_card_payment_match"),
         ]
+
+
+class WooPayoutMatch(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    order = models.ForeignKey(WooOrderImport, on_delete=models.PROTECT, related_name="payout_matches")
+    bank_row = models.ForeignKey(ImportRow, on_delete=models.PROTECT, related_name="woo_payout_matches")
+    processor = models.CharField(max_length=20)
+    gross = models.DecimalField(max_digits=14, decimal_places=2)
+    fee = models.DecimalField(max_digits=14, decimal_places=2)
+    net = models.DecimalField(max_digits=14, decimal_places=2)
+    evidence = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, related_name="created_woo_payout_matches")
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="undone_woo_payout_matches")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["order"], condition=models.Q(undone_at__isnull=True), name="unique_active_woo_order_payout"),
+            models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_woo_bank_payout"),
+        ]
