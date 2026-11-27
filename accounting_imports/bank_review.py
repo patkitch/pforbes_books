@@ -13,14 +13,14 @@ from hashlib import sha256
 from .models import ImportRow
 from .merchant_recognition import suggest
 from .bank_splits import SplitFormSet, validate_allocations
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import re
 
 
 class BankReviewForm(forms.Form):
     classification = forms.ChoiceField(choices=[
         ("", "Choose classification"), ("expense", "Business expense"), ("income", "Business income"),
-        ("card_payment", "Credit card payment"), ("split", "Split purchase — business / personal"), ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
+        ("gallery", "Gallery commission deposit"), ("card_payment", "Credit card payment"), ("split", "Split purchase — business / personal"), ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
     ])
     vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False)
     new_vendor = forms.CharField(max_length=200, required=False, label="Add new vendor (if not listed)")
@@ -38,9 +38,23 @@ class BankReviewForm(forms.Form):
     payment_business = forms.DecimalField(required=False, min_value=Decimal("0.01"), max_digits=14, decimal_places=2,
         label="Business liability portion of payment")
 
+    gallery_name = forms.CharField(required=False, max_length=200, label="Gallery name")
+    gallery_period = forms.DateField(required=False, label="Sales period (first day of month)", widget=forms.DateInput(attrs={"type": "date"}))
+    gallery_received = forms.DateField(required=False, label="Payment received date", widget=forms.DateInput(attrs={"type": "date"}))
+    gallery_gross = forms.DecimalField(required=False, min_value=Decimal("0.01"), max_digits=14, decimal_places=2, label="Gross artwork sales (excluding sales tax)")
+    gallery_rate = forms.DecimalField(required=False, min_value=Decimal("0"), max_value=Decimal("100"), max_digits=5, decimal_places=2, initial=Decimal("30.00"), label="Commission percentage")
+    gallery_income = forms.ModelChoiceField(queryset=Account.objects.none(), required=False, label="Artwork sales income account")
+    gallery_commission_account = forms.ModelChoiceField(queryset=Account.objects.none(), required=False, label="Gallery commission expense account")
+
     def __init__(self, *args, row, **kwargs):
         super().__init__(*args, **kwargs)
         self.row = row
+        self.fields["gallery_income"].queryset = Account.objects.filter(is_active=True, account_type="income").order_by("number")
+        self.fields["gallery_commission_account"].queryset = Account.objects.filter(is_active=True, account_type__in=("expense", "cogs", "other_expense"), name__icontains="commission").order_by("number")
+        if not self.initial.get("gallery_rate"):
+            self.initial["gallery_rate"] = Decimal("30.00") if self.initial.get("gallery_rate") is None else self.initial["gallery_rate"]
+        if not self.initial.get("gallery_received"):
+            self.initial["gallery_received"] = row.transaction_date
         self.fields["payment_card"].queryset = eligible_import_accounts().filter(account_type="liability")
         self.fields["payment_equity"].queryset = Account.objects.filter(is_active=True, account_type="equity", name__iregex=r"owner.*(investment|contribution)|capital contribution")
         self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
@@ -56,6 +70,9 @@ class BankReviewForm(forms.Form):
     def clean(self):
         data = super().clean()
         kind = data.get("classification")
+        if kind != "gallery":
+            for key in ("gallery_name", "gallery_period", "gallery_received", "gallery_gross", "gallery_rate", "gallery_income", "gallery_commission_account"):
+                data[key] = None
         if kind != "card_payment":
             for key in ("payment_card", "payment_funding", "payment_equity", "payment_business"):
                 data[key] = None
@@ -82,6 +99,28 @@ class BankReviewForm(forms.Form):
             if kind == "split" and (category or data.get("remember")):
                 self.add_error("category", "Use the allocation categories below; do not remember a single category for a split.")
 
+        elif kind == "gallery":
+            if self.row.amount <= 0 or not eligible_import_accounts().filter(pk=self.row.account_id, account_type="asset").exists():
+                self.add_error("classification", "A gallery deposit must be a positive bank deposit.")
+            for key in ("gallery_name", "gallery_period", "gallery_received", "gallery_gross", "gallery_rate", "gallery_income", "gallery_commission_account"):
+                if data.get(key) is None or data.get(key) == "":
+                    self.add_error(key, "Required for a gallery deposit.")
+            period, received = data.get("gallery_period"), data.get("gallery_received")
+            if period and period.day != 1:
+                self.add_error("gallery_period", "Use the first day of the sales month.")
+            if received and received > self.row.transaction_date:
+                self.add_error("gallery_received", "Payment receipt cannot be after its deposit date.")
+            if period and received and period > received:
+                self.add_error("gallery_period", "Sales month cannot begin after payment receipt.")
+            gross, rate = data.get("gallery_gross"), data.get("gallery_rate")
+            if gross is not None and rate is not None:
+                commission = (gross * rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                if gross - commission != self.row.amount:
+                    self.add_error("gallery_gross", "Gross sales minus commission must exactly equal the bank deposit.")
+                else:
+                    data["gallery_commission"] = commission
+            if vendor or name or category or attachment or data.get("remember"):
+                self.add_error("classification", "Use the gallery-specific fields instead of ordinary purchase fields.")
         elif kind == "card_payment":
             source = eligible_import_accounts().filter(pk=self.row.account_id, account_type="asset").first()
             if not source or self.row.amount >= 0:
@@ -169,6 +208,14 @@ def review(request, pk):
             "remember": data.get("remember", False),
             "remember_scope": "merchant" if data.get("remember") else "",
             "reviewed_by": request.user.pk,
+            "gallery_name": data.get("gallery_name") or "",
+            "gallery_period": data["gallery_period"].isoformat() if data.get("gallery_period") else None,
+            "gallery_received": data["gallery_received"].isoformat() if data.get("gallery_received") else None,
+            "gallery_gross": format(data["gallery_gross"], ".2f") if data.get("gallery_gross") is not None else None,
+            "gallery_rate": format(data["gallery_rate"], ".2f") if data.get("gallery_rate") is not None else None,
+            "gallery_commission": format(data["gallery_commission"], ".2f") if data.get("gallery_commission") is not None else None,
+            "gallery_income": data["gallery_income"].pk if data.get("gallery_income") else None,
+            "gallery_commission_account": data["gallery_commission_account"].pk if data.get("gallery_commission_account") else None,
             "payment_card": data["payment_card"].pk if data.get("payment_card") else None,
             "payment_funding": data.get("payment_funding") or "",
             "payment_equity": data["payment_equity"].pk if data.get("payment_equity") else None,
