@@ -138,3 +138,24 @@ class StripePaymentImport(models.Model):
 
     class Meta:
         ordering = ["-created_utc", "-pk"]
+
+
+class StripePayoutMatch(models.Model):
+    payment = models.ForeignKey(StripePaymentImport, on_delete=models.PROTECT, related_name="payout_matches")
+    bank_row = models.ForeignKey(ImportRow, on_delete=models.PROTECT, related_name="stripe_payout_matches")
+    payout_id = models.CharField(max_length=180)
+    gross = models.DecimalField(max_digits=14, decimal_places=2)
+    fee = models.DecimalField(max_digits=14, decimal_places=2)
+    net = models.DecimalField(max_digits=14, decimal_places=2)
+    evidence = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, related_name="created_stripe_payout_matches")
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="undone_stripe_payout_matches")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["payment"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_payment"),
+            models.UniqueConstraint(fields=["payout_id"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_payout"),
+            models.UniqueConstraint(fields=["bank_row"], condition=models.Q(undone_at__isnull=True), name="unique_active_stripe_bank"),
+        ]

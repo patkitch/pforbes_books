@@ -13,6 +13,7 @@ from hashlib import sha256
 from .models import ImportRow
 from .payment_matching import active_match
 from .woo_payouts import active_payout
+from .stripe_payouts import active_stripe_payout
 from .merchant_recognition import suggest
 from .bank_splits import SplitFormSet, validate_allocations
 from decimal import Decimal, ROUND_HALF_UP
@@ -178,6 +179,9 @@ class BankReviewForm(forms.Form):
 @transaction.atomic
 def review(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    stripe_match = active_stripe_payout(row.pk)
+    if stripe_match:
+        return redirect("accounting:stripe_payout", pk=stripe_match.payment_id)
     payout = active_payout(row.pk)
     if payout:
         return redirect("accounting:woo_payout", pk=payout.order_id)

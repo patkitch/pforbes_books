@@ -1,5 +1,5 @@
 from django.urls import path
-from accounting_imports import views as import_inbox_views, woo_views, bank_review, payment_matching, woo_payouts, stripe_imports, stripe_review
+from accounting_imports import views as import_inbox_views, woo_views, bank_review, payment_matching, woo_payouts, stripe_imports, stripe_review, stripe_payouts
 from accounting_profile import views as business_profile_views
 from accounting_contacts import views as contact_views
 from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales, import_preview
@@ -14,6 +14,7 @@ urlpatterns = [
     path("imports/batches/", import_inbox_views.batch_history, name="batch_history"),
     path("imports/batches/<int:pk>/undo/", import_inbox_views.undo_batch, name="undo_batch"),
     path("imports/inbox/", import_inbox_views.inbox, name="import_inbox"),
+    path("imports/stripe/<int:pk>/payout/", stripe_payouts.reconcile, name="stripe_payout"),
     path("imports/stripe/<int:pk>/review/", stripe_review.review, name="stripe_review"),
     path("imports/stripe/", stripe_imports.inbox, name="stripe_inbox"),
     path("imports/woocommerce/", woo_views.woo_inbox, name="woo_inbox"),

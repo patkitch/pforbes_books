@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from accounting.import_preview import eligible_import_accounts
 from accounting.models import Account
-from .models import ImportRow, WooOrderImport, WooPayoutMatch
+from .models import ImportRow, WooOrderImport, WooPayoutMatch, StripePayoutMatch
 from .payment_matching import active_match, has_documents
 
 PAYOUT_DAYS = 14
@@ -67,6 +67,7 @@ def candidates(order):
         status=ImportRow.PENDING, amount__gt=0, amount__lte=order.total,
         amount__gte=order.total*(1-MAX_FEE_RATE), transaction_date__range=(paid, paid+timedelta(days=PAYOUT_DAYS)))
     rows = rows.exclude(pk__in=WooPayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
+    rows = rows.exclude(pk__in=StripePayoutMatch.objects.filter(undone_at__isnull=True).values("bank_row_id"))
     result = []
     account_names = {a.pk: str(a) for a in eligible_import_accounts().filter(account_type="asset")}
     for row in rows.order_by("transaction_date", "pk"):
