@@ -1,5 +1,9 @@
 """Complete missing direct Stripe sale details without creating a receipt or journal."""
 from decimal import Decimal
+from datetime import datetime
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.contrib import messages
 from zoneinfo import ZoneInfo
 from django import forms
 from django.contrib.admin.views.decorators import staff_member_required
@@ -8,7 +12,8 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from accounting.models import Account
-from accounting_contacts.models import Customer
+from accounting_contacts.models import Customer, Receipt
+from .stripe_receipts import create_receipt
 from .models import StripePaymentImport
 from .stripe_imports import classify
 
@@ -88,6 +93,8 @@ def review(request, pk):
     label, order = classify(payment)
     eligible = label == DIRECT
     current = payment.review_data
+    receipt = Receipt.objects.filter(source="stripe_direct",source_reference=payment.charge_id).first()
+    receipt_error = ""
     initial = {"customer_name":payment.customer_name,"customer_email":payment.customer_email,"quantity":1}
     if current.get("state")=="reviewed":
         initial.update(current)
@@ -99,10 +106,23 @@ def review(request, pk):
     action = request.POST.get("action") if request.method=="POST" else ""
     form = SaleForm(request.POST if action=="save" else None, payment=payment, initial=initial)
     if request.method=="POST":
-        if action=="restore" and current.get("state")=="excluded" and request.POST.get("confirm")=="yes":
+        if receipt:
+            return HttpResponseBadRequest("Receipt already created. Sale review is locked.")
+        if action=="receipt":
+            if request.POST.get("confirm")!="yes":
+                return HttpResponseBadRequest("Confirm receipt creation.")
+            try:
+                receipt, created = create_receipt(payment)
+            except ValidationError as exc:
+                receipt_error = "; ".join(exc.messages)
+            else:
+                record_review(payment,request.user,{**current,"receipt_id":receipt.pk},"receipt")
+                messages.success(request,"Internal receipt created successfully. Nothing posted.")
+                return redirect("accounting:stripe_review",pk=pk)
+        elif action=="restore" and current.get("state")=="excluded" and request.POST.get("confirm")=="yes":
             record_review(payment,request.user,{},"restore")
             return redirect("accounting:stripe_review",pk=pk)
-        if not eligible or current.get("state")=="excluded":
+        if action!="receipt" and (not eligible or current.get("state")=="excluded"):
             return HttpResponseBadRequest("Payment is not eligible for direct sale review.")
         if action=="exclude":
             reason=request.POST.get("reason","").strip()
@@ -110,9 +130,9 @@ def review(request, pk):
                 return HttpResponseBadRequest("Confirm personal/test exclusion and provide a reason.")
             record_review(payment,request.user,{"state":"excluded","reason":reason},"exclude")
             return redirect("accounting:stripe_review",pk=pk)
-        if action!="save":
+        if action not in ("save","receipt"):
             return HttpResponseBadRequest("Invalid review action.")
-        if form.is_valid():
+        if action=="save" and form.is_valid():
             data={}
             for k,v in form.cleaned_data.items():
                 if k=="confirm":
@@ -120,6 +140,14 @@ def review(request, pk):
                 data[k]=str(v) if isinstance(v,Decimal) else v.pk if isinstance(v,(Account,Customer)) else v
             data.update(state="reviewed", sale_date=payment.created_utc.astimezone(ZoneInfo("America/Chicago")).date().isoformat())
             record_review(payment,request.user,data,"save")
+            messages.success(request,"Direct sale review saved successfully. Nothing posted.")
             return redirect("accounting:stripe_review",pk=pk)
+    users = get_user_model().objects.in_bulk({e["by"] for e in payment.review_history})
+    history = [{**e,"local_time":datetime.fromisoformat(e["at"]).astimezone(ZoneInfo("America/Chicago")),
+        "username":str(users.get(e["by"],f"User #{e[\"by\"]}"))} for e in payment.review_history]
+    if eligible:
+        if receipt: label="Internal receipt created — not posted"
+        elif current.get("state")=="reviewed": label="Direct sale reviewed — not posted"
+        elif current.get("state")=="excluded": label="Personal / test — excluded"
     return render(request,"accounting_imports/stripe_review.html",{"payment":payment,"form":form,"eligible":eligible,
-        "label":label,"review":current,"net":payment.gross-payment.fee,"history":payment.review_history})
+        "label":label,"review":current,"net":payment.gross-payment.fee,"history":history,"receipt":receipt,"receipt_error":receipt_error,"gross_cents":int(payment.gross*100)})
