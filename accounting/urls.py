@@ -4,11 +4,14 @@ from accounting_profile import views as business_profile_views
 from accounting_contacts import views as contact_views
 from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales, import_preview
 
+from .sales_payout_report import sales_payout_report
+
 app_name = "accounting"
 urlpatterns = [
     path("", home_views.dashboard, name="dashboard"),
     path("business-profile/", business_profile_views.business_profile, name="business_profile"),
     path("reports/", home_views.reports_index, name="reports_index"),
+    path("reports/sales-payouts/", sales_payout_report, name="sales_payout_report"),
     path("sales-tax/", sales_tax.tax_dashboard, name="sales_tax"),
     path("imports/preview/", import_preview.preview, name="import_preview"),
     path("imports/batches/", import_inbox_views.batch_history, name="batch_history"),
