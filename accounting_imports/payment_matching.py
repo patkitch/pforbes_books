@@ -83,6 +83,9 @@ def match_payment(request, pk):
         match = active_match(pk).first()
         if not match:
             return HttpResponseBadRequest("No active match.")
+        from .posting import row_posted
+        if row_posted(match.bank_row_id) or row_posted(match.card_row_id):
+            return HttpResponseBadRequest("Posted match is locked.")
         list(ImportRow.objects.select_for_update().filter(pk__in=[match.bank_row_id,match.card_row_id]).order_by("pk"))
         match = CardPaymentMatch.objects.select_for_update().filter(pk=match.pk, undone_at__isnull=True).first()
         if not match:

@@ -5,13 +5,13 @@
  const original=Array.from(category.options).map(o=>o.cloneNode(true));
  function refresh(){
    const selected=category.value;
-   const allowed=classification.value==="expense"?["expense","cogs","other_expense"]:classification.value==="income"?["income","other_income"]:[];
+   const allowed=["expense","vendor_credit"].includes(classification.value)?["expense","cogs","other_expense"]:classification.value==="income"?["income","other_income"]:["owner_contribution","owner_draw"].includes(classification.value)?["equity"]:[];
    category.replaceChildren(...original.filter(o=>!o.value||allowed.includes(types[o.value])).map(o=>o.cloneNode(true)));
    if(Array.from(category.options).some(o=>o.value===selected))category.value=selected;
    else category.value="";
  }
  classification.addEventListener("change",function(){
-   if(!["expense","split"].includes(classification.value)){
+   if(!["expense","split","vendor_credit"].includes(classification.value)){
      document.getElementById("id_vendor").value="";
      document.getElementById("id_new_vendor").value="";
      document.getElementById("id_remember").checked=false;
@@ -25,6 +25,7 @@
  function money(v){return (v<0?"−":"")+"$"+(Math.abs(v)/100).toFixed(2)}
  function updateSplit(){
    const payment=classification.value==="card_payment", gallery=classification.value==="gallery";
+   document.getElementById("wrap-transfer_row").hidden=classification.value!=="transfer";document.getElementById("id_transfer_row").disabled=classification.value!=="transfer";
    for(const name of ["gallery_name","gallery_period","gallery_received","gallery_gross","gallery_rate","gallery_income","gallery_commission_account"]){
      const field=document.getElementById("id_"+name);document.getElementById("wrap-"+name).hidden=!gallery;field.disabled=!gallery;
    }

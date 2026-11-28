@@ -105,7 +105,7 @@ def inbox(request):
     tabs = [
         {"key": "review", "label": "To Review", "count": counts.get("pending", 0) + counts.get("reviewed", 0)},
         {"key": "excluded", "label": "Excluded", "count": counts.get("excluded", 0)},
-        {"key": "posted", "label": "Posted", "count": 0},
+        {"key": "posted", "label": "Posted", "count": counts.get("posted", 0)},
     ]
     if tab == "review":
         queryset = queryset.filter(status__in=(ImportRow.PENDING, ImportRow.REVIEWED))
@@ -115,8 +115,7 @@ def inbox(request):
         queryset = queryset.filter(status=ImportRow.EXCLUDED)
         status_filter = ""
     else:
-        # No bank posting service exists yet. Never equate review with posting.
-        queryset = queryset.none()
+        queryset = queryset.filter(status=ImportRow.POSTED)
         status_filter = ""
     page = Paginator(queryset.order_by("-transaction_date", "-pk"), 50).get_page(request.GET.get("page"))
     items = list(page.object_list)
@@ -168,6 +167,9 @@ def inbox(request):
 @transaction.atomic
 def change_status(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    from .posting import row_posted
+    if row_posted(row.pk):
+        return HttpResponseBadRequest("Posted source is locked; use journal correction.")
     from .stripe_groups import active_group
     if active_payout(row.pk) or active_stripe_payout(row.pk) or active_group(row.pk):
         return HttpResponseBadRequest("Undo the payout match before changing status.")

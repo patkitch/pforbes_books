@@ -107,6 +107,9 @@ def reconcile(request, pk):
             return HttpResponseBadRequest("Explicit confirmation is required.")
         action = request.POST.get("action")
         if action == "undo" and match:
+            from .posting import row_posted
+            if row_posted(match.bank_row_id):
+                return HttpResponseBadRequest("Posted payout is locked.")
             ImportRow.objects.select_for_update().get(pk=match.bank_row_id)
             match.undone_at = timezone.now()
             match.undone_by = request.user

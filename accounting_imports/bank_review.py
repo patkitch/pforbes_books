@@ -31,12 +31,13 @@ class SalesMonthField(forms.DateField):
 class BankReviewForm(forms.Form):
     classification = forms.ChoiceField(choices=[
         ("", "Choose classification"), ("expense", "Business expense"), ("income", "Business income"),
-        ("gallery", "Gallery commission deposit"), ("card_payment", "Credit card payment"), ("split", "Split purchase — business / personal"), ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
+        ("gallery", "Gallery commission deposit"), ("card_payment", "Credit card payment"), ("split", "Split purchase — business / personal"), ("vendor_credit", "Vendor credit / purchase refund"), ("owner_contribution", "Owner contribution"), ("owner_draw", "Owner draw"), ("transfer", "Bank transfer — outgoing"), ("personal", "Personal — exclude"), ("deferred", "Other — needs further review"),
     ])
     vendor = forms.ModelChoiceField(queryset=Vendor.objects.none(), required=False)
     new_vendor = forms.CharField(max_length=200, required=False, label="Add new vendor (if not listed)")
     category = forms.ModelChoiceField(queryset=Account.objects.none(), required=False,
                                       label="Expense / Income Category")
+    transfer_row = forms.ModelChoiceField(queryset=ImportRow.objects.none(),required=False,label="Matching incoming bank transfer")
     memo = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(attrs={"rows": 3}))
     attachment = forms.FileField(required=False, label="Upload original receipt or invoice (optional)",
         help_text="PDF, JPG, PNG or WebP, up to 10 MB. You can add another document later.")
@@ -60,6 +61,8 @@ class BankReviewForm(forms.Form):
     def __init__(self, *args, row, **kwargs):
         super().__init__(*args, **kwargs)
         self.row = row
+        self.fields["transfer_row"].queryset=ImportRow.objects.filter(status=ImportRow.PENDING,account_id__in=eligible_import_accounts().filter(account_type="asset").exclude(pk=row.account_id).values("pk"),amount=-row.amount,transaction_date__range=(row.transaction_date-timedelta(days=7),row.transaction_date+timedelta(days=7)))
+        self.fields["transfer_row"].label_from_instance=lambda r: f"{r.transaction_date} | {r.description} | {r.amount} | Account {r.account_id}"
         self.fields["gallery_income"].queryset = Account.objects.filter(is_active=True, account_type="income").order_by("number")
         self.fields["gallery_commission_account"].queryset = Account.objects.filter(is_active=True, account_type__in=("expense", "cogs", "other_expense"), name__icontains="commission").order_by("number")
         if self.initial.get("gallery_period"):
@@ -78,7 +81,7 @@ class BankReviewForm(forms.Form):
         self.fields["payment_equity"].queryset = Account.objects.filter(is_active=True, account_type="equity", name__iregex=r"owner.*(investment|contribution)|capital contribution")
         self.fields["vendor"].queryset = Vendor.objects.filter(is_active=True)
         self.fields["category"].queryset = Account.objects.filter(is_active=True, account_type__in=(
-            "expense", "cogs", "other_expense", "income", "other_income"))
+            "expense", "cogs", "other_expense", "income", "other_income", "equity"))
         self.category_types = {str(a.pk): a.account_type for a in self.fields["category"].queryset}
         self.documents = Receipt.objects.filter(source="bank_document",
             source_reference__startswith=f"{row.pk}:").order_by("pk")
@@ -163,6 +166,15 @@ class BankReviewForm(forms.Form):
                 self.add_error("payment_business", "Enter a positive business portion no greater than the payment.")
             if vendor or name or category or attachment or data.get("remember"):
                 self.add_error("classification", "A card payment is not a new purchase or expense. Clear purchase fields.")
+        elif kind == "vendor_credit":
+            if self.row.amount<=0 or not (vendor or name) or not category or category.account_type not in ("expense","cogs","other_expense"):
+                self.add_error("classification","Positive credit, vendor and original expense category required.")
+        elif kind in ("owner_contribution","owner_draw"):
+            if not category or category.account_type!="equity" or not eligible_import_accounts().filter(pk=self.row.account_id,account_type="asset").exists() or (kind=="owner_contribution" and self.row.amount<=0) or (kind=="owner_draw" and self.row.amount>=0) or vendor or name or attachment:
+                self.add_error("classification","Select equity and correct bank direction; no vendor or document.")
+        elif kind=="transfer":
+            if self.row.amount>=0 or not data.get("transfer_row") or vendor or name or category or attachment:
+                self.add_error("classification","Select outgoing bank row and exact incoming counterpart.")
         elif kind == "income":
             if self.row.amount <= 0:
                 self.add_error("classification", "Income must be a positive deposit.")
@@ -179,6 +191,9 @@ class BankReviewForm(forms.Form):
 @transaction.atomic
 def review(request, pk):
     row = get_object_or_404(ImportRow.objects.select_for_update(), pk=pk)
+    from .posting import row_posted
+    if row_posted(row.pk):
+        return redirect('accounting:posting_center')
     from .stripe_groups import active_group
     group = active_group(row.pk)
     if group:
@@ -232,6 +247,7 @@ def review(request, pk):
                     attachment=upload, notes="Original document attached to bank transaction. Date and amount are from bank record.")
         row.review_data = {
             "classification": data["classification"],
+            **({"transfer_row":data["transfer_row"].pk} if data.get("transfer_row") and data["classification"]=="transfer" else {}),
             "vendor": vendor.pk if vendor else None,
             "category": data["category"].pk if data.get("category") else None,
             "receipt": row.review_data.get("receipt"),

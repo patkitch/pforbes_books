@@ -82,7 +82,8 @@ def review(request):
         if request.POST.get("action")=="void":
             a=get_object_or_404(StripeAdjustment.objects.select_for_update(),pk=request.POST.get("pk"))
             reason=request.POST.get("reason","").strip()
-            if a.voided_at or payout_matched(a.payout_id) or not reason or len(reason)>500 or request.POST.get("confirm")!="yes":
+            from .posting import sale_posted
+            if sale_posted("adjustment",a.pk) or a.voided_at or payout_matched(a.payout_id) or not reason or len(reason)>500 or request.POST.get("confirm")!="yes":
                 return HttpResponseBadRequest("Undo payout first; explicit confirmation and reason required.")
             a.voided_at=timezone.now()
             a.voided_by=request.user

@@ -110,6 +110,10 @@ def build_report(start=None, end=None, source=""):
     totals={k:sum((r[k] for r in rows if r[k] is not None),ZERO) for k in MONEY}
     incomplete={k:sum(r[k] is None for r in rows) for k in MONEY}
     matched=[r for r in rows if r["status"]=="Matched — not posted"]
+    from accounting_imports.posting import existing
+    for r in rows:
+        if r["receipt"] and Receipt.objects.filter(pk=r["receipt"],journal_entry_id__isnull=False).exists():
+            r["status"]="Sale posted; matched" if r in matched else "Sale posted; payout pending"
     difference=sum((r["net"]-r["deposit"] for r in matched),ZERO)
     return dict(rows=rows, totals=totals, incomplete=incomplete, difference=difference, matched_count=len(matched), omitted=omitted)
 

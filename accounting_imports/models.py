@@ -24,7 +24,8 @@ class ImportRow(models.Model):
     PENDING = "pending"
     EXCLUDED = "excluded"
     REVIEWED = "reviewed"
-    STATUSES = [(PENDING, "Pending"), (EXCLUDED, "Excluded"), (REVIEWED, "Reviewed — not posted")]
+    POSTED = "posted"
+    STATUSES = [(PENDING, "Pending"), (EXCLUDED, "Excluded"), (REVIEWED, "Reviewed — not posted"), (POSTED, "Posted")]
     batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="rows")
     account_id = models.PositiveBigIntegerField()
     transaction_date = models.DateField()

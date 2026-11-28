@@ -73,6 +73,9 @@ def woo_inbox(request):
 @transaction.atomic
 def woo_action(request, pk):
     record = get_object_or_404(WooOrderImport.objects.select_for_update(), pk=pk)
+    from .posting import sale_posted
+    if sale_posted("woo",record.pk):
+        return HttpResponseBadRequest("Posted sale is locked.")
     action = request.POST.get("action")
     if action == "exclude" and (record.payout_matches.filter(undone_at__isnull=True).exists() or record.stripe_group_memberships.filter(group__undone_at__isnull=True).exists()):
         return HttpResponseBadRequest("Undo the payout match before excluding the order.")
