@@ -331,7 +331,7 @@ def write(plan,actor):
         JournalLine.objects.create(entry=entry,account=a,debit=d,credit=c)
     if plan.vendor or plan.customer:
         link_contact(entry,vendor=plan.vendor,customer=plan.customer,actor=actor)
-    post_entry(entry.pk,actor=actor)
+    entry=post_entry(entry.pk,actor=actor)
     for r in plan.receipts:
         r.journal_entry_id=entry.pk
         r.save(update_fields=["journal_entry_id"])

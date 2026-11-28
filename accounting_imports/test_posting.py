@@ -30,6 +30,8 @@ class PostingTests(TestCase):
         r=self.expense()
         e=post_selected(["bank:"+str(r.pk)],self.cfg,self.user)[0]
         self.assertEqual(e.status,"posted")
+        self.assertEqual(JournalEntry.objects.get(pk=e.pk).status,"posted")
+        self.assertIsNotNone(e.posted_at)
         self.assertEqual(e.lines.get(account=self.fee).debit,25)
         self.assertEqual(TransactionParty.objects.get(journal_entry_id=e.pk).vendor,self.vendor)
         r.refresh_from_db()
