@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accounting Dashboard | P. Forbes Books</title>
+<style>body{font:16px system-ui,sans-serif;margin:0;background:#f5f7f9;color:#263442}.page{max-width:1200px;margin:0 auto;padding:26px}h1{margin:0 0 8px;color:#1e344a}.muted{color:#647386}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:22px 0}.card,.panel{background:#fff;border:1px solid #dfe7ed;border-radius:12px;padding:20px}.card .label{font-size:13px;color:#647386}.card .value{font-size:26px;font-weight:750;margin-top:12px;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.action{background:#fff;border:1px solid #dfe7ed;border-radius:10px;padding:17px;color:#19516d;text-decoration:none;font-weight:650}.action:hover{background:#eaf3f7}.strong{background:#19516d;color:white}.strong:hover{background:#123a50}table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;border-bottom:1px solid #e7edf2}a{color:#19516d}.tag{font-size:13px;border-radius:20px;background:#e8eef2;padding:5px 12px;display:inline-block}h2{margin-top:30px}@media(max-width:1100px){.cards,.actions{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.page{padding:14px}.cards,.actions{grid-template-columns:1fr 1fr}.card{padding:13px}.card .value{font-size:21px}.action{padding:13px}.tablewrap{overflow-x:auto}}</style>
+</head><body>{% include "accounting/_shell.html" %}<div class="accounting-main"><main class="page">
+<h1>Accounting Dashboard</h1><p class="muted">P. Forbes Art · Local accounting test</p><span class="tag">Year to Date · {{ period_start|date:"M j, Y" }} through {{ as_of|date:"M j, Y" }}</span>
+{% if test_dates_ahead %}<p class="muted">This test ledger contains future-dated entries. Figures include posted records through the latest test date. They are not today's real business balances.</p>{% endif %}
+<section class="cards" aria-label="Financial summary">
+<div class="card"><div class="label">Cash / bank · 10xx accounts</div><div class="value">&#36;{{ bank_total|floatformat:2 }}</div></div>
+<div class="card"><div class="label">Revenue · Year to Date</div><div class="value">&#36;{{ income_total|floatformat:2 }}</div></div>
+<div class="card"><div class="label">Expenses &amp; COGS · Year to Date</div><div class="value">&#36;{{ expense_total|floatformat:2 }}</div></div>
+<div class="card"><div class="label">Net profit · Year to Date</div><div class="value">&#36;{{ net_profit|floatformat:2 }}</div></div>
+</section>
+<p class="muted" style="font-size:13px">Posted entries only. Cash/bank is a provisional 10xx account grouping; credit-card liabilities and other assets are excluded.</p>
+<h2>Quick Actions</h2><section class="actions">
+<a class="action strong" href="{% url 'accounting:income_new' %}">+ Record Income</a>
+<a class="action strong" href="{% url 'accounting:expense_new' %}">+ Record Expense</a>
+<a class="action strong" href="{% url 'accounting:posting_center' %}">Import Posting Center</a>
+<a class="action" href="{% url 'accounting:transaction_list' %}">Transactions</a>
+<a class="action" href="{% url 'accounting:reports_index' %}">Reports</a>
+<a class="action" href="{% url 'accounting:customers' %}">Customers</a>
+<a class="action" href="{% url 'accounting:vendors' %}">Vendors</a>
+<a class="action" href="{% url 'accounting:receipts' %}">Receipts</a>
+<a class="action" href="{% url 'accounting:journal_new' %}">General Journal</a>
+</section>
+<h2>Other Transactions</h2><div class="panel"><a href="{% url 'accounting:split_new' %}">Split purchase</a> · <a href="{% url 'accounting:movement_new' %}">Transfer / card payment / refund</a> · <a href="{% url 'accounting:owner_new' %}">Owner contribution</a></div>
+<h2>Recent Posted Transactions</h2><div class="panel tablewrap"><table><thead><tr><th>Date</th><th>Description</th><th>Payee</th></tr></thead><tbody>{% for entry in recent %}<tr><td>{{ entry.date|date:"M j, Y" }}</td><td>{{ entry.description }}</td><td>{{ entry.payee }}</td></tr>{% empty %}<tr><td colspan="3">No posted transactions yet.</td></tr>{% endfor %}</tbody></table></div>
+</main></div></body></html>

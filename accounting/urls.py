@@ -1,0 +1,75 @@
+from django.urls import path
+from accounting_imports import views as import_inbox_views, woo_views, bank_review, payment_matching, woo_payouts, stripe_imports, stripe_review, stripe_payouts
+from accounting_profile import views as business_profile_views
+from accounting_contacts import views as contact_views
+from . import home_views, views, split_views, report_views, report_exports, owner_views, money_views, correction_views, journal_views, trial_views, sales_tax, sales_tax_sales, import_preview
+
+from .sales_payout_report import sales_payout_report
+
+from accounting_imports import stripe_groups, stripe_adjustments, posting_views
+
+app_name = "accounting"
+urlpatterns = [
+    path("", home_views.dashboard, name="dashboard"),
+    path("business-profile/", business_profile_views.business_profile, name="business_profile"),
+    path("reports/", home_views.reports_index, name="reports_index"),
+    path("reports/sales-payouts/", sales_payout_report, name="sales_payout_report"),
+    path("sales-tax/", sales_tax.tax_dashboard, name="sales_tax"),
+    path("imports/posting/", posting_views.center, name="posting_center"),
+    path("imports/preview/", import_preview.preview, name="import_preview"),
+    path("imports/batches/", import_inbox_views.batch_history, name="batch_history"),
+    path("imports/batches/<int:pk>/undo/", import_inbox_views.undo_batch, name="undo_batch"),
+    path("imports/inbox/", import_inbox_views.inbox, name="import_inbox"),
+    path("imports/stripe/adjustments/", stripe_adjustments.review, name="stripe_adjustments"),
+    path("imports/stripe/groups/<str:payout_id>/", stripe_groups.reconcile, name="stripe_group"),
+    path("imports/stripe/<int:pk>/payout/", stripe_payouts.reconcile, name="stripe_payout"),
+    path("imports/stripe/<int:pk>/review/", stripe_review.review, name="stripe_review"),
+    path("imports/stripe/", stripe_imports.inbox, name="stripe_inbox"),
+    path("imports/woocommerce/", woo_views.woo_inbox, name="woo_inbox"),
+    path("imports/woocommerce/<int:pk>/payout/", woo_payouts.reconcile, name="woo_payout"),
+    path("imports/woocommerce/<int:pk>/", woo_views.woo_detail, name="woo_detail"),
+    path("imports/woocommerce/<int:pk>/action/", woo_views.woo_action, name="woo_action"),
+    path("imports/rows/<int:pk>/match/", payment_matching.match_payment, name="payment_match"),
+    path("imports/rows/<int:pk>/review/", bank_review.review, name="bank_review"),
+    path("imports/rows/<int:pk>/status/", import_inbox_views.change_status, name="import_status"),
+    path("sales-tax/sales/new/", sales_tax_sales.sale_new, name="sales_tax_sale_new"),
+    path("transactions/income/new/", views.income_new, name="income_new"),
+    path("transactions/expense/new/", views.expense_new, name="expense_new"),
+    path("vendors/", contact_views.vendors, name="vendors"),
+    path("vendors/new/", contact_views.vendor_edit, name="vendor_new"),
+    path("vendors/<int:pk>/", contact_views.vendor_detail, name="vendor_detail"),
+    path("vendors/<int:pk>/edit/", contact_views.vendor_edit, name="vendor_edit"),
+    path("customers/", contact_views.customers, name="customers"),
+    path("customers/new/", contact_views.customer_edit, name="customer_new"),
+    path("customers/<int:pk>/", contact_views.customer_detail, name="customer_detail"),
+    path("customers/<int:pk>/edit/", contact_views.customer_edit, name="customer_edit"),
+    path("receipts/", contact_views.receipts, name="receipts"),
+    path("receipts/new/", contact_views.receipt_edit, name="receipt_new"),
+    path("receipts/<int:pk>/", contact_views.receipt_detail, name="receipt_detail"),
+    path("receipts/<int:pk>/edit/", contact_views.receipt_edit, name="receipt_edit"),
+    path("receipts/<int:pk>/download/", contact_views.receipt_download, name="receipt_download"),
+    path("transactions/<int:pk>/contact/", contact_views.party_link, name="transaction_party"),
+
+    path("reports/trial-balance/", trial_views.trial_balance_view, name="trial_balance"),
+    path("reports/trial-balance.csv", trial_views.trial_balance_csv, name="trial_balance_csv"),
+    path("transactions/journal/new/", journal_views.journal_new, name="journal_new"),
+    path("transactions/journal/<int:pk>/edit/", journal_views.journal_edit, name="journal_edit"),
+    path("transactions/movement/new/", money_views.movement_new, name="movement_new"),
+    path("transactions/movement/<int:pk>/edit/", money_views.movement_edit, name="movement_edit"),
+    path("transactions/<int:pk>/reverse/", correction_views.reverse_transaction, name="transaction_reverse"),
+    path("transactions/owner/new/", owner_views.owner_new, name="owner_new"),
+    path("transactions/owner/<int:pk>/edit/", owner_views.owner_edit, name="owner_edit"),
+    path("reports/download/<str:kind>/<str:format>/", report_exports.report_download, name="report_download"),
+    path("reports/profit-loss/", report_views.profit_loss_view, name="profit_loss"),
+    path("reports/balance-sheet/", report_views.balance_sheet_view, name="balance_sheet"),
+    path("transactions/", views.transaction_list, name="transaction_list"),
+    path("transactions/split/new/", split_views.split_new, name="split_new"),
+    path("transactions/split/<int:pk>/edit/", split_views.split_edit, name="split_edit"),
+    path("transactions/new/", views.transaction_new, name="transaction_new"),
+    path("transactions/<int:pk>/edit/", views.transaction_edit, name="transaction_edit"),
+    path("accounts/", views.chart_of_accounts, name="chart_of_accounts"),
+    path("accounts/new/", views.account_form, name="account_new"),
+    path("accounts/<int:pk>/ledger/", views.account_ledger, name="account_ledger"),
+    path("accounts/<int:pk>/edit/", views.account_form, name="account_edit"),
+    path("accounts/<int:pk>/status/", views.account_status, name="account_status"),
+]
