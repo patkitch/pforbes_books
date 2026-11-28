@@ -190,3 +190,24 @@ class StripeGroupMember(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["group","payment"], name="unique_stripe_group_member")]
+
+
+class StripeAdjustment(models.Model):
+    balance_id = models.CharField(max_length=180, unique=True)
+    refund_id = models.CharField(max_length=180, null=True, blank=True, unique=True)
+    payment = models.ForeignKey(StripePaymentImport, null=True, blank=True, on_delete=models.PROTECT, related_name="adjustments")
+    payout_id = models.CharField(max_length=180)
+    day = models.DateField()
+    kind = models.CharField(max_length=20, choices=[("refund","Customer refund"),("fee","Processor fee / credit")])
+    artwork = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    shipping = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    tax = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    fee = models.DecimalField(max_digits=14, decimal_places=2)
+    net = models.DecimalField(max_digits=14, decimal_places=2)
+    evidence = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="stripe_adjustments")
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.PROTECT, related_name="voided_stripe_adjustments")
+    void_reason = models.CharField(max_length=500, blank=True)

@@ -31,6 +31,9 @@ def active_stripe_payout(row_id):
 def candidates(payment):
     if not eligible(payment) or StripePayoutMatch.objects.filter(payout_id=payment.payout_id, undone_at__isnull=True).exists():
         return []
+    from .stripe_adjustments import active_adjustments
+    if active_adjustments(payment.payout_id).exists():
+        return []
     paid = payment.created_utc.astimezone(ZoneInfo("America/Chicago")).date()
     accounts = eligible_import_accounts().filter(account_type="asset")
     rows = ImportRow.objects.filter(account_id__in=accounts.values("pk"), status=ImportRow.PENDING,

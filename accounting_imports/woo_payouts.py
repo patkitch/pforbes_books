@@ -63,7 +63,8 @@ def candidates(order):
         return []
     if processor_for(order) == "Stripe":
         for p in StripePaymentImport.objects.filter(woo_order_number=order.source_order_id).exclude(payout_id=""):
-            if StripePaymentImport.objects.filter(payout_id=p.payout_id).exclude(pk=p.pk).exists():
+            from .stripe_adjustments import active_adjustments
+            if active_adjustments(p.payout_id).exists() or StripePaymentImport.objects.filter(payout_id=p.payout_id).exclude(pk=p.pk).exists():
                 return []
     processor = processor_for(order)
     paid = paid_date(order)

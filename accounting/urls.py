@@ -6,7 +6,7 @@ from . import home_views, views, split_views, report_views, report_exports, owne
 
 from .sales_payout_report import sales_payout_report
 
-from accounting_imports import stripe_groups
+from accounting_imports import stripe_groups, stripe_adjustments
 
 app_name = "accounting"
 urlpatterns = [
@@ -19,6 +19,7 @@ urlpatterns = [
     path("imports/batches/", import_inbox_views.batch_history, name="batch_history"),
     path("imports/batches/<int:pk>/undo/", import_inbox_views.undo_batch, name="undo_batch"),
     path("imports/inbox/", import_inbox_views.inbox, name="import_inbox"),
+    path("imports/stripe/adjustments/", stripe_adjustments.review, name="stripe_adjustments"),
     path("imports/stripe/groups/<str:payout_id>/", stripe_groups.reconcile, name="stripe_group"),
     path("imports/stripe/<int:pk>/payout/", stripe_payouts.reconcile, name="stripe_payout"),
     path("imports/stripe/<int:pk>/review/", stripe_review.review, name="stripe_review"),

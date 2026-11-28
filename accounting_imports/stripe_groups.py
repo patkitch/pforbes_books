@@ -53,6 +53,9 @@ def candidates(payments,items,errors):
     if errors or not payments:
         return []
     payout=payments[0].payout_id
+    from .stripe_adjustments import active_adjustments
+    if active_adjustments(payout).exists():
+        return []
     if StripeGroupMatch.objects.filter(payout_id=payout,undone_at__isnull=True).exists() or StripePayoutMatch.objects.filter(payout_id=payout,undone_at__isnull=True).exists():
         return []
     net=sum((i["net"] for i in items),ZERO)
